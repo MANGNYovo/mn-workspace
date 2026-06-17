@@ -457,9 +457,15 @@ ipcMain.handle('window:close', async () => {
 })
 
 ipcMain.handle('updater:check-for-updates', async () => {
-  autoUpdater.checkForUpdates()
+  try {
+    const result = await autoUpdater.checkForUpdates()
 
-  return true
+    return Boolean(result?.updateInfo?.version)
+  } catch (error) {
+    console.error('Failed to check for updates:', error)
+
+    return false
+  }
 })
 
 ipcMain.handle('updater:download-update', async () => {

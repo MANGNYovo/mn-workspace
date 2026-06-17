@@ -517,7 +517,7 @@ function App() {
   const [newProgramIconImage, setNewProgramIconImage] = useState<string | null>(null)
 
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false)
-  const [updateModalType, setUpdateModalType] = useState<'available' | 'downloading' | 'ready' | null>(null)
+  const [updateModalType, setUpdateModalType] = useState<'available' | 'downloading' | 'ready' | 'latest' | null>(null)
   const [updateProgress, setUpdateProgress] = useState(0)
 
   const sensors = useSensors(
@@ -897,7 +897,11 @@ function App() {
     setIsCheckingUpdates(true)
     setUpdateProgress(0)
 
-    await window.mnAPI.checkForUpdates()
+    const hasUpdate = await window.mnAPI.checkForUpdates()
+
+    if (!hasUpdate) {
+      setUpdateModalType('latest')
+    }
 
     window.setTimeout(() => {
       setIsCheckingUpdates(false)
@@ -1763,6 +1767,7 @@ function App() {
                 {updateModalType === 'available' && 'Update Available'}
                 {updateModalType === 'downloading' && 'Downloading Update'}
                 {updateModalType === 'ready' && 'Update Ready'}
+                {updateModalType === 'latest' && 'Already Up to Date'}
               </h2>
 
               <p>
@@ -1774,6 +1779,9 @@ function App() {
 
                 {updateModalType === 'ready' &&
                   'The update is ready to install.'}
+
+                {updateModalType === 'latest' &&
+                  'You are already using the latest version.'}
               </p>
 
               <div className="update-modal-version">
@@ -1809,28 +1817,40 @@ function App() {
                     <span>Restart required</span>
                   </>
                 )}
+
+                {updateModalType === 'latest' && (
+                  <>
+                    <span>MN WORKSPACE v{appVersion}</span>
+                  </>
+                )}
               </div>
 
               {updateModalType !== 'downloading' && (
                 <div className="update-modal-actions">
-                  <button
-                    className="modal-cancel-button"
-                    onClick={() => setUpdateModalType(null)}
-                  >
-                    Later
-                  </button>
+                  {updateModalType !== 'latest' && (
+                    <button
+                      className="modal-cancel-button"
+                      onClick={() => setUpdateModalType(null)}
+                    >
+                      Later
+                    </button>
+                  )}
 
                   <button
                     className="modal-add-button"
                     onClick={() =>
                       updateModalType === 'available'
                         ? handleStartUpdateDownload()
-                        : window.mnAPI.installUpdate()
+                        : updateModalType === 'ready'
+                          ? window.mnAPI.installUpdate()
+                          : setUpdateModalType(null)
                     }
                   >
                     {updateModalType === 'available'
                       ? 'Update'
-                      : 'Restart'}
+                      : updateModalType === 'ready'
+                        ? 'Restart'
+                        : 'OK'}
                   </button>
                 </div>
               )}
