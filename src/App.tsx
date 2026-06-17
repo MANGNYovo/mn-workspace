@@ -517,7 +517,7 @@ function App() {
   const [newProgramIconImage, setNewProgramIconImage] = useState<string | null>(null)
 
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false)
-  const [updateModalType, setUpdateModalType] = useState<'available' | 'downloading' | 'ready' | 'latest' | null>(null)
+  const [updateModalType, setUpdateModalType] = useState<'available' | 'downloading' | 'ready' | 'latest' | 'error' | null>(null)
   const [updateProgress, setUpdateProgress] = useState(0)
 
   const sensors = useSensors(
@@ -917,12 +917,12 @@ function App() {
 
       if (!result) {
         setUpdateProgress(0)
-        setUpdateModalType(null)
+        setUpdateModalType('error')
       }
     } catch (error) {
       console.error('Update download failed:', error)
       setUpdateProgress(0)
-      setUpdateModalType(null)
+      setUpdateModalType('error')
     }
   }
 
@@ -1768,6 +1768,7 @@ function App() {
                 {updateModalType === 'downloading' && 'Downloading Update'}
                 {updateModalType === 'ready' && 'Update Ready'}
                 {updateModalType === 'latest' && 'Already Up to Date'}
+                {updateModalType === 'error' && 'Update Failed'}
               </h2>
 
               <p>
@@ -1782,6 +1783,9 @@ function App() {
 
                 {updateModalType === 'latest' &&
                   'You are already using the latest version.'}
+
+                {updateModalType === 'error' &&
+                  'The update could not be downloaded.'}
               </p>
 
               <div className="update-modal-version">
@@ -1821,6 +1825,12 @@ function App() {
                 {updateModalType === 'latest' && (
                   <>
                     <span>MN WORKSPACE v{appVersion}</span>
+                  </>
+                )}
+
+                {updateModalType === 'error' && (
+                  <>
+                    <span>Download failed</span>
                   </>
                 )}
               </div>
