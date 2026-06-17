@@ -1725,7 +1725,7 @@ function App() {
               </div>
             </div>
             <div className="settings-footer">
-              MN WORKSPACE v1.3.2
+              MN WORKSPACE v1.3.3
             </div>
           </section>
         )}

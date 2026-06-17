@@ -2295,3 +2295,19 @@ button {
   background: var(--accent-color, #705bff);
   transition: width 0.22s ease;
 }
+
+.app[data-theme='dark'] .update-modal-icon {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent);
+}
+
+.app[data-theme='dark'] .update-progress-info span {
+  color: #c8c8c8;
+}
+
+.app[data-theme='dark'] .update-progress-bar {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.app[data-theme='dark'] .modal-overlay {
+  background: rgba(0, 0, 0, 0.38);
+}
