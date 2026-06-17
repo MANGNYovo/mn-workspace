@@ -49,6 +49,9 @@
       "target": "nsis",
       "icon": "build/icon.ico"
     },
+
+    "artifactName": "MN-WORKSPACE-Setup-${version}.${ext}",
+
     "publish": {
       "provider": "github",
       "owner": "MANGNYovo",
