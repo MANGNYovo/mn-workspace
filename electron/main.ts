@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { execFile } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -20,6 +21,8 @@ let win: BrowserWindow | null
 let tray: Tray | null = null
 let minimizeToTray = false
 let isQuitting = false
+
+autoUpdater.autoDownload = false
 
 function getProgramsFilePath() {
   return path.join(app.getPath('userData'), 'programs.json')
@@ -193,6 +196,10 @@ function createWindow() {
 
   win.once('ready-to-show', () => {
     win?.show()
+
+    setTimeout(() => {
+      autoUpdater.checkForUpdates()
+    }, 10000)
   })
 
   win.webContents.on('did-finish-load', () => {
@@ -443,6 +450,58 @@ ipcMain.handle('window:minimize', async () => {
 
 ipcMain.handle('window:close', async () => {
   win?.close()
+})
+
+autoUpdater.on('update-available', async (info) => {
+  const result = win
+    ? await dialog.showMessageBox(win, {
+        type: 'info',
+        title: 'Update Available',
+        message: `MN WORKSPACE ${info.version} 업데이트가 있습니다.`,
+        detail: '지금 다운로드할까요?',
+        buttons: ['업데이트', '나중에'],
+        defaultId: 0,
+        cancelId: 1,
+      })
+    : await dialog.showMessageBox({
+        type: 'info',
+        title: 'Update Available',
+        message: `MN WORKSPACE ${info.version} 업데이트가 있습니다.`,
+        detail: '지금 다운로드할까요?',
+        buttons: ['업데이트', '나중에'],
+        defaultId: 0,
+        cancelId: 1,
+      })
+
+  if (result.response === 0) {
+    autoUpdater.downloadUpdate()
+  }
+})
+
+autoUpdater.on('update-downloaded', async () => {
+  const result = win
+    ? await dialog.showMessageBox(win, {
+        type: 'info',
+        title: 'Update Ready',
+        message: '업데이트 다운로드가 완료되었습니다.',
+        detail: '지금 재시작해서 설치할까요?',
+        buttons: ['재시작', '나중에'],
+        defaultId: 0,
+        cancelId: 1,
+      })
+    : await dialog.showMessageBox({
+        type: 'info',
+        title: 'Update Ready',
+        message: '업데이트 다운로드가 완료되었습니다.',
+        detail: '지금 재시작해서 설치할까요?',
+        buttons: ['재시작', '나중에'],
+        defaultId: 0,
+        cancelId: 1,
+      })
+
+  if (result.response === 0) {
+    autoUpdater.quitAndInstall()
+  }
 })
 
 app.on('window-all-closed', () => {
