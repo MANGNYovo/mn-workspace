@@ -21,12 +21,14 @@ interface Window {
     saveSettings: (settings: unknown) => Promise<boolean>
     setStartWithWindows: (enabled: boolean) => Promise<boolean>
 
+    getAudioDevice: () => Promise<'speaker' | 'headphone' | null>
     setAudioDevice: (device: 'speaker' | 'headphone') => Promise<{
       success: boolean
       stdout: string
       stderr: string
       error?: string
     }>
+    getMonitorOrientation: () => Promise<'horizontal' | 'vertical' | null>
     setMonitorOrientation: (orientation: 'horizontal' | 'vertical') => Promise<{
       success: boolean
       stdout: string

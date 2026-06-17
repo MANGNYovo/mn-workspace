@@ -145,6 +145,55 @@ if ($result -ne 0) {
 `
 }
 
+function getCurrentMonitorCommand() {
+  return String.raw`
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class DisplayHelper2 {
+    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
+    public static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE2 devMode);
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
+    public struct DEVMODE2 {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
+        public ushort dmSpecVersion;
+        public ushort dmDriverVersion;
+        public ushort dmSize;
+        public ushort dmDriverExtra;
+        public uint dmFields;
+        public int dmPositionX;
+        public int dmPositionY;
+        public uint dmDisplayOrientation;
+        public uint dmDisplayFixedOutput;
+        public short dmColor;
+        public short dmDuplex;
+        public short dmYResolution;
+        public short dmTTOption;
+        public short dmCollate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
+        public ushort dmLogPixels;
+        public uint dmBitsPerPel;
+        public uint dmPelsWidth;
+        public uint dmPelsHeight;
+        public uint dmDisplayFlags;
+        public uint dmDisplayFrequency;
+    }
+}
+'@
+
+$dm = New-Object DisplayHelper2+DEVMODE2
+$dm.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf($dm)
+$ok = [DisplayHelper2]::EnumDisplaySettings("\\.\DISPLAY2", -1, [ref]$dm)
+
+if (-not $ok) {
+  Write-Host "DISPLAY2 설정 읽기 실패"
+  exit 1
+}
+
+Write-Host $dm.dmDisplayOrientation
+`
+}
+
 function createTray() {
   if (tray) return
 
@@ -374,6 +423,47 @@ ipcMain.handle('settings:set-start-with-windows', async (_event, enabled: boolea
   }
 })
 
+ipcMain.handle('device:get-audio', async () => {
+  try {
+    const result = await runPowerShell(String.raw`
+$device = Get-AudioDevice -Playback | Where-Object { $_.Default -eq $true } | Select-Object -First 1
+
+if (-not $device) {
+  exit 1
+}
+
+$device | Select-Object Index, Name, Default | ConvertTo-Json -Compress
+`)
+
+    if (!result.success) {
+      return null
+    }
+
+    const device = JSON.parse(result.stdout.trim())
+    const index = Number(device.Index)
+    const name = String(device.Name ?? '').toLowerCase()
+
+    if (index === 2 || name.includes('speaker') || name.includes('스피커')) {
+      return 'speaker'
+    }
+
+    if (
+      index === 1 ||
+      name.includes('headphone') ||
+      name.includes('headset') ||
+      name.includes('이어폰') ||
+      name.includes('헤드셋')
+    ) {
+      return 'headphone'
+    }
+
+    return null
+  } catch (error) {
+    console.error('Failed to get audio device:', error)
+    return null
+  }
+})
+
 ipcMain.handle('device:set-audio', async (_event, device: 'speaker' | 'headphone') => {
   try {
     const command =
@@ -391,6 +481,23 @@ ipcMain.handle('device:set-audio', async (_event, device: 'speaker' | 'headphone
       stderr: '',
       error: String(error),
     }
+  }
+})
+
+ipcMain.handle('device:get-monitor', async () => {
+  try {
+    const result = await runPowerShell(getCurrentMonitorCommand())
+
+    if (!result.success) {
+      return null
+    }
+
+    const orientation = Number(result.stdout.trim())
+
+    return orientation === 1 ? 'vertical' : 'horizontal'
+  } catch (error) {
+    console.error('Failed to get monitor orientation:', error)
+    return null
   }
 })
 

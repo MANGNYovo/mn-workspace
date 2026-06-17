@@ -926,32 +926,55 @@ function App() {
     }
   }
 
-  const handleSelectAudioDevice = async (device: AudioDevice) => {
-    setSelectedAudioDevice(device)
+  const refreshDeviceStates = async () => {
+    try {
+      const [audioDevice, monitorOrientation] = await Promise.all([
+        window.mnAPI.getAudioDevice(),
+        window.mnAPI.getMonitorOrientation(),
+      ])
 
+      if (audioDevice) {
+        setSelectedAudioDevice(audioDevice)
+      }
+
+      if (monitorOrientation) {
+        setSelectedMonitorOrientation(monitorOrientation)
+      }
+    } catch (error) {
+      console.error('Failed to refresh device states:', error)
+    }
+  }
+
+  const handleSelectAudioDevice = async (device: AudioDevice) => {
     const result = await window.mnAPI.setAudioDevice(device)
 
     if (!result.success) {
       console.error('Failed to set audio device:', result.error || result.stderr)
+      return
     }
+
+    await refreshDeviceStates()
   }
 
   const handleSelectMonitorOrientation = async (
     orientation: MonitorOrientation,
   ) => {
-    setSelectedMonitorOrientation(orientation)
-
     const result = await window.mnAPI.setMonitorOrientation(orientation)
 
     if (!result.success) {
       console.error('Failed to set monitor orientation:', result.error || result.stderr)
+      return
     }
+
+    await refreshDeviceStates()
   }
 
   useEffect(() => {
     window.mnAPI.getAppVersion().then((version) => {
       setAppVersion(version)
     })
+
+    refreshDeviceStates()
   }, [])
 
   useEffect(() => {

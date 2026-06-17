@@ -38,8 +38,10 @@ contextBridge.exposeInMainWorld('mnAPI', {
   setStartWithWindows: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-start-with-windows', enabled),
 
+  getAudioDevice: () => ipcRenderer.invoke('device:get-audio'),
   setAudioDevice: (device: 'speaker' | 'headphone') =>
     ipcRenderer.invoke('device:set-audio', device),
+  getMonitorOrientation: () => ipcRenderer.invoke('device:get-monitor'),
   setMonitorOrientation: (orientation: 'horizontal' | 'vertical') =>
     ipcRenderer.invoke('device:set-monitor', orientation),
 
