@@ -76,7 +76,9 @@ button {
 .home-device-button:focus,
 .home-device-button:focus-visible,
 .home-launch-button:focus,
-.home-launch-button:focus-visible {
+.home-launch-button:focus-visible,
+.setting-icon-action:focus,
+.setting-icon-action:focus-visible {
   outline: none;
 }
 
@@ -996,6 +998,72 @@ button {
 .setting-action.danger {
   color: #ff3b3b;
   border-color: rgba(255, 59, 59, 0.25);
+}
+
+.setting-update-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.setting-icon-action {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  padding: 6px;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    transform 0.14s cubic-bezier(.2, .9, .3, 1.4),
+    background 0.16s ease,
+    opacity 0.16s ease;
+}
+
+.setting-icon-action:active {
+  transform: scale(0.9);
+}
+
+.setting-icon-action.checking img {
+  animation: update-check-spin 2s cubic-bezier(.22, .61, .36, 1) 1;
+}
+
+@keyframes update-check-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(390deg);
+  }
+
+  40% {
+    transform: rotate(360deg);
+  }
+
+  60% {
+    transform: rotate(360deg);
+  }
+
+  85% {
+    transform: rotate(750deg);
+  }
+
+  100% {
+    transform: rotate(720deg);
+  }
+}
+
+.setting-icon-action img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  pointer-events: none;
 }
 
 .settings-footer {
@@ -2118,4 +2186,112 @@ button {
 .app[data-theme='dark'] .program.failed p {
   color: #ff5a5a;
   font-weight: 700;
+}
+
+.update-modal {
+  width: 370px;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.18);
+}
+
+.update-modal-icon {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-color, #705bff) 12%, transparent);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.update-modal-icon img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.update-modal h2 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.update-modal p {
+  margin: 0;
+  color: #65708d;
+  font-size: 13px;
+}
+
+.update-modal-version {
+  margin-top: 18px;
+  padding: 11px 12px;
+  border-radius: 10px;
+  background: #f3f5fb;
+  color: #65708d;
+  font-size: 13px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.update-modal-version b {
+  color: var(--accent-color, #705bff);
+}
+
+.update-modal-actions {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+}
+
+.app[data-theme='dark'] .update-modal {
+  background: #2b2b2b;
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .update-modal-version {
+  background: #333333;
+  color: #c8c8c8;
+}
+
+.app[data-theme='dark'] .update-modal p {
+  color: #b8b8b8;
+}
+
+.update-progress-wrap {
+  width: 100%;
+}
+
+.update-progress-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.update-progress-info b {
+  color: var(--accent-color, #705bff);
+}
+
+.update-progress-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(130, 140, 170, 0.18);
+  overflow: hidden;
+}
+
+.update-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-color, #705bff);
+  transition: width 0.22s ease;
 }

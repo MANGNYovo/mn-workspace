@@ -35,5 +35,21 @@ interface Window {
 
     minimizeWindow: () => Promise<void>
     closeWindow: () => Promise<void>
+
+    checkForUpdates: () => Promise<boolean>
+    downloadUpdate: () => Promise<boolean>
+    installUpdate: () => Promise<boolean>
+
+    onUpdateAvailable: (
+      callback: (info: { version: string }) => void,
+    ) => () => void
+
+    onUpdateProgress: (
+      callback: (progress: { percent: number }) => void,
+    ) => () => void
+
+    onUpdateDownloaded: (
+      callback: (info: { version: string }) => void,
+    ) => () => void
   }
 }

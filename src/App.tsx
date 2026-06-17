@@ -102,6 +102,14 @@ import vmonitorRed from './assets/vmonitor-red.png'
 import vmonitorGray from './assets/vmonitor-gray.png'
 import vmonitorWhite from './assets/vmonitor-white.png'
 
+import checkPurple from './assets/check-purple.png'
+import checkBlue from './assets/check-blue.png'
+import checkGreen from './assets/check-green.png'
+import checkOrange from './assets/check-orange.png'
+import checkRed from './assets/check-red.png'
+import checkGray from './assets/check-gray.png'
+import checkWhite from './assets/check-white.png'
+
 import './App.css'
 
 type Page = 'home' | 'dashboard' | 'programs' | 'settings'
@@ -313,6 +321,17 @@ const iconMap = {
     gray: vmonitorGray,
     white: vmonitorWhite,
   },
+
+  check: {
+    purple: checkPurple,
+    blue: checkBlue,
+    green: checkGreen,
+    orange: checkOrange,
+    red: checkRed,
+    gray: checkGray,
+    white: checkWhite,
+  },
+
 } as const
 
 
@@ -495,6 +514,10 @@ function App() {
   const [newProgramPath, setNewProgramPath] = useState('')
   const [newProgramEnabled, setNewProgramEnabled] = useState(true)
   const [newProgramIconImage, setNewProgramIconImage] = useState<string | null>(null)
+
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false)
+  const [updateModalType, setUpdateModalType] = useState<'available' | 'downloading' | 'ready' | null>(null)
+  const [updateProgress, setUpdateProgress] = useState(0)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -869,6 +892,24 @@ function App() {
     })
   }
 
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdates(true)
+    setUpdateProgress(0)
+
+    await window.mnAPI.checkForUpdates()
+
+    window.setTimeout(() => {
+      setIsCheckingUpdates(false)
+    }, 2000)
+  }
+
+  const handleStartUpdateDownload = async () => {
+    setUpdateModalType('downloading')
+    setUpdateProgress(0)
+
+    await window.mnAPI.downloadUpdate()
+  }
+
   const handleSelectAudioDevice = async (device: AudioDevice) => {
     setSelectedAudioDevice(device)
 
@@ -985,6 +1026,32 @@ function App() {
     }
   }, [isAddModalOpen])
 
+  useEffect(() => {
+    const removeUpdateAvailableListener = window.mnAPI.onUpdateAvailable(() => {
+      window.setTimeout(() => {
+        setUpdateModalType('available')
+      }, 850)
+    })
+
+    const removeUpdateProgressListener = window.mnAPI.onUpdateProgress((progress) => {
+      setUpdateProgress(progress.percent)
+    })
+
+    const removeUpdateDownloadedListener = window.mnAPI.onUpdateDownloaded(() => {
+      setUpdateProgress(100)
+
+      window.setTimeout(() => {
+        setUpdateModalType('ready')
+      }, 500)
+    })
+
+    return () => {
+      removeUpdateAvailableListener()
+      removeUpdateProgressListener()
+      removeUpdateDownloadedListener()
+    }
+  }, []) 
+  
   return (
     <div
       className="app"
@@ -1502,16 +1569,38 @@ function App() {
                   <strong>Check for updates</strong>
                   <p>Automatically check for updates on startup.</p>
                 </div>
-                <button
-                  className={`toggle ${settings.checkForUpdates ? 'on' : ''}`}
-                  onClick={() =>
-                    updateSettings({
-                      checkForUpdates: !settings.checkForUpdates,
-                    })
-                  }
-                >
-                  <span></span>
-                </button>
+
+                <div className="setting-update-actions">
+                  <button
+                    className={`setting-icon-action ${
+                      isCheckingUpdates ? 'checking' : ''
+                    }`}
+                    onClick={handleCheckForUpdates}
+                    title="Check for updates"
+                  >
+                    <img
+                      src={
+                        isCheckingUpdates
+                          ? iconMap.check[settings.accentColor]
+                          : activeTheme === 'dark'
+                            ? iconMap.check.white
+                            : iconMap.check.gray
+                      }
+                      alt=""
+                    />
+                  </button>
+
+                  <button
+                    className={`toggle ${settings.checkForUpdates ? 'on' : ''}`}
+                    onClick={() =>
+                      updateSettings({
+                        checkForUpdates: !settings.checkForUpdates,
+                      })
+                    }
+                  >
+                    <span></span>
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1636,10 +1725,99 @@ function App() {
               </div>
             </div>
             <div className="settings-footer">
-              MN WORKSPACE v1.3.0
+              MN WORKSPACE v1.3.2
             </div>
           </section>
         )}
+        {updateModalType && (
+          <div className="modal-overlay">
+            <div className="update-modal">
+              <div className="update-modal-icon">
+                <img
+                  src={iconMap.check[settings.accentColor]}
+                  alt=""
+                />
+              </div>
+
+              <h2>
+                {updateModalType === 'available' && 'Update Available'}
+                {updateModalType === 'downloading' && 'Downloading Update'}
+                {updateModalType === 'ready' && 'Update Ready'}
+              </h2>
+
+              <p>
+                {updateModalType === 'available' &&
+                  'A new version of MN WORKSPACE is ready.'}
+
+                {updateModalType === 'downloading' &&
+                  'Please wait while the update is being downloaded.'}
+
+                {updateModalType === 'ready' &&
+                  'The update is ready to install.'}
+              </p>
+
+              <div className="update-modal-version">
+                {updateModalType === 'available' && (
+                  <>
+                    <span>Current v1.3.1</span>
+                    <b>→</b>
+                    <span>New v1.3.2</span>
+                  </>
+                )}
+
+                {updateModalType === 'downloading' && (
+                  <div className="update-progress-wrap">
+                    <div className="update-progress-info">
+                      <span>Installing update</span>
+                      <b>{updateProgress}%</b>
+                    </div>
+
+                    <div className="update-progress-bar">
+                      <span
+                        style={{
+                          width: `${updateProgress}%`,
+                        }}
+                      ></span>
+                    </div>
+                  </div>
+                )}
+
+                {updateModalType === 'ready' && (
+                  <>
+                    <span>MN WORKSPACE v1.3.2</span>
+                    <b>→</b>
+                    <span>Restart required</span>
+                  </>
+                )}
+              </div>
+
+              {updateModalType !== 'downloading' && (
+                <div className="update-modal-actions">
+                  <button
+                    className="modal-cancel-button"
+                    onClick={() => setUpdateModalType(null)}
+                  >
+                    Later
+                  </button>
+
+                  <button
+                    className="modal-add-button"
+                    onClick={() =>
+                      updateModalType === 'available'
+                        ? handleStartUpdateDownload()
+                        : window.mnAPI.installUpdate()
+                    }
+                  >
+                    {updateModalType === 'available'
+                      ? 'Update'
+                      : 'Restart'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {isAddModalOpen && (
           <div className="modal-overlay">
             <div className="add-modal">

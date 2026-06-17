@@ -44,4 +44,44 @@ contextBridge.exposeInMainWorld('mnAPI', {
 
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
+
+  checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
+  downloadUpdate: () => ipcRenderer.invoke('updater:download-update'),
+  installUpdate: () => ipcRenderer.invoke('updater:install-update'),
+
+  onUpdateAvailable: (callback: (info: { version: string }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: { version: string }) => {
+      callback(info)
+    }
+
+    ipcRenderer.on('updater:update-available', listener)
+
+    return () => {
+      ipcRenderer.removeListener('updater:update-available', listener)
+    }
+  },
+
+  onUpdateProgress: (callback: (progress: { percent: number }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, progress: { percent: number }) => {
+      callback(progress)
+    }
+
+    ipcRenderer.on('updater:download-progress', listener)
+
+    return () => {
+      ipcRenderer.removeListener('updater:download-progress', listener)
+    }
+  },
+
+  onUpdateDownloaded: (callback: (info: { version: string }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, info: { version: string }) => {
+      callback(info)
+    }
+
+    ipcRenderer.on('updater:update-downloaded', listener)
+
+    return () => {
+      ipcRenderer.removeListener('updater:update-downloaded', listener)
+    }
+  },
 })

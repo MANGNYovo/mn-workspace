@@ -452,56 +452,40 @@ ipcMain.handle('window:close', async () => {
   win?.close()
 })
 
-autoUpdater.on('update-available', async (info) => {
-  const result = win
-    ? await dialog.showMessageBox(win, {
-        type: 'info',
-        title: 'Update Available',
-        message: `MN WORKSPACE ${info.version} 업데이트가 있습니다.`,
-        detail: '지금 다운로드할까요?',
-        buttons: ['업데이트', '나중에'],
-        defaultId: 0,
-        cancelId: 1,
-      })
-    : await dialog.showMessageBox({
-        type: 'info',
-        title: 'Update Available',
-        message: `MN WORKSPACE ${info.version} 업데이트가 있습니다.`,
-        detail: '지금 다운로드할까요?',
-        buttons: ['업데이트', '나중에'],
-        defaultId: 0,
-        cancelId: 1,
-      })
+ipcMain.handle('updater:check-for-updates', async () => {
+  autoUpdater.checkForUpdates()
 
-  if (result.response === 0) {
-    autoUpdater.downloadUpdate()
-  }
+  return true
 })
 
-autoUpdater.on('update-downloaded', async () => {
-  const result = win
-    ? await dialog.showMessageBox(win, {
-        type: 'info',
-        title: 'Update Ready',
-        message: '업데이트 다운로드가 완료되었습니다.',
-        detail: '지금 재시작해서 설치할까요?',
-        buttons: ['재시작', '나중에'],
-        defaultId: 0,
-        cancelId: 1,
-      })
-    : await dialog.showMessageBox({
-        type: 'info',
-        title: 'Update Ready',
-        message: '업데이트 다운로드가 완료되었습니다.',
-        detail: '지금 재시작해서 설치할까요?',
-        buttons: ['재시작', '나중에'],
-        defaultId: 0,
-        cancelId: 1,
-      })
+ipcMain.handle('updater:download-update', async () => {
+  await autoUpdater.downloadUpdate()
 
-  if (result.response === 0) {
-    autoUpdater.quitAndInstall()
-  }
+  return true
+})
+
+ipcMain.handle('updater:install-update', async () => {
+  autoUpdater.quitAndInstall()
+
+  return true
+})
+
+autoUpdater.on('update-available', (info) => {
+  win?.webContents.send('updater:update-available', {
+    version: info.version,
+  })
+})
+
+autoUpdater.on('download-progress', (progress) => {
+  win?.webContents.send('updater:download-progress', {
+    percent: Math.round(progress.percent),
+  })
+})
+
+autoUpdater.on('update-downloaded', (info) => {
+  win?.webContents.send('updater:update-downloaded', {
+    version: info.version,
+  })
 })
 
 app.on('window-all-closed', () => {
