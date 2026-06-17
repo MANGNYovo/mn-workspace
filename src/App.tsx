@@ -502,6 +502,7 @@ function App() {
   const cancelLaunchRef = useRef(false)
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>('light')
   const [currentDate, setCurrentDate] = useState(new Date())
+  const [appVersion, setAppVersion] = useState('')
 
   const [isProgramsLoaded, setIsProgramsLoaded] = useState(false)
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
@@ -905,9 +906,20 @@ function App() {
 
   const handleStartUpdateDownload = async () => {
     setUpdateModalType('downloading')
-    setUpdateProgress(0)
+    setUpdateProgress(1)
 
-    await window.mnAPI.downloadUpdate()
+    try {
+      const result = await window.mnAPI.downloadUpdate()
+
+      if (!result) {
+        setUpdateProgress(0)
+        setUpdateModalType(null)
+      }
+    } catch (error) {
+      console.error('Update download failed:', error)
+      setUpdateProgress(0)
+      setUpdateModalType(null)
+    }
   }
 
   const handleSelectAudioDevice = async (device: AudioDevice) => {
@@ -931,6 +943,12 @@ function App() {
       console.error('Failed to set monitor orientation:', result.error || result.stderr)
     }
   }
+
+  useEffect(() => {
+    window.mnAPI.getAppVersion().then((version) => {
+      setAppVersion(version)
+    })
+  }, [])
 
   useEffect(() => {
     const timerId = window.setInterval(() => {
@@ -1034,7 +1052,9 @@ function App() {
     })
 
     const removeUpdateProgressListener = window.mnAPI.onUpdateProgress((progress) => {
-      setUpdateProgress(progress.percent)
+      const percent = Math.max(1, Math.min(99, Math.round(progress.percent)))
+
+      setUpdateProgress(percent)
     })
 
     const removeUpdateDownloadedListener = window.mnAPI.onUpdateDownloaded(() => {
@@ -1725,7 +1745,7 @@ function App() {
               </div>
             </div>
             <div className="settings-footer">
-              MN WORKSPACE v1.3.3
+              MN WORKSPACE v{appVersion}
             </div>
           </section>
         )}
@@ -1759,16 +1779,16 @@ function App() {
               <div className="update-modal-version">
                 {updateModalType === 'available' && (
                   <>
-                    <span>Current v1.3.1</span>
+                    <span>Current v{appVersion}</span>
                     <b>→</b>
-                    <span>New v1.3.2</span>
+                    <span>New version</span>
                   </>
                 )}
 
                 {updateModalType === 'downloading' && (
                   <div className="update-progress-wrap">
                     <div className="update-progress-info">
-                      <span>Installing update</span>
+                      <span>Downloading update</span>
                       <b>{updateProgress}%</b>
                     </div>
 
@@ -1784,7 +1804,7 @@ function App() {
 
                 {updateModalType === 'ready' && (
                   <>
-                    <span>MN WORKSPACE v1.3.2</span>
+                    <span>MN WORKSPACE v{appVersion}</span>
                     <b>→</b>
                     <span>Restart required</span>
                   </>

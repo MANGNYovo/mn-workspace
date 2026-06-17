@@ -223,6 +223,10 @@ function createWindow() {
   }
 }
 
+ipcMain.handle('app:get-version', () => {
+  return app.getVersion()
+})
+
 ipcMain.handle('dialog:select-program', async () => {
   if (!win) return null
 
@@ -459,15 +463,29 @@ ipcMain.handle('updater:check-for-updates', async () => {
 })
 
 ipcMain.handle('updater:download-update', async () => {
-  await autoUpdater.downloadUpdate()
+  try {
+    win?.webContents.send('updater:download-progress', {
+      percent: 1,
+    })
 
-  return true
+    await autoUpdater.downloadUpdate()
+
+    return true
+  } catch (error) {
+    console.error('Failed to download update:', error)
+
+    return false
+  }
 })
 
 ipcMain.handle('updater:install-update', async () => {
   autoUpdater.quitAndInstall()
 
   return true
+})
+
+autoUpdater.on('error', (error) => {
+  console.error('Updater error:', error)
 })
 
 autoUpdater.on('update-available', (info) => {

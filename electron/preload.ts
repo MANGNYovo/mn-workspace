@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('mnAPI', {
   selectProgram: () => ipcRenderer.invoke('dialog:select-program'),
   selectFolder: () => ipcRenderer.invoke('dialog:select-folder'),
   getFileIcon: (filePath: string) => ipcRenderer.invoke('file:get-icon', filePath),
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
 
   loadPrograms: () => ipcRenderer.invoke('programs:load'),
   savePrograms: (programs: unknown) => ipcRenderer.invoke('programs:save', programs),

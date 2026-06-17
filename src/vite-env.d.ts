@@ -5,6 +5,7 @@ interface Window {
     selectProgram: () => Promise<string | null>
     selectFolder: () => Promise<string | null>
     getFileIcon: (filePath: string) => Promise<string | null>
+    getAppVersion: () => Promise<string>
 
     loadPrograms: () => Promise<unknown | null>
     savePrograms: (programs: unknown) => Promise<boolean>
