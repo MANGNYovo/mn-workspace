@@ -1211,7 +1211,14 @@ function App() {
 
               <div className="home-device-section">
                 <div className="home-device-group">
-                  <p className="home-device-title">Audio</p>
+                  <p className="home-device-title home-device-title-audio">
+                    <img
+                      src={getThemeIcon('speaker')}
+                      alt=""
+                      className="home-device-title-icon"
+                    />
+                    Audio
+                  </p>
 
                   <div className="home-device-buttons">
                     <button
@@ -1251,7 +1258,14 @@ function App() {
                 <div className="home-device-split"></div>
 
                 <div className="home-device-group">
-                  <p className="home-device-title">Monitor</p>
+                  <p className="home-device-title">
+                    <img
+                      src={getThemeIcon('hmonitor')}
+                      alt=""
+                      className="home-device-title-icon"
+                    />
+                    Monitor
+                  </p>
 
                   <div className="home-device-buttons">
                     <button

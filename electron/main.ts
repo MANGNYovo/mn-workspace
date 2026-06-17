@@ -459,8 +459,10 @@ ipcMain.handle('window:close', async () => {
 ipcMain.handle('updater:check-for-updates', async () => {
   try {
     const result = await autoUpdater.checkForUpdates()
+    const latestVersion = result?.updateInfo?.version
+    const currentVersion = app.getVersion()
 
-    return Boolean(result?.updateInfo?.version)
+    return Boolean(latestVersion && latestVersion !== currentVersion)
   } catch (error) {
     console.error('Failed to check for updates:', error)
 
