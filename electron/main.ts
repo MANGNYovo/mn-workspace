@@ -33,6 +33,10 @@ function getSettingsFilePath() {
   return path.join(app.getPath('userData'), 'settings.json')
 }
 
+function getDiariesFilePath() {
+  return path.join(app.getPath('userData'), 'diaries.json')
+}
+
 function runPowerShell(command: string) {
   return new Promise<{
     success: boolean
@@ -411,6 +415,35 @@ ipcMain.handle('settings:save', async (_event, settings: any) => {
     return true
   } catch (error) {
     console.error('Failed to save settings:', error)
+    return false
+  }
+})
+
+ipcMain.handle('diaries:load', async () => {
+  try {
+    const filePath = getDiariesFilePath()
+    const data = await fs.readFile(filePath, 'utf-8')
+
+    return JSON.parse(data)
+  } catch (error: any) {
+    if (error?.code !== 'ENOENT') {
+      console.error('Failed to load diaries:', error)
+    }
+
+    return null
+  }
+})
+
+ipcMain.handle('diaries:save', async (_event, diaries: unknown) => {
+  try {
+    const filePath = getDiariesFilePath()
+    const data = JSON.stringify(diaries, null, 2)
+
+    await fs.writeFile(filePath, data, 'utf-8')
+
+    return true
+  } catch (error) {
+    console.error('Failed to save diaries:', error)
     return false
   }
 })

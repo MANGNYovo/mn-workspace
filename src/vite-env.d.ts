@@ -19,6 +19,8 @@ interface Window {
 
     loadSettings: () => Promise<unknown | null>
     saveSettings: (settings: unknown) => Promise<boolean>
+    loadDiaries: () => Promise<unknown | null>
+    saveDiaries: (diaries: unknown) => Promise<boolean>
     setStartWithWindows: (enabled: boolean) => Promise<boolean>
 
     getAudioDevice: () => Promise<'speaker' | 'headphone' | null>

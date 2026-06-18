@@ -35,6 +35,8 @@ contextBridge.exposeInMainWorld('mnAPI', {
 
   loadSettings: () => ipcRenderer.invoke('settings:load'),
   saveSettings: (settings: unknown) => ipcRenderer.invoke('settings:save', settings),
+  loadDiaries: () => ipcRenderer.invoke('diaries:load'),
+  saveDiaries: (diaries: unknown) => ipcRenderer.invoke('diaries:save', diaries),
   setStartWithWindows: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-start-with-windows', enabled),
 
