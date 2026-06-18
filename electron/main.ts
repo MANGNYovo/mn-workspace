@@ -21,6 +21,7 @@ let win: BrowserWindow | null
 let tray: Tray | null = null
 let minimizeToTray = false
 let isQuitting = false
+let startedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin
 
 autoUpdater.autoDownload = false
 
@@ -244,7 +245,12 @@ function createWindow() {
   })
 
   win.once('ready-to-show', () => {
-    win?.show()
+    if (startedAtLogin) {
+      createTray()
+      win?.hide()
+    } else {
+      win?.show()
+    }
 
     setTimeout(() => {
       autoUpdater.checkForUpdates()
@@ -411,9 +417,15 @@ ipcMain.handle('settings:save', async (_event, settings: any) => {
 
 ipcMain.handle('settings:set-start-with-windows', async (_event, enabled: boolean) => {
   try {
+    if (!app.isPackaged) {
+      console.log('Development mode - skip auto start registration')
+      return enabled
+    }
+
     app.setLoginItemSettings({
       openAtLogin: enabled,
       path: process.execPath,
+      args: [],
     })
 
     return app.getLoginItemSettings().openAtLogin
@@ -594,7 +606,14 @@ ipcMain.handle('updater:download-update', async () => {
 })
 
 ipcMain.handle('updater:install-update', async () => {
-  autoUpdater.quitAndInstall()
+  isQuitting = true
+
+  if (tray) {
+    tray.destroy()
+    tray = null
+  }
+
+  autoUpdater.quitAndInstall(false, true)
 
   return true
 })

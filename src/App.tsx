@@ -1874,7 +1874,7 @@ function App() {
 
               {updateModalType !== 'downloading' && (
                 <div className="update-modal-actions">
-                  {updateModalType !== 'latest' && (
+                  {updateModalType !== 'latest' && updateModalType !== 'ready' && (
                     <button
                       className="modal-cancel-button"
                       onClick={() => setUpdateModalType(null)}
