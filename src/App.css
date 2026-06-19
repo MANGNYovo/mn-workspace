@@ -3011,13 +3011,13 @@ button {
 }
 
 .write-diary-save-button {
-  width: 100px;
-  height: 46px;
+  width: 96px;
+  height: 38px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--accent-color, #705bff);
   color: #ffffff;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 10px 20px color-mix(in srgb, var(--accent-color, #705bff) 24%, transparent);
@@ -3026,6 +3026,27 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
+}
+.write-diary-save-button.pressed {
+  animation: diarySavePress 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes diarySavePress {
+  0% {
+    transform: scale(1);
+  }
+
+  28% {
+    transform: scale(0.88);
+  }
+
+  72% {
+    transform: scale(1.06);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .write-diary-save-button:disabled {

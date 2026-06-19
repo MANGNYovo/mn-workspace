@@ -141,7 +141,8 @@ $dm.dmPositionX = ${positionX}
 $dm.dmPositionY = ${positionY}
 $dm.dmFields = 0x001800A0
 
-$result = [DisplayHelper2]::ChangeDisplaySettingsEx("\\.\DISPLAY2", [ref]$dm, [IntPtr]::Zero, 0, [IntPtr]::Zero)
+$flags = 0x00000001
+$result = [DisplayHelper2]::ChangeDisplaySettingsEx("\\.\DISPLAY2", [ref]$dm, [IntPtr]::Zero, $flags, [IntPtr]::Zero)
 Write-Host "결과: $result"
 
 if ($result -ne 0) {

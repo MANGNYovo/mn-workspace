@@ -643,6 +643,7 @@
     const [diaryText, setDiaryText] = useState('')
     const [isDeleteDiaryConfirmOpen, setIsDeleteDiaryConfirmOpen] = useState(false)
     const [isDiarySavedVisible, setIsDiarySavedVisible] = useState(false)
+    const [isDiarySaveButtonPressed, setIsDiarySaveButtonPressed] = useState(false)
     const [diaryPickerMonthIndex, setDiaryPickerMonthIndex] = useState(diaryDisplayDate.getMonth())
     const [diaryPickerYear, setDiaryPickerYear] = useState(diaryDisplayDate.getFullYear())
     const diaryMonthWheelRef = useRef<HTMLDivElement | null>(null)
@@ -785,7 +786,12 @@
         },
       }))
 
+      setIsDiarySaveButtonPressed(true)
       setIsDiarySavedVisible(true)
+
+      window.setTimeout(() => {
+        setIsDiarySaveButtonPressed(false)
+      }, 280)
 
       window.setTimeout(() => {
         setIsDiarySavedVisible(false)
@@ -1206,9 +1212,30 @@
       window.mnAPI.getAppVersion().then((version) => {
         setAppVersion(version)
       })
-
-      refreshDeviceStates()
     }, [])
+
+    useEffect(() => {
+      if (activePage !== 'home') {
+        return
+      }
+
+      const refresh = () => {
+        refreshDeviceStates()
+      }
+
+      refresh()
+
+      const timerId = window.setInterval(refresh, 1000)
+
+      window.addEventListener('focus', refresh)
+      document.addEventListener('visibilitychange', refresh)
+
+      return () => {
+        window.clearInterval(timerId)
+        window.removeEventListener('focus', refresh)
+        document.removeEventListener('visibilitychange', refresh)
+      }
+    }, [activePage])
 
     useEffect(() => {
       const updateCurrentDate = () => {
@@ -1957,7 +1984,7 @@
 
                   <div className="write-diary-actions">
                     <button
-                      className="write-diary-save-button"
+                      className={`write-diary-save-button ${isDiarySaveButtonPressed ? 'pressed' : ''}`}
                       onClick={handleSaveDiary}
                       disabled={diaryText.trim().length === 0 || diaryText.length > 300}
                     >
