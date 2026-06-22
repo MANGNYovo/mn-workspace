@@ -1,0 +1,35 @@
+/* ========================= */
+/* 미디어쿼리 */
+/* ========================= */
+
+@media (max-height: 820px) {
+  .home-page {
+    zoom: 0.92;
+  }
+}
+
+@media (max-height: 760px) {
+  .home-page {
+    zoom: 0.84;
+  }
+}
+
+@media (max-height: 700px) {
+  .home-page {
+    zoom: 0.78;
+  }
+}
+
+@media (max-height: 760px) {
+  .youtube-login-modal {
+    transform: scale(0.9);
+  }
+}
+
+.home-music-cover-night-drive {
+  background: linear-gradient(135deg, #18294f, #4b6ca8);
+}
+
+.home-music-cover-study-session {
+  background: linear-gradient(135deg, #7b5cff, #d7c8ff);
+}

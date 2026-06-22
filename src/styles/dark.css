@@ -1,0 +1,1030 @@
+/* ========================= */
+/* 다크모드 */
+/* ========================= */
+
+.app[data-theme='dark'] {
+  background:
+    radial-gradient(
+      circle at 80% 10%,
+      color-mix(in srgb, var(--accent-color, #705bff) 8%, transparent),
+      transparent 30%
+    ),
+    #202020;
+  color: #eef1ff;
+}
+
+.app[data-theme='dark'] .sidebar {
+  border-right-color: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .launch-button {
+  background: #2b2b2b;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .launch-button:hover {
+  box-shadow:
+    0 18px 40px color-mix(in srgb, var(--accent-color, #705bff) 22%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.app[data-theme='dark'] .launch-button.launching {
+  background: var(--accent-color, #705bff);
+  box-shadow:
+    0 14px 32px color-mix(in srgb, var(--accent-color, #705bff) 30%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #705bff) 20%, transparent);
+}
+
+.app[data-theme='dark'] .top-card,
+.app[data-theme='dark'] .timeline-card,
+.app[data-theme='dark'] .program-list-card,
+.app[data-theme='dark'] .settings-card,
+.app[data-theme='dark'] .status-card {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.app[data-theme='dark'] .playlist-search,
+.app[data-theme='dark'] .playlist-view-switch,
+.app[data-theme='dark'] .playlist-refresh-button,
+.app[data-theme='dark'] .playlist-row,
+.app[data-theme='dark'] .playlist-detail-card,
+.app[data-theme='dark'] .playlist-player-card {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .playlist-row.active {
+  border-color: var(--accent-color, #705bff);
+  background: color-mix(in srgb, var(--accent-color, #705bff) 13%, #2b2b2b);
+}
+
+.app[data-theme='dark'] .playlist-view-switch-bg {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 18%, #2b2b2b);
+}
+
+.app[data-theme='dark'] .playlist-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .playlist-header h1,
+.app[data-theme='dark'] .playlist-row strong,
+.app[data-theme='dark'] .playlist-detail-card h2,
+.app[data-theme='dark'] .playlist-detail-card > p,
+.app[data-theme='dark'] .playlist-track-header strong,
+.app[data-theme='dark'] .playlist-track-row strong,
+.app[data-theme='dark'] .playlist-track-row .marquee-title span,
+.app[data-theme='dark'] .playlist-player-info strong,
+.app[data-theme='dark'] .playlist-player-info .marquee-title span {
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .playlist-player-info small {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .playlist-header p,
+.app[data-theme='dark'] .playlist-search span,
+.app[data-theme='dark'] .playlist-search input,
+.app[data-theme='dark'] .playlist-view-button,
+.app[data-theme='dark'] .playlist-row small,
+.app[data-theme='dark'] .playlist-track-row,
+.app[data-theme='dark'] .playlist-track-row small,
+.app[data-theme='dark'] .playlist-track-row em,
+.app[data-theme='dark'] .playlist-player-info p,
+.app[data-theme='dark'] .playlist-player-times {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .playlist-row-play {
+  background: #333333;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.app[data-theme='dark'] .playlist-track-list::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 32%, transparent);
+}
+
+.app[data-theme='dark'] .dashboard-preset-track::before {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.app[data-theme='dark'] .dashboard-preset-dot.active span {
+  background: var(--accent-color, #705bff);
+  box-shadow:
+    0 0 0 2px #2b2b2b,
+    0 0 12px color-mix(
+      in srgb,
+      var(--accent-color, #705bff) 55%,
+      transparent
+    );
+}
+
+.app[data-theme='dark'] .page-header h1,
+.app[data-theme='dark'] .settings-header h1,
+.app[data-theme='dark'] .top-card h1,
+.app[data-theme='dark'] h2,
+.app[data-theme='dark'] h3,
+.app[data-theme='dark'] strong {
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .page-header p,
+.app[data-theme='dark'] .settings-header p,
+.app[data-theme='dark'] .program-info p,
+.app[data-theme='dark'] .setting-row p,
+.app[data-theme='dark'] .settings-footer,
+.app[data-theme='dark'] .top-card span,
+.app[data-theme='dark'] .top-card p,
+.app[data-theme='dark'] .program p {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .program.done p {
+  color: #18b957;
+  font-weight: 700;
+}
+
+.app[data-theme='dark'] .program.running p {
+  color: var(--accent-color, #705bff);
+  font-weight: 700;
+}
+
+.app[data-theme='dark'] .program.cancelled p,
+.app[data-theme='dark'] .program.failed p {
+  color: #ff5a5a;
+  font-weight: 700;
+}
+
+.app[data-theme='dark'] .menu-item {
+  color: #c8c8c8;
+}
+
+.app[data-theme='dark'] .menu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.app[data-theme='dark'] .setting-row,
+.app[data-theme='dark'] .program-list-header,
+.app[data-theme='dark'] .program-list-row {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .setting-select,
+.app[data-theme='dark'] .modal-form input,
+.app[data-theme='dark'] .modal-form select {
+  background: #333333;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .setting-select option {
+  background: #333333;
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .add-modal,
+.app[data-theme='dark'] .row-menu {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .modal-header h2,
+.app[data-theme='dark'] .modal-form label,
+.app[data-theme='dark'] .modal-toggle-row strong {
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .modal-header p,
+.app[data-theme='dark'] .modal-toggle-row p {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .modal-cancel-button {
+  background: #3a3a3a;
+  color: #d8d8d8;
+}
+
+.app[data-theme='dark'] .modal-cancel-button:hover {
+  background: #454545;
+}
+
+.app[data-theme='dark'] .drag-handle,
+.app[data-theme='dark'] .more-button {
+  color: #c8c8c8;
+}
+
+.app[data-theme='dark'] .save-note {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .write-diary-textarea {
+  background: #333333;
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 34%, rgba(255, 255, 255, 0.12));
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .write-diary-textarea::placeholder {
+  color: #8a8a8a;
+}
+
+.app[data-theme='dark'] .home-card,
+.app[data-theme='dark'] .home-music-card {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.app[data-theme='dark'] .home-preset-track::before {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.app[data-theme='dark'] .home-preset-dot span {
+  background: #2b2b2b;
+  box-shadow: 0 0 0 2px #2b2b2b;
+}
+
+.app[data-theme='dark'] .home-preset-active-dot {
+  box-shadow:
+    0 0 0 2px #2b2b2b,
+    0 0 14px color-mix(
+      in srgb,
+      var(--accent-color, #705bff) 55%,
+      transparent
+    );
+}
+
+.app[data-theme='dark'] .home-device-title {
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .home-launch-button {
+  background: #303030;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .home-launch-button.launching {
+  background: var(--accent-color, #705bff);
+  box-shadow:
+    0 0 32px color-mix(
+      in srgb,
+      var(--accent-color, #705bff) 40%,
+      transparent
+    ),
+    0 18px 40px color-mix(
+      in srgb,
+      var(--accent-color, #705bff) 24%,
+      transparent
+    );
+}
+
+.app[data-theme='dark'] .home-device-button {
+  background: #303030;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #c8c8c8;
+}
+
+.app[data-theme='dark'] .home-device-button.active {
+  background: #303030;
+  color: #c8c8c8;
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.14),
+    0 0 34px color-mix(
+      in srgb,
+      var(--accent-color, #705bff) 42%,
+      transparent
+    );
+}
+
+.app[data-theme='dark'] .dashboard-preset-active-dot,
+.app[data-theme='dark'] .home-preset-active-dot {
+  background: var(--accent-color, #705bff);
+  border-color: var(--accent-color, #705bff);
+  box-shadow:
+    0 0 0 3px #2b2b2b,
+    0 0 12px color-mix(
+      in srgb,
+      var(--accent-color, #705bff) 58%,
+      transparent
+    );
+}
+
+.app[data-theme='dark'] .dashboard-preset-dot span,
+.app[data-theme='dark'] .home-preset-dot span {
+  background: #2b2b2b;
+  border-color: #98a2bb;
+  box-shadow: 0 0 0 2px #2b2b2b;
+}
+
+.app[data-theme='dark'] .program .program-status-button,
+.app[data-theme='dark'] .program-status-button {
+  background: #2b2b2b;
+  border-color: #a5adc0;
+}
+
+.app[data-theme='dark'] .program.done .program-status-button {
+  background: #22c55e;
+  border-color: #22c55e;
+}
+
+.app[data-theme='dark'] .program.running .program-status-button {
+  background:
+    conic-gradient(
+      from 0deg,
+      var(--accent-color, #705bff) 0deg,
+      var(--accent-color, #705bff) 42deg,
+      color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent) 43deg,
+      color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent) 360deg
+    );
+}
+
+.app[data-theme='dark'] .program.running .program-status-button::after {
+  background: #2b2b2b;
+}
+
+.app[data-theme='dark'] .program.cancelled .program-status-button,
+.app[data-theme='dark'] .program.failed .program-status-button {
+  background: #ff5a5a;
+  border-color: #ff5a5a;
+}
+
+.app[data-theme='dark'] .update-modal {
+  background: #2b2b2b;
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .update-modal-version {
+  background: #333333;
+  color: #c8c8c8;
+}
+
+.app[data-theme='dark'] .update-modal p {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .update-modal-icon {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent);
+}
+
+.app[data-theme='dark'] .update-progress-info span {
+  color: #c8c8c8;
+}
+
+.app[data-theme='dark'] .update-progress-bar {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.app[data-theme='dark'] .modal-overlay {
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.youtube-login-modal {
+  position: relative;
+  width: min(460px, 92vw);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(130, 140, 170, 0.2);
+  box-shadow: 0 34px 90px rgba(20, 28, 58, 0.24);
+  padding: 42px 32px 26px;
+  text-align: center;
+}
+
+.youtube-login-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 42px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: #65708d;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: color 0.14s ease;
+}
+
+.youtube-login-close:hover {
+  color: #ff5b5b;
+}
+
+.youtube-login-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 18px;
+  object-fit: contain;
+  display: block;
+}
+
+.youtube-login-modal h2 {
+  margin: 0 0 12px;
+  color: #10172f;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.youtube-login-modal p {
+  margin: 0 0 20px;
+  color: #36415f;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.5;
+}
+
+.youtube-google-button,
+.youtube-login-input,
+.youtube-login-button {
+  width: 100%;
+  height: 44px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.youtube-google-button {
+  border: 1px solid rgba(130, 140, 170, 0.34);
+  background: #ffffff;
+  color: #10172f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: pointer;
+}
+
+.youtube-google-button span {
+  color: #4285f4;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.youtube-google-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.youtube-login-divider {
+  margin: 18px 0 14px;
+}
+
+.youtube-login-divider span {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: rgba(130, 140, 170, 0.24);
+}
+
+.youtube-login-input {
+  margin-bottom: 14px;
+  border: 1px solid rgba(130, 140, 170, 0.26);
+  background: rgba(255, 255, 255, 0.72);
+  color: #10172f;
+  padding: 0 16px;
+}
+
+.youtube-login-input:focus {
+  outline: none;
+  border-color: var(--accent-color, #705bff);
+}
+
+.youtube-login-button {
+  margin-top: 6px;
+  border: 1px solid color-mix(in srgb, var(--accent-color, #705bff) 42%, transparent);
+  background: #ffffff;
+  color: var(--accent-color, #705bff);
+  cursor: pointer;
+}
+
+.youtube-login-links {
+  margin-top: 18px;
+  color: #36415f;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.youtube-login-links span {
+  margin-right: 5px;
+}
+
+.youtube-login-links a {
+  color: var(--accent-color, #705bff);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.youtube-login-policy {
+  margin-top: 18px;
+  color: #65708d;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.55;
+}
+
+.youtube-login-policy a {
+  color: var(--accent-color, #705bff);
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.youtube-login-secure-text {
+  margin: 18px 0 0;
+  color: #65708d;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.45;
+}
+
+.app[data-theme='dark'] .youtube-login-modal {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .youtube-login-modal h2,
+.app[data-theme='dark'] .youtube-google-button,
+.app[data-theme='dark'] .youtube-login-input {
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .youtube-login-modal p,
+.app[data-theme='dark'] .youtube-login-links,
+.app[data-theme='dark'] .youtube-login-policy {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .youtube-google-button,
+.app[data-theme='dark'] .youtube-login-input,
+.app[data-theme='dark'] .youtube-login-button {
+  background: #303030;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.app[data-theme='dark'] .full-playlist-modal {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 34px 90px rgba(0, 0, 0, 0.34);
+}
+
+.app[data-theme='dark'] .full-playlist-header,
+.app[data-theme='dark'] .full-playlist-search-row,
+.app[data-theme='dark'] .full-playlist-track-row,
+.app[data-theme='dark'] .full-playlist-footer {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .full-playlist-close,
+.app[data-theme='dark'] .full-playlist-header h2,
+.app[data-theme='dark'] .full-playlist-track-row > span,
+.app[data-theme='dark'] .full-playlist-track-row strong {
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .full-playlist-header p,
+.app[data-theme='dark'] .full-playlist-track-row small,
+.app[data-theme='dark'] .full-playlist-track-row em,
+.app[data-theme='dark'] .full-playlist-footer {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .full-playlist-track-row button {
+  background: #333333;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.app[data-theme='dark'] .full-playlist-search-input {
+  background: #303030;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .full-playlist-search-input::placeholder {
+  color: #8f98b2;
+}
+
+.app[data-theme='dark'] .playlist-search-clear,
+.app[data-theme='dark'] .full-playlist-search-clear {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .playlist-search-clear:hover,
+.app[data-theme='dark'] .full-playlist-search-clear:hover {
+  color: #ff6b6b;
+  background: transparent;
+}
+
+.app[data-theme='dark'] .program-list-card,
+.app[data-theme='dark'] .settings-card,
+.app[data-theme='dark'] .diary-card,
+.app[data-theme='dark'] .write-diary-card {
+  box-shadow: none;
+}
+/* ========================= */
+/* 커스텀 월페이퍼 모드 */
+/* ========================= */
+
+.app[data-wallpaper='true'] {
+  background:
+    radial-gradient(
+      circle at 80% 10%,
+      color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent),
+      transparent 30%
+    ),
+    linear-gradient(135deg, rgba(15, 15, 22, 0.76), rgba(15, 15, 22, 0.58)),
+    var(--custom-wallpaper-image) center center / cover no-repeat;
+  color: #eef1ff;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .top-card,
+.app[data-theme='dark'][data-wallpaper='true'] .timeline-card,
+.app[data-theme='dark'][data-wallpaper='true'] .program-list-card,
+.app[data-theme='dark'][data-wallpaper='true'] .settings-card,
+.app[data-theme='dark'][data-wallpaper='true'] .status-card,
+.app[data-theme='dark'][data-wallpaper='true'] .home-card,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-card,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-search,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-view-switch,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-refresh-button,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-row,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-detail-card,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-player-card {
+  background: rgba(43, 43, 43, 0.72);
+  border-color: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .sidebar {
+  background: rgba(20, 20, 26, 0.26);
+  border-right-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .custom-titlebar {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 0;
+  box-shadow: none;
+}
+
+/* 커스텀 월페이퍼 모드에서 타이틀바 블러 레이어가
+   좌측 상단 빠른 설정 버튼을 덮지 않도록 보정 */
+.app[data-wallpaper='true'] .sidebar {
+  position: relative;
+  z-index: 10002;
+}
+
+.app[data-wallpaper='true'] .sidebar-accent-picker,
+.app[data-wallpaper='true'] .sidebar-accent-picker button,
+.app[data-wallpaper='true'] .sidebar-theme-toggle,
+.app[data-wallpaper='true'] .sidebar-accent-dot {
+  -webkit-app-region: no-drag;
+}
+
+.app[data-wallpaper='true'] .sidebar-accent-picker {
+  z-index: 10003;
+}
+
+/* 커스텀 월페이퍼 모드에서는 카드들을 플로팅창처럼 투명한 글래스 카드로 표시 */
+.app[data-theme='dark'][data-wallpaper='true'] .top-card,
+.app[data-theme='dark'][data-wallpaper='true'] .timeline-card,
+.app[data-theme='dark'][data-wallpaper='true'] .program-list-card,
+.app[data-theme='dark'][data-wallpaper='true'] .settings-card,
+.app[data-theme='dark'][data-wallpaper='true'] .status-card,
+.app[data-theme='dark'][data-wallpaper='true'] .home-card,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-card,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-playlist-card,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-card,
+.app[data-theme='dark'][data-wallpaper='true'] .write-diary-card,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-search,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-view-switch,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-refresh-button,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-row,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-detail-card,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-player-card,
+.app[data-theme='dark'][data-wallpaper='true'] .full-playlist-modal,
+.app[data-theme='dark'][data-wallpaper='true'] .youtube-login-modal,
+.app[data-theme='dark'][data-wallpaper='true'] .add-modal,
+.app[data-theme='dark'][data-wallpaper='true'] .update-modal,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-picker-modal,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-view-modal,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-delete-confirm-modal {
+  background: rgba(43, 43, 43, 0.18);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: none;
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-row.active,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-playlist-card.active {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 18%, rgba(43, 43, 43, 0.18));
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 64%, rgba(255, 255, 255, 0.14));
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .setting-row,
+.app[data-theme='dark'][data-wallpaper='true'] .program-list-header,
+.app[data-theme='dark'][data-wallpaper='true'] .program-list-row,
+.app[data-theme='dark'][data-wallpaper='true'] .full-playlist-header,
+.app[data-theme='dark'][data-wallpaper='true'] .full-playlist-search-row,
+.app[data-theme='dark'][data-wallpaper='true'] .full-playlist-track-row,
+.app[data-theme='dark'][data-wallpaper='true'] .full-playlist-footer,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-header,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-view-header,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-view-footer {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .setting-select,
+.app[data-theme='dark'][data-wallpaper='true'] .modal-form input,
+.app[data-theme='dark'][data-wallpaper='true'] .modal-form select,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-search input,
+.app[data-theme='dark'][data-wallpaper='true'] .full-playlist-search-input,
+.app[data-theme='dark'][data-wallpaper='true'] .write-diary-textarea,
+.app[data-theme='dark'][data-wallpaper='true'] .youtube-login-input,
+.app[data-theme='dark'][data-wallpaper='true'] .youtube-google-button,
+.app[data-theme='dark'][data-wallpaper='true'] .youtube-login-button {
+  background: rgba(43, 43, 43, 0.16);
+  border-color: rgba(255, 255, 255, 0.13);
+  backdrop-filter: blur(10px) saturate(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+}
+
+/* 커스텀 월페이퍼 모드에서 플레이리스트 검색창 내부 input만 따로 어둡게 보이는 현상 보정 */
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-search input {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-search input:focus {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 커스텀 월페이퍼 모드에서 다이어리 버튼/달력도 카드와 같은 투명 글래스 톤으로 표시 */
+.app[data-theme='dark'][data-wallpaper='true'] .diary-month-control > button:not(.diary-current-month),
+.app[data-theme='dark'][data-wallpaper='true'] .diary-today-button,
+.app[data-theme='dark'][data-wallpaper='true'] .write-diary-back-button,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-delete-cancel-button {
+  background: rgba(43, 43, 43, 0.18);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #eef1ff;
+  box-shadow: none;
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-month-control > button:not(.diary-current-month):hover,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-today-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .write-diary-back-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-delete-cancel-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 44%, rgba(255, 255, 255, 0.14));
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-write-button,
+.app[data-theme='dark'][data-wallpaper='true'] .write-diary-save-button {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-color, #705bff) 70%, rgba(255, 255, 255, 0.16));
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--accent-color, #705bff) 22%, transparent);
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-calendar-grid {
+  background: rgba(43, 43, 43, 0.08);
+  border-top-color: rgba(255, 255, 255, 0.1);
+  border-left-color: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:focus,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:focus-visible,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:active {
+  background: rgba(43, 43, 43, 0.18);
+  color: #f5f7ff;
+  border-right-color: rgba(255, 255, 255, 0.1);
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:has(i) {
+  cursor: pointer;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:has(i):hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day.today span {
+  color: var(--accent-color, #705bff);
+  background: color-mix(in srgb, var(--accent-color, #705bff) 26%, rgba(255, 255, 255, 0.08));
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day.muted span {
+  color: rgba(245, 247, 255, 0.36);
+}
+
+/* 커스텀 월페이퍼 모드에서는 다이어리 카드 안쪽 달력/보조 버튼 배경을 제거해서
+   뒤쪽 투명 카드와 겹쳐 어둡게 뭉쳐 보이지 않도록 보정 */
+.app[data-theme='dark'][data-wallpaper='true'] .diary-month-control > button:not(.diary-current-month),
+.app[data-theme='dark'][data-wallpaper='true'] .diary-today-button,
+.app[data-theme='dark'][data-wallpaper='true'] .write-diary-back-button,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-delete-cancel-button {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-month-control > button:not(.diary-current-month):hover,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-today-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .write-diary-back-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-delete-cancel-button:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 48%, rgba(255, 255, 255, 0.18));
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-calendar-grid {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:focus,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:focus-visible,
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:active {
+  background: transparent;
+  box-shadow: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .diary-day:has(i):hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* 커스텀 월페이퍼 모드에서 홈/대시보드 내부 버튼과 플레이리스트 카드를 투명하게 보정 */
+.app[data-theme='dark'][data-wallpaper='true'] .home-launch-button,
+.app[data-theme='dark'][data-wallpaper='true'] .home-device-button,
+.app[data-theme='dark'][data-wallpaper='true'] .launch-button,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-playlist-card,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-playlist-card i,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-row-play {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-launch-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .launch-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .home-device-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-playlist-card:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-playlist-card:hover i,
+.app[data-theme='dark'][data-wallpaper='true'] .playlist-row-play:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 44%, rgba(255, 255, 255, 0.18));
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-device-button.active,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-playlist-card.active,
+.app[data-theme='dark'][data-wallpaper='true'] .home-music-playlist-card.active i {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 66%, rgba(255, 255, 255, 0.18));
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--accent-color, #705bff) 28%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #705bff) 12%, transparent);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-launch-button.launching,
+.app[data-theme='dark'][data-wallpaper='true'] .launch-button.launching {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 70%, rgba(255, 255, 255, 0.18));
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--accent-color, #705bff) 34%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #705bff) 14%, transparent);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .dashboard-preset-dot span,
+.app[data-theme='dark'][data-wallpaper='true'] .home-preset-dot span {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.48);
+  box-shadow: 0 0 0 2px rgba(12, 14, 22, 0.32);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .dashboard-preset-active-dot,
+.app[data-theme='dark'][data-wallpaper='true'] .home-preset-active-dot,
+.app[data-theme='dark'][data-wallpaper='true'] .dashboard-preset-dot.active span,
+.app[data-theme='dark'][data-wallpaper='true'] .home-preset-dot.active span {
+  background: var(--accent-color, #705bff);
+  border-color: var(--accent-color, #705bff);
+  box-shadow:
+    0 0 0 3px rgba(12, 14, 22, 0.38),
+    0 0 14px color-mix(in srgb, var(--accent-color, #705bff) 60%, transparent);
+}
+
+/* 커스텀 월페이퍼 모드에서 로켓 버튼도 플레이리스트 카드처럼 회색 외곽선만 보이도록 보정 */
+.app[data-theme='dark'][data-wallpaper='true'] .home-launch-button,
+.app[data-theme='dark'][data-wallpaper='true'] .launch-button {
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: transparent;
+  box-shadow: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-launch-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .launch-button:hover {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 44%, rgba(255, 255, 255, 0.24));
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* 커스텀 월페이퍼 모드에서 대시보드 프로그램 상태 버튼의 기본 대기 상태를
+   회색 외곽선만 있는 투명 원으로 표시 */
+.app[data-theme='dark'][data-wallpaper='true'] .program:not(.done):not(.running):not(.cancelled):not(.failed) .program-status-button,
+.app[data-theme='dark'][data-wallpaper='true'] .program-status-button:not(.done):not(.running):not(.cancelled):not(.failed) {
+  background: transparent;
+  border-color: rgba(206, 214, 232, 0.78);
+  box-shadow: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .program:not(.done):not(.running):not(.cancelled):not(.failed) .program-status-button:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .program-status-button:not(.done):not(.running):not(.cancelled):not(.failed):hover {
+  background: transparent;
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 42%, rgba(206, 214, 232, 0.78));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent-color, #705bff) 22%, transparent);
+}
+
+/* 커스텀 월페이퍼 모드에서 세팅 페이지 버튼/셀렉트도 안쪽 카드와 겹쳐 보이지 않도록 투명 처리 */
+.app[data-theme='dark'][data-wallpaper='true'] .setting-action,
+.app[data-theme='dark'][data-wallpaper='true'] .setting-reload-action,
+.app[data-theme='dark'][data-wallpaper='true'] .setting-wallpaper-action,
+.app[data-theme='dark'][data-wallpaper='true'] .setting-wallpaper-clear,
+.app[data-theme='dark'][data-wallpaper='true'] .setting-select,
+.app[data-theme='dark'][data-wallpaper='true'] .setting-icon-action {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .setting-action:hover:not(:disabled),
+.app[data-theme='dark'][data-wallpaper='true'] .setting-reload-action:hover:not(:disabled),
+.app[data-theme='dark'][data-wallpaper='true'] .setting-wallpaper-action:hover:not(:disabled),
+.app[data-theme='dark'][data-wallpaper='true'] .setting-icon-action:hover:not(:disabled),
+.app[data-theme='dark'][data-wallpaper='true'] .setting-select:hover,
+.app[data-theme='dark'][data-wallpaper='true'] .setting-select:focus {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 44%, rgba(255, 255, 255, 0.18));
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .setting-wallpaper-clear:hover:not(:disabled) {
+  background: rgba(255, 81, 81, 0.08);
+  border-color: rgba(255, 81, 81, 0.36);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .setting-select option {
+  background: #252832;
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .toggle {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .toggle:hover {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 44%, rgba(255, 255, 255, 0.2));
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .toggle.on {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 76%, transparent);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 70%, rgba(255, 255, 255, 0.18));
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .toggle span {
+  background: rgba(255, 255, 255, 0.92);
+}

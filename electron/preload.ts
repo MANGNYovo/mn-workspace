@@ -37,6 +37,26 @@ contextBridge.exposeInMainWorld('mnAPI', {
   saveSettings: (settings: unknown) => ipcRenderer.invoke('settings:save', settings),
   loadDiaries: () => ipcRenderer.invoke('diaries:load'),
   saveDiaries: (diaries: unknown) => ipcRenderer.invoke('diaries:save', diaries),
+  loadLikedTracks: () => ipcRenderer.invoke('liked-tracks:load'),
+  saveLikedTracks: (trackIds: string[]) => ipcRenderer.invoke('liked-tracks:save', trackIds),
+
+  // YouTube
+  isYoutubeMusicAuthenticated: () => ipcRenderer.invoke('youtube-music:is-authenticated'),
+  loginYoutubeMusic: () => ipcRenderer.invoke('youtube-music:login'),
+  logoutYoutubeMusic: () => ipcRenderer.invoke('youtube-music:logout'),
+  getYoutubeMusicPlaylists: () => ipcRenderer.invoke('youtube-music:get-playlists'),
+  getYoutubeMusicLikedSongs: () => ipcRenderer.invoke('youtube-music:get-liked-songs'),
+  getYoutubeMusicPlaylistTracks: (playlistId: string) =>
+    ipcRenderer.invoke('youtube-music:get-playlist-tracks', playlistId),
+  loadYoutubeMusicTrackCache: () =>
+    ipcRenderer.invoke('youtube-music:load-track-cache'),
+  saveYoutubeMusicTrackCache: (cache: unknown) =>
+    ipcRenderer.invoke('youtube-music:save-track-cache', cache),
+  loadYoutubeMusicPlaylistCovers: () =>
+    ipcRenderer.invoke('youtube-music:load-playlist-covers'),
+  changeYoutubeMusicPlaylistCover: (playlistId: string) =>
+    ipcRenderer.invoke('youtube-music:change-playlist-cover', playlistId),
+
   setStartWithWindows: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-start-with-windows', enabled),
 

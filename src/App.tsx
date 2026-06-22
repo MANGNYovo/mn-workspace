@@ -1,2723 +1,1531 @@
-  import { AnimatePresence, motion } from 'framer-motion'
-  import { type CSSProperties, useEffect, useRef, useState } from 'react'
-  import {
-    DndContext,
-    DragEndEvent,
-    PointerSensor,
-    closestCenter,
-    useSensor,
-    useSensors,
-  } from '@dnd-kit/core'
-  import {
-    SortableContext,
-    arrayMove,
-    useSortable,
-    verticalListSortingStrategy,
-  } from '@dnd-kit/sortable'
-  import { CSS } from '@dnd-kit/utilities'
-  import logoPurple from './assets/logo-purple.png'
-  import logoBlue from './assets/logo-blue.png'
-  import logoGreen from './assets/logo-green.png'
-  import logoOrange from './assets/logo-orange.png'
-  import logoRed from './assets/logo-red.png'
-  import logoGray from './assets/logo-gray.png'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
+import { DragEndEvent } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
 
-  import rocketPurple from './assets/rocket-purple.png'
-  import rocketBlue from './assets/rocket-blue.png'
-  import rocketGreen from './assets/rocket-green.png'
-  import rocketOrange from './assets/rocket-orange.png'
-  import rocketRed from './assets/rocket-red.png'
-  import rocketGray from './assets/rocket-gray.png'
-  import rocketActive from './assets/rocket-active.png'
+// styles
+import './styles/base.css'
+import './styles/layout.css'
+import './styles/home.css'
+import './styles/dashboard.css'
+import './styles/playlist.css'
+import './styles/programs.css'
+import './styles/settings.css'
+import './styles/diary.css'
+import './styles/modal.css'
+import './styles/animations.css'
+import './styles/floating-player.css'
+import './styles/dark.css'
+import './styles/media.css'
 
-  import dashboardPurple from './assets/dashboard-purple.png'
-  import dashboardBlue from './assets/dashboard-blue.png'
-  import dashboardGreen from './assets/dashboard-green.png'
-  import dashboardOrange from './assets/dashboard-orange.png'
-  import dashboardRed from './assets/dashboard-red.png'
-  import dashboardGray from './assets/dashboard-gray.png'
-  import dashboardWhite from './assets/dashboard-white.png'
+// types
+import type {
+  Page, AudioDevice, MonitorOrientation, HomeMusicPlaylist, PlaylistTrack,
+  ProgramItem, AppSettings, DiaryEntry, LaunchStatus, ResolvedTheme, PlaylistViewMode,
+} from './types'
 
-  import programsPurple from './assets/programs-purple.png'
-  import programsBlue from './assets/programs-blue.png'
-  import programsGreen from './assets/programs-green.png'
-  import programsOrange from './assets/programs-orange.png'
-  import programsRed from './assets/programs-red.png'
-  import programsGray from './assets/programs-gray.png'
-  import programsWhite from './assets/programs-white.png'
+// constants & helpers
+import {
+  iconMap, musicControlIconMap, logoMap, accentColorMap, accentRingMap,
+  likedIconMap, prelikedIconMap, themeIconMap,
+  fallbackHomeMusicPlaylists, fallbackPlaylistTracks, initialPrograms, defaultSettings,
+  initialDiaryEntries, formatDateKey, createMonthDate, parseDurationToSeconds,
+  getProgramIcon, getNameFromPath, createId, getProgramPresets,
+  isProgramList, isSettings, isDiaryEntries, isHomeMusicPlaylistList,
+  applyHomeMusicPlaylistOrder, refreshHomeMusicPlaylistThumbnails,
+  filterHiddenHomeMusicPlaylists, applyHomeMusicPlaylistCoverOverrides,
+} from './constants'
 
-  import settingsPurple from './assets/settings-purple.png'
-  import settingsBlue from './assets/settings-blue.png'
-  import settingsGreen from './assets/settings-green.png'
-  import settingsOrange from './assets/settings-orange.png'
-  import settingsRed from './assets/settings-red.png'
-  import settingsGray from './assets/settings-gray.png'
-  import settingsWhite from './assets/settings-white.png'
+// pages
+import {
+  HomePage, DashboardPage, PlaylistPage,
+  DiaryPage, WriteDiaryPage, ProgramsPage, SettingsPage,
+} from './pages'
 
-  import timePurple from './assets/time-purple.png'
-  import timeBlue from './assets/time-blue.png'
-  import timeGreen from './assets/time-green.png'
-  import timeOrange from './assets/time-orange.png'
-  import timeRed from './assets/time-red.png'
-  import timeGray from './assets/time-gray.png'
-  import timeWhite from './assets/time-white.png'
+// components
+import { FloatingMusicPlayer } from './components'
 
-  import presetPurple from './assets/preset-purple.png'
-  import presetBlue from './assets/preset-blue.png'
-  import presetGreen from './assets/preset-green.png'
-  import presetOrange from './assets/preset-orange.png'
-  import presetRed from './assets/preset-red.png'
-  import presetGray from './assets/preset-gray.png'
-  import presetWhite from './assets/preset-white.png'
+// modals
+import {
+  DiaryPickerModal, DiaryViewModal, DiaryDeleteModal,
+  UpdateModal, YoutubeLoginModal, FullPlaylistModal, AddProgramModal,
+} from './modals'
 
-  import speakerPurple from './assets/speaker-purple.png'
-  import speakerBlue from './assets/speaker-blue.png'
-  import speakerGreen from './assets/speaker-green.png'
-  import speakerOrange from './assets/speaker-orange.png'
-  import speakerRed from './assets/speaker-red.png'
-  import speakerGray from './assets/speaker-gray.png'
-  import speakerWhite from './assets/speaker-white.png'
+const YOUTUBE_TRACK_SWITCH_DELAY_MS = 700
+const LIKED_PLAYLIST_ID = 'mn-liked-tracks'
 
-  import headphonePurple from './assets/headphone-purple.png'
-  import headphoneBlue from './assets/headphone-blue.png'
-  import headphoneGreen from './assets/headphone-green.png'
-  import headphoneOrange from './assets/headphone-orange.png'
-  import headphoneRed from './assets/headphone-red.png'
-  import headphoneGray from './assets/headphone-gray.png'
-  import headphoneWhite from './assets/headphone-white.png'
+function App() {
+  // ─── State ────────────────────────────────────────────────────────────────
+  const [activePage, setActivePage] = useState<Page>('home')
+  const [selectedPreset, setSelectedPreset] = useState(1)
+  const [selectedAudioDevice, setSelectedAudioDevice] = useState<AudioDevice>('speaker')
+  const [selectedMonitorOrientation, setSelectedMonitorOrientation] = useState<MonitorOrientation>('horizontal')
+  const [selectedHomeMusicPlaylistId, setSelectedHomeMusicPlaylistId] = useState('focus')
+  const [homeMusicPlaylists, setHomeMusicPlaylists] = useState<HomeMusicPlaylist[]>(fallbackHomeMusicPlaylists)
+  const [homeMusicPlaylistPage, setHomeMusicPlaylistPage] = useState(0)
+  const [isFullPlaylistModalOpen, setIsFullPlaylistModalOpen] = useState(false)
+  const [isYoutubeLoginModalOpen, setIsYoutubeLoginModalOpen] = useState(false)
+  const [isYtAuthenticated, setIsYtAuthenticated] = useState(false)
+  const [ytPlaylistTracks, setYtPlaylistTracks] = useState<PlaylistTrack[]>([])
+  const [likedTrackIds, setLikedTrackIds] = useState<string[]>([])
+  const [isLikedTracksLoaded, setIsLikedTracksLoaded] = useState(false)
+  const [isPlaylistRefreshing, setIsPlaylistRefreshing] = useState(false)
+  const [currentVideoId, setCurrentVideoId] = useState<string | null>(null)
+  const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null)
+  const [currentTrack, setCurrentTrack] = useState<PlaylistTrack | null>(null)
+  const ytIframeRef = useRef<HTMLIFrameElement | null>(null)
+  const [playingFullPlaylistTrackId, setPlayingFullPlaylistTrackId] = useState<string | null>(null)
+  const [selectedPlaylistTrackId, setSelectedPlaylistTrackId] = useState<string | null>(null)
+  const allTracksRef = useRef<PlaylistTrack[]>([])
+  const playingPlaylistTracksRef = useRef<PlaylistTrack[]>([])
+  const playingPlaylistIdRef = useRef<string | null>(null)
+  const selectedPlaylistTrackIdRef = useRef<string | null>(null)
+  const currentVideoIdRef = useRef<string | null>(null)
+  const shuffleHistoryRef = useRef<Record<string, string[]>>({})
+  const pendingVideoChangeUntilRef = useRef(0)
+  const isPreparingNextVideoRef = useRef(false)
+  const isWaitingForFreshVideoTimeRef = useRef(false)
+  const youtubeSwitchTimerRef = useRef<number | null>(null)
+  const youtubeSwitchTokenRef = useRef(0)
+  const playNextTrackRef = useRef<() => void>(() => {})
+  const [playlistViewMode, setPlaylistViewMode] = useState<PlaylistViewMode>(defaultSettings.playlistViewMode ?? 'list')
+  const [playlistSearchQuery, setPlaylistSearchQuery] = useState('')
+  const [fullPlaylistSearchQuery, setFullPlaylistSearchQuery] = useState('')
+  const [playlistTrackMap, setPlaylistTrackMap] = useState<Record<string, PlaylistTrack[]>>({})
+  const [playlistCoverOverrides, setPlaylistCoverOverrides] = useState<Record<string, string>>({})
+  const [homeMusicProgress, setHomeMusicProgress] = useState(0)
+  const [homeMusicVolume, setHomeMusicVolume] = useState(58)
+  const homeMusicVolumeRef = useRef(58)
+  const [isHomeMusicPlaying, setIsHomeMusicPlaying] = useState(false)
+  const [isShuffleEnabled, setIsShuffleEnabled] = useState(false)
+  const [ytCurrentTime, setYtCurrentTime] = useState(0)
+  const [ytDuration, setYtDuration] = useState(0)
+  const ytDurationRef = useRef(0)
+  const isSeekingRef = useRef(false)
+  const [overflowingHomeMusicPlaylistIds, setOverflowingHomeMusicPlaylistIds] = useState<string[]>([])
+  const homeMusicPlaylistWheelLockRef = useRef(false)
+  const homeMusicPlaylistTitleRefs = useRef<Record<string, HTMLElement | null>>({})
+  const [overflowingMarqueeTitleIds, setOverflowingMarqueeTitleIds] = useState<string[]>([])
+  const marqueeTitleWrapRefs = useRef<Record<string, HTMLElement | null>>({})
+  const marqueeTitleTextRefs = useRef<Record<string, HTMLElement | null>>({})
+  const [programs, setPrograms] = useState<ProgramItem[]>(initialPrograms)
+  const [settings, setSettings] = useState<AppSettings>(defaultSettings)
+  const [isSidebarThemeToggleHovered, setIsSidebarThemeToggleHovered] = useState(false)
+  const [launchStatuses, setLaunchStatuses] = useState<Record<string, LaunchStatus>>({})
+  const [isLaunching, setIsLaunching] = useState(false)
+  const cancelLaunchRef = useRef(false)
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>('light')
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [appVersion, setAppVersion] = useState('')
+  const [isProgramsLoaded, setIsProgramsLoaded] = useState(false)
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
+  const [isDiariesLoaded, setIsDiariesLoaded] = useState(false)
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [newProgramName, setNewProgramName] = useState('')
+  const [newProgramType, setNewProgramType] = useState<import('./types').ProgramType>('Program')
+  const [newProgramPath, setNewProgramPath] = useState('')
+  const [newProgramEnabled, setNewProgramEnabled] = useState(true)
+  const [newProgramIconImage, setNewProgramIconImage] = useState<string | null>(null)
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false)
+  const [updateModalType, setUpdateModalType] = useState<'available' | 'downloading' | 'ready' | 'latest' | 'error' | null>(null)
+  const [updateProgress, setUpdateProgress] = useState(0)
+  const [diaryEntries, setDiaryEntries] = useState<Record<string, DiaryEntry>>(initialDiaryEntries)
+  const [diaryDisplayDate, setDiaryDisplayDate] = useState(new Date(2026, 5, 1))
+  const [isDiaryPickerOpen, setIsDiaryPickerOpen] = useState(false)
+  const [selectedDiaryDate, setSelectedDiaryDate] = useState<Date | null>(null)
+  const [diaryText, setDiaryText] = useState('')
+  const [isDeleteDiaryConfirmOpen, setIsDeleteDiaryConfirmOpen] = useState(false)
+  const [isDiarySavedVisible, setIsDiarySavedVisible] = useState(false)
+  const [isDiarySaveButtonPressed, setIsDiarySaveButtonPressed] = useState(false)
+  const [diaryPickerMonthIndex, setDiaryPickerMonthIndex] = useState(diaryDisplayDate.getMonth())
+  const [diaryPickerYear, setDiaryPickerYear] = useState(diaryDisplayDate.getFullYear())
+  const diaryMonthWheelRef = useRef<HTMLDivElement | null>(null)
+  const diaryYearWheelRef = useRef<HTMLDivElement | null>(null)
 
-  import hmonitorPurple from './assets/hmonitor-purple.png'
-  import hmonitorBlue from './assets/hmonitor-blue.png'
-  import hmonitorGreen from './assets/hmonitor-green.png'
-  import hmonitorOrange from './assets/hmonitor-orange.png'
-  import hmonitorRed from './assets/hmonitor-red.png'
-  import hmonitorGray from './assets/hmonitor-gray.png'
-  import hmonitorWhite from './assets/hmonitor-white.png'
+  // ─── Computed values ──────────────────────────────────────────────────────
+  const presetPrograms = programs.filter((p) => getProgramPresets(p).includes(selectedPreset))
+  const enabledPrograms = presetPrograms.filter((p) => p.enabled)
+  const enabledProgramCount = enabledPrograms.length
 
-  import vmonitorPurple from './assets/vmonitor-purple.png'
-  import vmonitorBlue from './assets/vmonitor-blue.png'
-  import vmonitorGreen from './assets/vmonitor-green.png'
-  import vmonitorOrange from './assets/vmonitor-orange.png'
-  import vmonitorRed from './assets/vmonitor-red.png'
-  import vmonitorGray from './assets/vmonitor-gray.png'
-  import vmonitorWhite from './assets/vmonitor-white.png'
+  const isCustomWallpaperMode = settings.theme === 'Custom Wallpaper'
 
-  import checkPurple from './assets/check-purple.png'
-  import checkBlue from './assets/check-blue.png'
-  import checkGreen from './assets/check-green.png'
-  import checkOrange from './assets/check-orange.png'
-  import checkRed from './assets/check-red.png'
-  import checkGray from './assets/check-gray.png'
-  import checkWhite from './assets/check-white.png'
+  const activeTheme: ResolvedTheme = isCustomWallpaperMode
+    ? 'dark'
+    : settings.theme === 'System'
+      ? systemTheme
+      : settings.theme.toLowerCase() as ResolvedTheme
 
-  import datePurple from './assets/date-purple.png'
-  import dateBlue from './assets/date-blue.png'
-  import dateGreen from './assets/date-green.png'
-  import dateOrange from './assets/date-orange.png'
-  import dateRed from './assets/date-red.png'
-  import dateGray from './assets/date-gray.png'
-  import dateWhite from './assets/date-white.png'
+  const appStyle = {
+    '--accent-color': accentColorMap[settings.accentColor],
+    '--accent-ring': accentRingMap[settings.accentColor],
+    ...(settings.customWallpaper
+      ? { '--custom-wallpaper-image': `url("${settings.customWallpaper}")` }
+      : {}),
+  } as CSSProperties
 
-  import writeIcon from './assets/write.png'
+  const currentTimeParts = currentDate.toLocaleTimeString('en-US', {
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true,
+  }).split(' ')
+  const [hours, minutes, seconds] = currentTimeParts[0].split(':')
+  const currentTimeText = `${hours} : ${minutes} : ${seconds}`
+  const currentMeridiemText = currentTimeParts[1]
+  const currentDateText = currentDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  const currentWeekdayText = currentDate.toLocaleDateString('en-US', { weekday: 'short' })
 
-  import saveIcon from './assets/save.png'
+  const todayDateKey = formatDateKey(currentDate)
+  const todayDiaryEntry = diaryEntries[todayDateKey]
+  const selectedDiaryEntry = selectedDiaryDate ? diaryEntries[formatDateKey(selectedDiaryDate)] : null
+  const diaryPickerMinYear = currentDate.getFullYear() - 50
+  const diaryPickerMaxYear = currentDate.getFullYear() + 50
 
-  import trashIcon from './assets/trash.png'
-
-  import './App.css'
-
-  type Page = 'home' | 'dashboard' | 'programs' | 'diary' | 'writeDiary' | 'settings'
-  type ProgramType = 'Program' | 'Folder' | 'URL'
-  type LaunchDelay = '1 second' | '2 seconds' | '3 seconds' | '5 seconds'
-  type LaunchBehavior = 'Launch in order' | 'Launch all at once'
-  type Theme = 'Light' | 'Dark' | 'System'
-  type ResolvedTheme = 'light' | 'dark'
-  type AccentColor = 'purple' | 'blue' | 'green' | 'orange' | 'red' | 'gray'
-  type LaunchStatus = 'waiting' | 'launching' | 'completed' | 'failed' | 'cancelled'
-  type AudioDevice = 'speaker' | 'headphone'
-  type MonitorOrientation = 'horizontal' | 'vertical'
-
-  type ProgramItem = {
-    id: string
-    name: string
-    path: string
-    type: ProgramType
-    iconClass: string
-    icon: string
-    iconImage?: string | null
-    enabled: boolean
-    presets?: number[]
+  const likedTrackIdSet = new Set(likedTrackIds)
+  const knownTrackMap = new Map<string, PlaylistTrack>()
+  const rememberKnownTrack = (track?: PlaylistTrack | null) => {
+    if (!track?.id || knownTrackMap.has(track.id)) return
+    knownTrackMap.set(track.id, track)
   }
 
-  type AppSettings = {
-    startWithWindows: boolean
-    minimizeToTray: boolean
-    checkForUpdates: boolean
-    launchDelay: LaunchDelay
-    launchBehavior: LaunchBehavior
-    stopLaunchingOnError: boolean
-    theme: Theme
-    accentColor: AccentColor
+  fallbackPlaylistTracks.forEach(rememberKnownTrack)
+  ytPlaylistTracks.forEach(rememberKnownTrack)
+  Object.values(playlistTrackMap).flat().forEach(rememberKnownTrack)
+  rememberKnownTrack(currentTrack)
+
+  const likedTracks = likedTrackIds
+    .map((trackId) => knownTrackMap.get(trackId))
+    .filter((track): track is PlaylistTrack => Boolean(track))
+
+  const likedPlaylist: HomeMusicPlaylist = {
+    id: LIKED_PLAYLIST_ID,
+    name: 'Liked',
+    tracks: likedTrackIds.length,
+    customThumbnail: playlistCoverOverrides[LIKED_PLAYLIST_ID],
   }
 
-  const initialPrograms: ProgramItem[] = [
-    {
-      id: 'photoshop',
-      name: 'Adobe Photoshop 2024',
-      path: 'C:\\Program Files\\Adobe\\Adobe Photoshop 2024\\Photoshop.exe',
-      type: 'Program',
-      iconClass: 'ps',
-      icon: 'Ps',
-      iconImage: null,
-      enabled: true,
-    },
-    {
-      id: 'chrome',
-      name: 'Google Chrome',
-      path: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      type: 'Program',
-      iconClass: 'chrome',
-      icon: '🌐',
-      iconImage: null,
-      enabled: true,
-    },
-    {
-      id: 'work-folder',
-      name: 'Work Folder',
-      path: 'D:\\MN Workspace',
-      type: 'Folder',
-      iconClass: 'folder',
-      icon: '📁',
-      iconImage: null,
-      enabled: true,
-    },
-    {
-      id: 'youtube-music',
-      name: 'YouTube Music',
-      path: 'https://music.youtube.com',
-      type: 'URL',
-      iconClass: 'music',
-      icon: '▶',
-      iconImage: null,
-      enabled: true,
-    },
-  ]
+  const homeMusicPlaylistsWithLiked = applyHomeMusicPlaylistOrder(
+    [
+      likedPlaylist,
+      ...homeMusicPlaylists.filter((playlist) => playlist.id !== LIKED_PLAYLIST_ID),
+    ],
+    settings.musicPlaylistOrder,
+  )
+  const homeMusicPlaylistOrderKey = homeMusicPlaylistsWithLiked.map((p) => p.id).join('|')
 
-  const defaultSettings: AppSettings = {
-    startWithWindows: false,
-    minimizeToTray: false,
-    checkForUpdates: true,
-    launchDelay: '1 second',
-    launchBehavior: 'Launch in order',
-    stopLaunchingOnError: false,
-    theme: 'Light',
-    accentColor: 'purple',
-  }
+  const selectedHomeMusicPlaylist =
+    homeMusicPlaylistsWithLiked.find((p) => p.id === selectedHomeMusicPlaylistId) ??
+    homeMusicPlaylistsWithLiked[0] ??
+    fallbackHomeMusicPlaylists[0]
 
-  const accentColorMap: Record<AccentColor, string> = {
-    purple: '#705bff',
-    blue: '#0b8ee8',
-    green: '#18c77a',
-    orange: '#ff8a1f',
-    red: '#ff5151',
-    gray: '#9aa0b8',
-  }
+  const selectedPlaylistTracks = selectedHomeMusicPlaylistId === LIKED_PLAYLIST_ID
+    ? likedTracks
+    : isYtAuthenticated ? ytPlaylistTracks : fallbackPlaylistTracks
+  const allTracks = selectedPlaylistTracks
+  allTracksRef.current = allTracks
+  playingPlaylistIdRef.current = playingPlaylistId
+  selectedPlaylistTrackIdRef.current = selectedPlaylistTrackId
 
-  const accentRingMap: Record<AccentColor, string> = {
-    purple: 'rgba(112, 91, 255, 0.28)',
-    blue: 'rgba(11, 142, 232, 0.28)',
-    green: 'rgba(24, 199, 122, 0.28)',
-    orange: 'rgba(255, 138, 31, 0.28)',
-    red: 'rgba(255, 81, 81, 0.28)',
-    gray: 'rgba(154, 160, 184, 0.32)',
-  }
+  const getPlaylistTracksForDisplay = (playlistId: string) => (
+    playlistId === LIKED_PLAYLIST_ID
+      ? likedTracks
+      : playlistTrackMap[playlistId] ?? []
+  )
 
-  const logoMap: Record<AccentColor, string> = {
-    purple: logoPurple,
-    blue: logoBlue,
-    green: logoGreen,
-    orange: logoOrange,
-    red: logoRed,
-    gray: logoGray,
-  }
+  const normalizedPlaylistSearchQuery = playlistSearchQuery.trim().toLowerCase()
+  const filteredHomeMusicPlaylists = normalizedPlaylistSearchQuery
+    ? homeMusicPlaylistsWithLiked.filter((playlist) => {
+        const nameMatch = playlist.name.toLowerCase().includes(normalizedPlaylistSearchQuery)
+        const trackMatch = getPlaylistTracksForDisplay(playlist.id).some(
+          (track) => track.title.toLowerCase().includes(normalizedPlaylistSearchQuery) ||
+                     track.artist.toLowerCase().includes(normalizedPlaylistSearchQuery)
+        )
+        return nameMatch || trackMatch
+      })
+    : homeMusicPlaylistsWithLiked
 
-  const rocketMap: Record<AccentColor, string> = {
-    purple: rocketPurple,
-    blue: rocketBlue,
-    green: rocketGreen,
-    orange: rocketOrange,
-    red: rocketRed,
-    gray: rocketGray,
-  }
-
-  const iconMap = {
-    dashboard: {
-      purple: dashboardPurple,
-      blue: dashboardBlue,
-      green: dashboardGreen,
-      orange: dashboardOrange,
-      red: dashboardRed,
-      gray: dashboardGray,
-      white: dashboardWhite,
-    },
-    programs: {
-      purple: programsPurple,
-      blue: programsBlue,
-      green: programsGreen,
-      orange: programsOrange,
-      red: programsRed,
-      gray: programsGray,
-      white: programsWhite,
-    },
-    settings: {
-      purple: settingsPurple,
-      blue: settingsBlue,
-      green: settingsGreen,
-      orange: settingsOrange,
-      red: settingsRed,
-      gray: settingsGray,
-      white: settingsWhite,
-    },
-    time: {
-      purple: timePurple,
-      blue: timeBlue,
-      green: timeGreen,
-      orange: timeOrange,
-      red: timeRed,
-      gray: timeGray,
-      white: timeWhite,
-    },
-    preset: {
-      purple: presetPurple,
-      blue: presetBlue,
-      green: presetGreen,
-      orange: presetOrange,
-      red: presetRed,
-      gray: presetGray,
-      white: presetWhite,
-    },
-    speaker: {
-      purple: speakerPurple,
-      blue: speakerBlue,
-      green: speakerGreen,
-      orange: speakerOrange,
-      red: speakerRed,
-      gray: speakerGray,
-      white: speakerWhite,
-    },
-
-    headphone: {
-      purple: headphonePurple,
-      blue: headphoneBlue,
-      green: headphoneGreen,
-      orange: headphoneOrange,
-      red: headphoneRed,
-      gray: headphoneGray,
-      white: headphoneWhite,
-    },
-
-    hmonitor: {
-      purple: hmonitorPurple,
-      blue: hmonitorBlue,
-      green: hmonitorGreen,
-      orange: hmonitorOrange,
-      red: hmonitorRed,
-      gray: hmonitorGray,
-      white: hmonitorWhite,
-    },
-
-    vmonitor: {
-      purple: vmonitorPurple,
-      blue: vmonitorBlue,
-      green: vmonitorGreen,
-      orange: vmonitorOrange,
-      red: vmonitorRed,
-      gray: vmonitorGray,
-      white: vmonitorWhite,
-    },
-
-    check: {
-      purple: checkPurple,
-      blue: checkBlue,
-      green: checkGreen,
-      orange: checkOrange,
-      red: checkRed,
-      gray: checkGray,
-      white: checkWhite,
-    },
-
-    date: {
-      purple: datePurple,
-      blue: dateBlue,
-      green: dateGreen,
-      orange: dateOrange,
-      red: dateRed,
-      gray: dateGray,
-      white: dateWhite,
-    },
-
-  } as const
-
-
-
-  function getProgramIcon(type: ProgramType) {
-    if (type === 'Folder') {
-      return { icon: '📁', iconClass: 'folder' }
-    }
-
-    if (type === 'URL') {
-      return { icon: '🌐', iconClass: 'chrome' }
-    }
-
-    return { icon: 'App', iconClass: 'ps' }
-  }
-
-  function getNameFromPath(filePath: string) {
-    const fileName = filePath.split('\\').pop() ?? filePath
-    return fileName.replace(/\.[^/.]+$/, '')
-  }
-
-  function createId() {
-    if (crypto.randomUUID) {
-      return crypto.randomUUID()
-    }
-
-    return `${Date.now()}-${Math.random()}`
-  }
-
-  function getProgramPresets(program: ProgramItem) {
-    if (Array.isArray(program.presets) && program.presets.length > 0) {
-      return program.presets
-    }
-
-    return [1]
-  }
-
-  type DiaryEntry = {
-    date: string
-    content: string
-    createdAt: string
-    updatedAt: string
-  }
-
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ]
-
-  const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-  const calendarWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
-  const initialDiaryEntries: Record<string, DiaryEntry> = {}
-
-  function formatDateKey(date: Date) {
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-
-    return `${year}-${month}-${day}`
-  }
-
-  function getWriteDiaryTitleParts(date: Date) {
-    return {
-      monthDay: `${monthNames[date.getMonth()]} ${date.getDate()}`,
-      year: date.getFullYear(),
-    }
-  }
-
-  function formatDiaryMonthTitle(date: Date) {
-    return `${monthNames[date.getMonth()]}`
-  }
-
-  function isSameDate(firstDate: Date, secondDate: Date) {
-    return formatDateKey(firstDate) === formatDateKey(secondDate)
-  }
-
-  function createMonthDate(baseDate: Date, monthOffset: number) {
-    return new Date(baseDate.getFullYear(), baseDate.getMonth() + monthOffset, 1)
-  }
-
-  function getDiaryCalendarDays(baseDate: Date) {
-    const year = baseDate.getFullYear()
-    const month = baseDate.getMonth()
-    const firstDay = new Date(year, month, 1)
-    const startDate = new Date(year, month, 1 - firstDay.getDay())
-
-    return Array.from({ length: 35 }, (_, index) => {
-      const date = new Date(startDate)
-
-      date.setDate(startDate.getDate() + index)
-
-      return date
-    })
-  }
-
-  function isCurrentMonth(date: Date, baseDate: Date) {
-    return date.getFullYear() === baseDate.getFullYear() &&
-      date.getMonth() === baseDate.getMonth()
-  }
-
-  function isProgramList(value: unknown): value is ProgramItem[] {
-    if (!Array.isArray(value)) return false
-
-    return value.every((item) => {
-      if (!item || typeof item !== 'object') return false
-
-      const program = item as ProgramItem
-
-      return (
-        typeof program.id === 'string' &&
-        typeof program.name === 'string' &&
-        typeof program.path === 'string' &&
-        typeof program.type === 'string' &&
-        typeof program.iconClass === 'string' &&
-        typeof program.icon === 'string' &&
-        typeof program.enabled === 'boolean'
+  const fullPlaylistTracks = selectedPlaylistTracks
+  const normalizedFullPlaylistSearchQuery = fullPlaylistSearchQuery.trim().toLowerCase()
+  const filteredFullPlaylistTracks = normalizedFullPlaylistSearchQuery
+    ? fullPlaylistTracks.filter((t) =>
+        t.title.toLowerCase().includes(normalizedFullPlaylistSearchQuery) ||
+        t.artist.toLowerCase().includes(normalizedFullPlaylistSearchQuery)
       )
-    })
+    : fullPlaylistTracks
+
+  const homeMusicDurationSeconds = ytDuration
+  const homeMusicCurrentSeconds = ytCurrentTime
+  const floatingPlayerMode = settings.floatingPlayerMode ?? defaultSettings.floatingPlayerMode ?? 'expanded'
+  const isFloatingPlayerHidden = Boolean(settings.floatingPlayerHidden)
+  const shouldShowFloatingMusicPlayer =
+    Boolean(currentVideoId && currentTrack) &&
+    activePage !== 'home' &&
+    activePage !== 'playlist'
+  // ─── Helper functions ─────────────────────────────────────────────────────
+  const getPlaybackTracks = (playlistId?: string | null) => {
+    if (playlistId) {
+      if (playlistId === LIKED_PLAYLIST_ID) return likedTracks
+      const mapped = playlistTrackMap[playlistId]
+      if (mapped && mapped.length > 0) return mapped
+      if (playlistId === selectedHomeMusicPlaylistId && allTracks.length > 0) return allTracks
+    }
+    if (playingPlaylistTracksRef.current.length > 0) return playingPlaylistTracksRef.current
+    return allTracksRef.current
   }
 
-  function isSettings(value: unknown): value is AppSettings {
-    if (!value || typeof value !== 'object') return false
+  const rememberShuffleTrack = (playlistId: string | null | undefined, videoId: string) => {
+    if (!playlistId || !videoId) return
 
-    const settings = value as AppSettings
+    const tracks = getPlaybackTracks(playlistId)
+    const validIds = new Set(tracks.map((track) => track.id))
+    const previous = shuffleHistoryRef.current[playlistId] ?? []
+    const filteredPrevious = previous.filter((id) => validIds.size === 0 || validIds.has(id))
+    const nextHistory = [...filteredPrevious.filter((id) => id !== videoId), videoId]
+    const historyLimit = Math.max(tracks.length, 20)
 
+    shuffleHistoryRef.current[playlistId] = nextHistory.slice(-historyLimit)
+  }
+
+  const formatHomeMusicTime = (secs: number) => {
+    const safe = Math.max(0, Math.floor(secs))
+    return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, '0')}`
+  }
+
+  const isMarqueeTitleOverflowing = (titleId: string) =>
+    overflowingMarqueeTitleIds.includes(titleId)
+
+  const renderMarqueeTitle = (titleId: string, title: string) => {
+    const isOverflowing = isMarqueeTitleOverflowing(titleId)
     return (
-      typeof settings.startWithWindows === 'boolean' &&
-      typeof settings.minimizeToTray === 'boolean' &&
-      typeof settings.checkForUpdates === 'boolean' &&
-      typeof settings.launchDelay === 'string' &&
-      typeof settings.launchBehavior === 'string' &&
-      typeof settings.stopLaunchingOnError === 'boolean' &&
-      typeof settings.theme === 'string' &&
-      typeof settings.accentColor === 'string'
+      <strong
+        ref={(el) => { marqueeTitleTextRefs.current[titleId] = el }}
+        className="marquee-title"
+      >
+        <span className="marquee-title-text">{title}</span>
+        {isOverflowing && <span className="marquee-title-text" aria-hidden="true">{title}</span>}
+      </strong>
     )
   }
 
-  function isDiaryEntries(value: unknown): value is Record<string, DiaryEntry> {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const getThemeIcon = (iconName: keyof typeof iconMap, isActive = true) => {
+    if (activeTheme === 'dark') return iconMap[iconName].white
+    return isActive ? iconMap[iconName][settings.accentColor] : iconMap[iconName].gray
+  }
 
-    return Object.values(value).every((item) => {
-      if (!item || typeof item !== 'object') return false
+  const getMusicControlIcon = (iconName: keyof typeof musicControlIconMap, isActive = true) =>
+    isActive ? musicControlIconMap[iconName][settings.accentColor] : musicControlIconMap[iconName].gray
 
-      const diaryEntry = item as DiaryEntry
+  const getLikeIcon = (isLiked: boolean, isHovered = false) => {
+    if (isLiked) return likedIconMap[settings.accentColor]
+    // 좋아요가 안 눌린 상태에서 hover 시 빈 하트 accent 아이콘으로
+    if (isHovered) return prelikedIconMap[settings.accentColor]
+    // 좋아요가 안 눌린 기본 상태는 라이트/다크모드 모두 gray 빈 하트로 고정
+    return prelikedIconMap.gray
+  }
 
-      return (
-        typeof diaryEntry.date === 'string' &&
-        typeof diaryEntry.content === 'string' &&
-        typeof diaryEntry.createdAt === 'string' &&
-        typeof diaryEntry.updatedAt === 'string'
-      )
+  const shouldIgnoreMusicShortcut = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) return false
+
+    return Boolean(
+      target.closest('input, textarea, select, [contenteditable="true"]'),
+    )
+  }
+
+  const updateSettings = (partial: Partial<AppSettings>) =>
+    setSettings((prev) => ({ ...prev, ...partial }))
+
+  const isTrackLiked = (trackId?: string | null) => Boolean(trackId && likedTrackIdSet.has(trackId))
+
+  const handleToggleTrackLike = (trackId?: string | null) => {
+    if (!trackId) return
+
+    setLikedTrackIds((prev) => {
+      if (prev.includes(trackId)) return prev.filter((id) => id !== trackId)
+      return [...prev, trackId]
     })
   }
 
-  function ProgramIcon({ program }: { program: ProgramItem }) {
-    if (program.iconImage) {
-      return (
-        <img
-          src={program.iconImage}
-          alt=""
-          className="program-real-icon"
-        />
+  const sendYtCommand = (func: string, args: unknown[] = []) => {
+    ytIframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'command', func, args }), '*',
+    )
+  }
+
+  const applyYtVolume = () => {
+    const safeVolume = Math.max(0, Math.min(100, Math.round(homeMusicVolumeRef.current)))
+    sendYtCommand('setVolume', [safeVolume])
+  }
+
+  const applyYtVolumeWithRetry = () => {
+    applyYtVolume()
+    window.setTimeout(applyYtVolume, 160)
+    window.setTimeout(applyYtVolume, 420)
+  }
+
+  // ─── YouTube Player ───────────────────────────────────────────────────────
+  const playVideo = (videoId: string, fromPlaylistId?: string, trackInfo?: PlaylistTrack) => {
+    const track = trackInfo ?? allTracksRef.current.find((t) => t.id === videoId) ?? allTracks.find((t) => t.id === videoId) ?? null
+    const isSameVideo = currentVideoIdRef.current === videoId
+    const initialDuration = track?.duration ? parseDurationToSeconds(track.duration) : 0
+
+    if (fromPlaylistId) {
+      const currentTracks = playingPlaylistTracksRef.current
+      const tracksForPlayback =
+        playingPlaylistIdRef.current === fromPlaylistId && currentTracks.some((t) => t.id === videoId)
+          ? currentTracks
+          : getPlaybackTracks(fromPlaylistId)
+      if (tracksForPlayback.length > 0) playingPlaylistTracksRef.current = tracksForPlayback
+      playingPlaylistIdRef.current = fromPlaylistId
+    }
+
+    if (youtubeSwitchTimerRef.current) {
+      window.clearTimeout(youtubeSwitchTimerRef.current)
+      youtubeSwitchTimerRef.current = null
+    }
+
+    const switchToken = youtubeSwitchTokenRef.current + 1
+    youtubeSwitchTokenRef.current = switchToken
+
+    currentVideoIdRef.current = videoId
+    selectedPlaylistTrackIdRef.current = videoId
+    isSeekingRef.current = false
+
+    setSelectedPlaylistTrackId(videoId)
+    setPlayingFullPlaylistTrackId(videoId)
+    setIsHomeMusicPlaying(true)
+    setYtCurrentTime(0)
+    setHomeMusicProgress(0)
+
+    if (initialDuration > 0 || !isSameVideo) {
+      setYtDuration(initialDuration)
+      ytDurationRef.current = initialDuration
+    }
+
+    if (track) setCurrentTrack(track)
+    if (fromPlaylistId) {
+      playingPlaylistIdRef.current = fromPlaylistId
+      setPlayingPlaylistId(fromPlaylistId)
+    }
+
+    rememberShuffleTrack(
+      fromPlaylistId ?? playingPlaylistIdRef.current ?? playingPlaylistId ?? selectedHomeMusicPlaylistId,
+      videoId,
+    )
+
+    if (track) {
+      updateSettings({
+        lastTrack: {
+          videoId,
+          title: track.title,
+          artist: track.artist,
+          thumbnail: track.thumbnail ?? '',
+          playlistId: fromPlaylistId ?? playingPlaylistId ?? selectedHomeMusicPlaylistId ?? '',
+        },
+      })
+    }
+
+    if (isSameVideo && ytIframeRef.current) {
+      isPreparingNextVideoRef.current = false
+      isWaitingForFreshVideoTimeRef.current = false
+      pendingVideoChangeUntilRef.current = 0
+      sendYtCommand('seekTo', [0, true])
+      sendYtCommand('playVideo')
+      applyYtVolumeWithRetry()
+      return
+    }
+
+    isPreparingNextVideoRef.current = true
+    isWaitingForFreshVideoTimeRef.current = true
+    pendingVideoChangeUntilRef.current = Date.now() + YOUTUBE_TRACK_SWITCH_DELAY_MS + 900
+
+    if (ytIframeRef.current) {
+      sendYtCommand('stopVideo')
+      ytIframeRef.current.src = 'about:blank'
+    }
+
+    setCurrentVideoId(null)
+
+    youtubeSwitchTimerRef.current = window.setTimeout(() => {
+      if (youtubeSwitchTokenRef.current !== switchToken) return
+      isPreparingNextVideoRef.current = false
+      setYtCurrentTime(0)
+      setHomeMusicProgress(0)
+      setCurrentVideoId(videoId)
+    }, YOUTUBE_TRACK_SWITCH_DELAY_MS)
+  }
+
+  const getShuffleTrack = (tracks: PlaylistTrack[], currentId: string | null, playlistId: string) => {
+    if (tracks.length === 0) return null
+    if (tracks.length === 1) return tracks[0]
+
+    const targets = currentId ? tracks.filter((track) => track.id !== currentId) : tracks
+    const validIds = new Set(tracks.map((track) => track.id))
+    const history = (shuffleHistoryRef.current[playlistId] ?? []).filter((id) => validIds.has(id))
+    const playedIds = new Set(history)
+    const unplayedTargets = targets.filter((track) => !playedIds.has(track.id))
+
+    shuffleHistoryRef.current[playlistId] = history
+
+    if (unplayedTargets.length > 0) {
+      return unplayedTargets[Math.floor(Math.random() * unplayedTargets.length)] ?? unplayedTargets[0]
+    }
+
+    const recentLimit = Math.min(20, Math.max(0, tracks.length - 1))
+    const recentIds = new Set(history.slice(-recentLimit))
+    const recentSafeTargets = targets.filter((track) => !recentIds.has(track.id))
+
+    if (recentSafeTargets.length > 0) {
+      return recentSafeTargets[Math.floor(Math.random() * recentSafeTargets.length)] ?? recentSafeTargets[0]
+    }
+
+    return targets[Math.floor(Math.random() * targets.length)] ?? tracks[0]
+  }
+
+  const playNextTrack = () => {
+    const playlistId = playingPlaylistIdRef.current ?? playingPlaylistId ?? selectedHomeMusicPlaylistId
+    if (!isYtAuthenticated && playlistId !== LIKED_PLAYLIST_ID) { setIsYoutubeLoginModalOpen(true); return }
+    const tracks = getPlaybackTracks(playlistId)
+    const currentId = currentVideoIdRef.current
+    if (tracks.length === 0) return
+    if (isShuffleEnabled) {
+      const next = getShuffleTrack(tracks, currentId, playlistId)
+      if (next) playVideo(next.id, playlistId, next)
+      return
+    }
+    if (!currentId) { playVideo(tracks[0].id, playlistId, tracks[0]); return }
+    const idx = tracks.findIndex((t) => t.id === currentId)
+    if (idx < 0) { playVideo(tracks[0].id, playlistId, tracks[0]); return }
+    if (idx < tracks.length - 1) { const next = tracks[idx + 1]; playVideo(next.id, playlistId, next) }
+  }
+  playNextTrackRef.current = playNextTrack
+
+  const playPrevTrack = () => {
+    const playlistId = playingPlaylistIdRef.current ?? playingPlaylistId ?? selectedHomeMusicPlaylistId
+    if (!isYtAuthenticated && playlistId !== LIKED_PLAYLIST_ID) { setIsYoutubeLoginModalOpen(true); return }
+    const tracks = getPlaybackTracks(playlistId)
+    const currentId = currentVideoIdRef.current
+    if (!currentId) return
+    const idx = tracks.findIndex((t) => t.id === currentId)
+    if (idx > 0) { const prev = tracks[idx - 1]; playVideo(prev.id, playlistId, prev) }
+  }
+
+  const togglePlayPause = () => {
+    const next = !isHomeMusicPlaying
+    setIsHomeMusicPlaying(next)
+    sendYtCommand(next ? 'playVideo' : 'pauseVideo')
+  }
+
+  // ─── Playlist handlers ────────────────────────────────────────────────────
+  const handlePlaylistPlay = async (playlistId: string) => {
+    if (playlistId === LIKED_PLAYLIST_ID) {
+      if (playingPlaylistId === playlistId) { togglePlayPause(); return }
+      setSelectedHomeMusicPlaylistId(playlistId)
+      if (likedTracks.length === 0) return
+      playingPlaylistTracksRef.current = likedTracks
+      playingPlaylistIdRef.current = playlistId
+      playVideo(likedTracks[0].id, playlistId, likedTracks[0])
+      return
+    }
+
+    if (!isYtAuthenticated) { setIsYoutubeLoginModalOpen(true); return }
+    if (playingPlaylistId === playlistId) { togglePlayPause(); return }
+    setSelectedHomeMusicPlaylistId(playlistId)
+
+    try {
+      const tracks = await window.mnAPI.getYoutubeMusicPlaylistTracks(playlistId)
+      if (Array.isArray(tracks) && tracks.length > 0) {
+        const pl = tracks as PlaylistTrack[]
+        playingPlaylistTracksRef.current = pl
+        playingPlaylistIdRef.current = playlistId
+        setYtPlaylistTracks(pl)
+        setPlaylistTrackMap((prev) => {
+          const next = { ...prev, [playlistId]: pl }
+          window.mnAPI.saveYoutubeMusicTrackCache(next)
+          return next
+        })
+        playVideo(pl[0].id, playlistId, pl[0])
+      }
+    } catch (e) { console.error(e) }
+  }
+
+  const handleRefreshPlaylists = async () => {
+    if (!isYtAuthenticated || isPlaylistRefreshing) return
+    setIsPlaylistRefreshing(true)
+    try {
+      const loaded = await window.mnAPI.getYoutubeMusicPlaylists()
+      if (isHomeMusicPlaylistList(loaded)) {
+        const visible = filterHiddenHomeMusicPlaylists(loaded)
+        const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
+        setHomeMusicPlaylists((prev) => {
+          const map = new Map(refreshed.map((p) => [p.id, p]))
+          const reordered = prev.filter((p) => map.has(p.id)).map((p) => map.get(p.id)!)
+          const added = refreshed.filter((p) => !new Set(prev.map((x) => x.id)).has(p.id))
+          return [...reordered, ...added]
+        })
+      }
+      if (selectedHomeMusicPlaylistId && selectedHomeMusicPlaylistId !== 'focus' && selectedHomeMusicPlaylistId !== LIKED_PLAYLIST_ID) {
+        const tracks = await window.mnAPI.getYoutubeMusicPlaylistTracks(selectedHomeMusicPlaylistId)
+        if (Array.isArray(tracks) && tracks.length > 0) {
+          setYtPlaylistTracks(tracks as PlaylistTrack[])
+          setPlaylistTrackMap((prev) => {
+            const next = { ...prev, [selectedHomeMusicPlaylistId]: tracks as PlaylistTrack[] }
+            window.mnAPI.saveYoutubeMusicTrackCache(next)
+            return next
+          })
+        }
+      }
+    } catch (e) { console.error(e) }
+    finally { setIsPlaylistRefreshing(false) }
+  }
+
+  const handleReloadYoutubeMusicData = async () => {
+    if (!isYtAuthenticated) { setIsYoutubeLoginModalOpen(true); return }
+    if (isPlaylistRefreshing) return
+    setIsPlaylistRefreshing(true)
+    try {
+      const loaded = await window.mnAPI.getYoutubeMusicPlaylists()
+      if (!isHomeMusicPlaylistList(loaded)) return
+      const visible = filterHiddenHomeMusicPlaylists(loaded)
+      const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
+      const ordered = applyHomeMusicPlaylistOrder(refreshed, settings.musicPlaylistOrder)
+      const orderedWithLiked = applyHomeMusicPlaylistOrder([likedPlaylist, ...ordered], settings.musicPlaylistOrder)
+      const nextId = orderedWithLiked.some((p) => p.id === selectedHomeMusicPlaylistId) ? selectedHomeMusicPlaylistId : orderedWithLiked[0]?.id ?? LIKED_PLAYLIST_ID
+      const trackResults = await Promise.all(
+        ordered.map(async (p): Promise<[string, PlaylistTrack[]]> => {
+          try {
+            const t = await window.mnAPI.getYoutubeMusicPlaylistTracks(p.id)
+            return [p.id, Array.isArray(t) ? t as PlaylistTrack[] : []]
+          } catch { return [p.id, []] }
+        })
       )
-    }
-
-    return <div className={`icon ${program.iconClass}`}>{program.icon}</div>
+      const nextMap = trackResults.reduce<Record<string, PlaylistTrack[]>>((acc, [id, t]) => ({ ...acc, [id]: t }), {})
+      setHomeMusicPlaylists(ordered)
+      setSelectedHomeMusicPlaylistId(nextId)
+      setPlaylistTrackMap(nextMap)
+      setYtPlaylistTracks(nextId === LIKED_PLAYLIST_ID ? likedTracks : nextMap[nextId] ?? [])
+      window.mnAPI.saveYoutubeMusicTrackCache(nextMap)
+      updateSettings({ musicPlaylistOrder: orderedWithLiked.map((p) => p.id) })
+      const playingTracks = playingPlaylistIdRef.current
+        ? playingPlaylistIdRef.current === LIKED_PLAYLIST_ID ? likedTracks : nextMap[playingPlaylistIdRef.current] ?? []
+        : []
+      if (playingTracks.length > 0) playingPlaylistTracksRef.current = playingTracks
+      const updated = currentVideoIdRef.current ? Object.values(nextMap).flat().find((t) => t.id === currentVideoIdRef.current) : null
+      if (updated) setCurrentTrack(updated)
+      const nextSelected = nextId === LIKED_PLAYLIST_ID ? likedTracks : nextMap[nextId] ?? []
+      if (nextSelected.length > 0 && nextId !== playingPlaylistIdRef.current) setSelectedPlaylistTrackId(nextSelected[0].id)
+    } catch (e) { console.error(e) }
+    finally { setIsPlaylistRefreshing(false) }
   }
 
-  type SortableProgramRowProps = {
-    program: ProgramItem
-    isMenuOpen: boolean
-    onToggle: (id: string) => void
-    onMenuToggle: (id: string) => void
-    onDelete: (id: string) => void
+  const handleChangePlaylistCover = async (playlistId: string) => {
+    try {
+      const coverUrl = await window.mnAPI.changeYoutubeMusicPlaylistCover(playlistId)
+      if (!coverUrl) return
+      setPlaylistCoverOverrides((prev) => ({ ...prev, [playlistId]: coverUrl }))
+      setHomeMusicPlaylists((prev) => prev.map((p) => p.id === playlistId ? { ...p, customThumbnail: coverUrl } : p))
+    } catch (e) { console.error(e) }
   }
 
-  function SortableProgramRow({
-    program,
-    isMenuOpen,
-    onToggle,
-    onMenuToggle,
-    onDelete,
-  }: SortableProgramRowProps) {
-    const {
-      attributes,
-      listeners,
-      setNodeRef,
-      transform,
-      transition,
-      isDragging,
-    } = useSortable({ id: program.id })
+  // ─── Progress / Volume ────────────────────────────────────────────────────
+  const getTrackPercent = (e: React.PointerEvent<HTMLElement>) =>
+    Math.max(0, Math.min(100, (e.nativeEvent.offsetX / e.currentTarget.offsetWidth) * 100))
 
-    const style = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      zIndex: isDragging ? 10 : 1,
+  const handleHomeMusicProgressPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    isSeekingRef.current = true
+    setHomeMusicProgress(getTrackPercent(e))
+  }
+  const handleHomeMusicProgressPointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+    setHomeMusicProgress(getTrackPercent(e))
+  }
+  const handleHomeMusicProgressPointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+    const dur = Math.max(0, ytDurationRef.current || ytDuration)
+    if (dur <= 0) { setHomeMusicProgress(0); setYtCurrentTime(0); isSeekingRef.current = false; return }
+    const pct = getTrackPercent(e)
+    const seek = Math.max(0, Math.min(dur, Math.floor((pct / 100) * dur)))
+    sendYtCommand('seekTo', [seek, true])
+    setYtCurrentTime(seek)
+    setHomeMusicProgress((seek / dur) * 100)
+    isSeekingRef.current = false
+  }
+  const handleHomeMusicVolumePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setHomeMusicVolume(getTrackPercent(e))
+  }
+  const handleHomeMusicVolumePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+    setHomeMusicVolume(getTrackPercent(e))
+  }
+
+  // ─── Playlist carousel ────────────────────────────────────────────────────
+  const handleMoveHomeMusicPlaylist = (direction: -1 | 1) => {
+    setHomeMusicPlaylistPage((prev) => {
+      const max = Math.max(0, homeMusicPlaylistsWithLiked.length - 4)
+      return Math.max(0, Math.min(prev + direction, max))
+    })
+  }
+  const handleHomeMusicPlaylistWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const amount = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX
+    if (Math.abs(amount) < 20 || homeMusicPlaylistWheelLockRef.current) return
+    e.preventDefault()
+    homeMusicPlaylistWheelLockRef.current = true
+    handleMoveHomeMusicPlaylist(amount > 0 ? 1 : -1)
+    window.setTimeout(() => { homeMusicPlaylistWheelLockRef.current = false }, 320)
+  }
+
+  // ─── Diary handlers ───────────────────────────────────────────────────────
+  const handleOpenDiaryDate = (date: Date) => {
+    if (!diaryEntries[formatDateKey(date)]) return
+    setSelectedDiaryDate(date)
+  }
+  const handleMoveDiaryMonth = (offset: number) => setDiaryDisplayDate((prev) => createMonthDate(prev, offset))
+  const handleDiaryMonthScroll = () => {
+    const el = diaryMonthWheelRef.current
+    if (!el) return
+    setDiaryPickerMonthIndex(Math.max(0, Math.min(11, Math.round(el.scrollTop / 60))))
+  }
+  const handleDiaryYearScroll = () => {
+    const el = diaryYearWheelRef.current
+    if (!el) return
+    setDiaryPickerYear(Math.max(diaryPickerMinYear, Math.min(diaryPickerMaxYear, diaryPickerMinYear + Math.round(el.scrollTop / 60))))
+  }
+  const handleSaveDiary = () => {
+    const content = diaryText.trim()
+    if (!content) return
+    const now = new Date().toISOString()
+    setDiaryEntries((prev) => ({ ...prev, [todayDateKey]: { date: todayDateKey, content, createdAt: prev[todayDateKey]?.createdAt ?? now, updatedAt: now } }))
+    setIsDiarySaveButtonPressed(true)
+    setIsDiarySavedVisible(true)
+    window.setTimeout(() => setIsDiarySaveButtonPressed(false), 280)
+    window.setTimeout(() => setIsDiarySavedVisible(false), 1400)
+  }
+  const handleConfirmDeleteDiary = () => {
+    if (!selectedDiaryDate) return
+    setDiaryEntries((prev) => { const next = { ...prev }; delete next[formatDateKey(selectedDiaryDate)]; return next })
+    setIsDeleteDiaryConfirmOpen(false)
+    setSelectedDiaryDate(null)
+  }
+
+  // ─── Program handlers ─────────────────────────────────────────────────────
+  const resetAddProgramForm = () => { setNewProgramName(''); setNewProgramType('Program'); setNewProgramPath(''); setNewProgramEnabled(true); setNewProgramIconImage(null) }
+  const closeAddModal = () => { setIsAddModalOpen(false); resetAddProgramForm() }
+  const handleBrowse = async () => {
+    try {
+      if (newProgramType === 'URL') return
+      const path = newProgramType === 'Folder' ? await window.mnAPI.selectFolder() : await window.mnAPI.selectProgram()
+      if (!path) return
+      setNewProgramPath(path)
+      if (!newProgramName.trim()) setNewProgramName(getNameFromPath(path))
+      if (newProgramType === 'Program') { const icon = await window.mnAPI.getFileIcon(path); setNewProgramIconImage(icon) }
+      else setNewProgramIconImage(null)
+    } catch (e) { console.error(e) }
+  }
+  const handleAddProgram = () => {
+    if (!newProgramName.trim() || !newProgramPath.trim()) return
+    const iconData = getProgramIcon(newProgramType)
+    setPrograms((prev) => [...prev, { id: createId(), name: newProgramName.trim(), path: newProgramPath.trim(), type: newProgramType, iconClass: iconData.iconClass, icon: iconData.icon, iconImage: newProgramIconImage, enabled: newProgramEnabled, presets: [selectedPreset] }])
+    closeAddModal()
+  }
+  const handleToggleProgram = (id: string) => setPrograms((prev) => prev.map((p) => p.id === id ? { ...p, enabled: !p.enabled } : p))
+  const handleDeleteProgram = (id: string) => { setPrograms((prev) => prev.filter((p) => p.id !== id)); setOpenMenuId(null) }
+  const handleDragEnd = (e: DragEndEvent) => {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    setPrograms((prev) => { const oi = prev.findIndex((p) => p.id === active.id); const ni = prev.findIndex((p) => p.id === over.id); return arrayMove(prev, oi, ni) })
+  }
+
+  // ─── Launch handlers ──────────────────────────────────────────────────────
+  const getLaunchDelayMs = () => ({ '1 second': 1000, '2 seconds': 2000, '3 seconds': 3000, '5 seconds': 5000 }[settings.launchDelay] ?? 1000)
+  const wait = (ms: number) => new Promise((r) => window.setTimeout(r, ms))
+  const resetStatusesAfterDelay = async () => {
+    await wait(2000)
+    setLaunchStatuses(enabledPrograms.reduce<Record<string, LaunchStatus>>((acc, p) => ({ ...acc, [p.id]: 'waiting' }), {}))
+  }
+  const handleLaunchSingleProgram = async (program: ProgramItem) => {
+    if (isLaunching || (launchStatuses[program.id] ?? 'waiting') !== 'waiting') return
+    setLaunchStatuses((prev) => ({ ...prev, [program.id]: 'launching' }))
+    const result = await window.mnAPI.launchProgram({ path: program.path, type: program.type })
+    await wait(1500)
+    setLaunchStatuses((prev) => ({ ...prev, [program.id]: result.success ? 'completed' : 'failed' }))
+    await wait(2000)
+    setLaunchStatuses((prev) => ({ ...prev, [program.id]: 'waiting' }))
+  }
+  const handleLaunchPrograms = async () => {
+    if (isLaunching) { cancelLaunchRef.current = true; return }
+    if (enabledPrograms.length === 0) return
+    cancelLaunchRef.current = false
+    setIsLaunching(true)
+    setLaunchStatuses(enabledPrograms.reduce<Record<string, LaunchStatus>>((acc, p) => ({ ...acc, [p.id]: 'waiting' }), {}))
+    if (settings.launchBehavior === 'Launch all at once') {
+      setLaunchStatuses((prev) => { const next = { ...prev }; enabledPrograms.forEach((p) => { next[p.id] = 'launching' }); return next })
+      const results = await Promise.all(enabledPrograms.map(async (p) => ({ program: p, result: await window.mnAPI.launchProgram({ path: p.path, type: p.type }) })))
+      await wait(1500)
+      if (cancelLaunchRef.current) { setLaunchStatuses((prev) => { const next = { ...prev }; enabledPrograms.forEach((p) => { if (next[p.id] === 'launching') next[p.id] = 'cancelled' }); return next }); setIsLaunching(false); await resetStatusesAfterDelay(); return }
+      setLaunchStatuses((prev) => { const next = { ...prev }; results.forEach(({ program, result }) => { next[program.id] = result.success ? 'completed' : 'failed' }); return next })
+      setIsLaunching(false); await resetStatusesAfterDelay(); return
+    }
+    for (const p of enabledPrograms) {
+      if (cancelLaunchRef.current) { setLaunchStatuses((prev) => ({ ...prev, [p.id]: 'cancelled' })); break }
+      setLaunchStatuses((prev) => ({ ...prev, [p.id]: 'launching' }))
+      const result = await window.mnAPI.launchProgram({ path: p.path, type: p.type })
+      await wait(1500)
+      if (cancelLaunchRef.current) { setLaunchStatuses((prev) => ({ ...prev, [p.id]: 'cancelled' })); break }
+      setLaunchStatuses((prev) => ({ ...prev, [p.id]: result.success ? 'completed' : 'failed' }))
+      if (!result.success && settings.stopLaunchingOnError) break
+      await wait(getLaunchDelayMs())
+    }
+    setIsLaunching(false); await resetStatusesAfterDelay()
+  }
+
+  // ─── Settings handlers ────────────────────────────────────────────────────
+  const handleToggleStartWithWindows = async () => {
+    const next = !settings.startWithWindows
+    updateSettings({ startWithWindows: next })
+    updateSettings({ startWithWindows: await window.mnAPI.setStartWithWindows(next) })
+  }
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdates(true); setUpdateProgress(0)
+    const has = await window.mnAPI.checkForUpdates()
+    if (!has) setUpdateModalType('latest')
+    window.setTimeout(() => setIsCheckingUpdates(false), 2000)
+  }
+  const handleStartUpdateDownload = async () => {
+    setUpdateModalType('downloading'); setUpdateProgress(1)
+    try { if (!await window.mnAPI.downloadUpdate()) { setUpdateProgress(0); setUpdateModalType('error') } }
+    catch { setUpdateProgress(0); setUpdateModalType('error') }
+  }
+  const refreshDeviceStates = async () => {
+    try {
+      const [audio, monitor] = await Promise.all([window.mnAPI.getAudioDevice(), window.mnAPI.getMonitorOrientation()])
+      if (audio) setSelectedAudioDevice(audio)
+      if (monitor) setSelectedMonitorOrientation(monitor)
+    } catch (e) { console.error(e) }
+  }
+  const handleSelectAudioDevice = async (device: AudioDevice) => {
+    const r = await window.mnAPI.setAudioDevice(device)
+    if (!r.success) { console.error(r.error || r.stderr); return }
+    await refreshDeviceStates()
+  }
+  const handleSelectMonitorOrientation = async (orientation: MonitorOrientation) => {
+    const r = await window.mnAPI.setMonitorOrientation(orientation)
+    if (!r.success) { console.error(r.error || r.stderr); return }
+    await refreshDeviceStates()
+  }
+
+  // ─── useEffects ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const auth = await window.mnAPI.isYoutubeMusicAuthenticated()
+        setIsYtAuthenticated(auth)
+        if (!auth) return
+        const [loaded, cache, covers] = await Promise.all([
+          window.mnAPI.getYoutubeMusicPlaylists(),
+          window.mnAPI.loadYoutubeMusicTrackCache(),
+          window.mnAPI.loadYoutubeMusicPlaylistCovers(),
+        ])
+        if (cache && typeof cache === 'object') setPlaylistTrackMap(cache as Record<string, PlaylistTrack[]>)
+        const loadedCovers = covers && typeof covers === 'object' ? covers as Record<string, string> : {}
+        setPlaylistCoverOverrides(loadedCovers)
+        if (!isHomeMusicPlaylistList(loaded)) return
+        const visible = filterHiddenHomeMusicPlaylists(loaded)
+        const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), loadedCovers)
+        setHomeMusicPlaylists(refreshed)
+        const refreshedWithLiked = applyHomeMusicPlaylistOrder([likedPlaylist, ...refreshed], settings.musicPlaylistOrder)
+        if (!refreshedWithLiked.some((p) => p.id === selectedHomeMusicPlaylistId)) setSelectedHomeMusicPlaylistId(refreshedWithLiked[0]?.id ?? LIKED_PLAYLIST_ID)
+      } catch (e) { console.error(e) }
+    }
+    init()
+  }, [])
+
+  useEffect(() => {
+    if (!isSettingsLoaded) return
+    if (!settings.musicPlaylistOrder || settings.musicPlaylistOrder.length === 0) return
+    setHomeMusicPlaylists((prev) => {
+      const ordered = applyHomeMusicPlaylistOrder(prev, settings.musicPlaylistOrder)
+      const pk = prev.map((p) => p.id).join('|')
+      const nk = ordered.map((p) => p.id).join('|')
+      return pk === nk ? prev : ordered
+    })
+  }, [isSettingsLoaded, settings.musicPlaylistOrder, homeMusicPlaylistOrderKey])
+
+  useEffect(() => {
+    const update = () => {
+      const next = homeMusicPlaylistsWithLiked.filter((p) => {
+        const el = homeMusicPlaylistTitleRefs.current[p.id]
+        return el ? el.scrollWidth > el.clientWidth + 1 : false
+      }).map((p) => p.id)
+      setOverflowingHomeMusicPlaylistIds((prev) => prev.join('|') === next.join('|') ? prev : next)
+    }
+    const onResize = () => window.requestAnimationFrame(update)
+    update()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [homeMusicPlaylistOrderKey, homeMusicPlaylistsWithLiked])
+
+  useEffect(() => {
+    const update = () => {
+      const next = Object.entries(marqueeTitleWrapRefs.current).filter(([id, wrap]) => {
+        const text = marqueeTitleTextRefs.current[id]
+        const span = text?.querySelector('.marquee-title-text')
+        if (!wrap || !span) return false
+        return span.getBoundingClientRect().width > wrap.getBoundingClientRect().width + 1
+      }).map(([id]) => id)
+      setOverflowingMarqueeTitleIds((prev) => prev.join('|') === next.join('|') ? prev : next)
+    }
+    const onResize = () => window.requestAnimationFrame(update)
+    const observer = new ResizeObserver(() => window.requestAnimationFrame(update))
+    Object.values(marqueeTitleWrapRefs.current).forEach((el) => { if (el) observer.observe(el) })
+    const frame = window.requestAnimationFrame(update)
+    const timer = window.setTimeout(update, 260)
+    window.addEventListener('resize', onResize)
+    return () => { window.cancelAnimationFrame(frame); window.clearTimeout(timer); window.removeEventListener('resize', onResize); observer.disconnect() }
+  }, [activePage, currentTrack?.title, currentTrack?.artist, currentTrack?.id, isFullPlaylistModalOpen, playlistSearchQuery, playlistViewMode, selectedHomeMusicPlaylistId, ytPlaylistTracks, likedTrackIds])
+
+  useEffect(() => {
+    if (selectedHomeMusicPlaylistId === LIKED_PLAYLIST_ID) {
+      setSelectedPlaylistTrackId(likedTracks[0]?.id ?? null)
+      return
+    }
+    if (!isYtAuthenticated) return
+    if (!selectedHomeMusicPlaylistId || selectedHomeMusicPlaylistId === 'focus') return
+    const cached = playlistTrackMap[selectedHomeMusicPlaylistId]
+    if (cached && cached.length > 0) {
+      setYtPlaylistTracks(cached)
+      if (selectedHomeMusicPlaylistId !== playingPlaylistId) setSelectedPlaylistTrackId(cached[0].id)
+      return
+    }
+    const load = async () => {
+      try {
+        const tracks = await window.mnAPI.getYoutubeMusicPlaylistTracks(selectedHomeMusicPlaylistId)
+        if (Array.isArray(tracks) && tracks.length > 0) {
+          setYtPlaylistTracks(tracks as PlaylistTrack[])
+          setPlaylistTrackMap((prev) => { const next = { ...prev, [selectedHomeMusicPlaylistId]: tracks as PlaylistTrack[] }; window.mnAPI.saveYoutubeMusicTrackCache(next); return next })
+          if (selectedHomeMusicPlaylistId !== playingPlaylistId) setSelectedPlaylistTrackId(tracks[0].id)
+        }
+      } catch (e) { console.error(e) }
+    }
+    load()
+  }, [selectedHomeMusicPlaylistId, isYtAuthenticated, likedTrackIds])
+
+  useEffect(() => { window.mnAPI.getAppVersion().then(setAppVersion) }, [])
+
+  useEffect(() => {
+    if (activePage !== 'home') return
+    const refresh = () => refreshDeviceStates()
+    refresh()
+    const id = window.setInterval(refresh, 1000)
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { window.clearInterval(id); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh) }
+  }, [activePage])
+
+  useEffect(() => {
+    const update = () => setCurrentDate(new Date())
+    update()
+    const id = window.setInterval(update, 1000)
+    window.addEventListener('focus', update)
+    document.addEventListener('visibilitychange', update)
+    return () => { window.clearInterval(id); window.removeEventListener('focus', update); document.removeEventListener('visibilitychange', update) }
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    setSystemTheme(mq.matches ? 'dark' : 'light')
+    const onChange = (e: MediaQueryListEvent) => setSystemTheme(e.matches ? 'dark' : 'light')
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
+    const load = async () => {
+      try { const s = await window.mnAPI.loadPrograms(); if (isProgramList(s)) setPrograms(s) }
+      catch (e) { console.error(e) }
+      finally { setIsProgramsLoaded(true) }
+    }
+    load()
+  }, [])
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const s = await window.mnAPI.loadSettings()
+        if (isSettings(s)) {
+          const loadedSettings = { ...defaultSettings, ...s }
+          setSettings(loadedSettings)
+          if (typeof loadedSettings.musicVolume === 'number') {
+            setHomeMusicVolume(loadedSettings.musicVolume)
+            homeMusicVolumeRef.current = loadedSettings.musicVolume
+          }
+          if (loadedSettings.playlistViewMode === 'list' || loadedSettings.playlistViewMode === 'grid') {
+            setPlaylistViewMode(loadedSettings.playlistViewMode)
+          }
+          if (loadedSettings.lastTrack) {
+            const t = loadedSettings.lastTrack
+            setCurrentTrack({ id: t.videoId, title: t.title, artist: t.artist, thumbnail: t.thumbnail, duration: '' })
+            setPlayingPlaylistId(t.playlistId)
+            setSelectedHomeMusicPlaylistId(t.playlistId || 'focus')
+          }
+        }
+      } catch (e) { console.error(e) }
+      finally { setIsSettingsLoaded(true) }
+    }
+    load()
+  }, [])
+
+  useEffect(() => {
+    const load = async () => {
+      try { const d = await window.mnAPI.loadDiaries(); if (isDiaryEntries(d)) setDiaryEntries(d) }
+      catch (e) { console.error(e) }
+      finally { setIsDiariesLoaded(true) }
+    }
+    load()
+  }, [])
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const loaded = await window.mnAPI.loadLikedTracks()
+        if (Array.isArray(loaded)) {
+          setLikedTrackIds([...new Set(loaded.filter((id): id is string => typeof id === 'string' && id.trim().length > 0))])
+        }
+      } catch (e) { console.error(e) }
+      finally { setIsLikedTracksLoaded(true) }
+    }
+    load()
+  }, [])
+
+  useEffect(() => { if (!isProgramsLoaded) return; window.mnAPI.savePrograms(programs).catch(console.error) }, [programs, isProgramsLoaded])
+  useEffect(() => { if (!isSettingsLoaded) return; window.mnAPI.saveSettings(settings).catch(console.error) }, [settings, isSettingsLoaded])
+  useEffect(() => { if (!isDiariesLoaded) return; window.mnAPI.saveDiaries(diaryEntries).catch(console.error) }, [diaryEntries, isDiariesLoaded])
+  useEffect(() => { if (!isLikedTracksLoaded) return; window.mnAPI.saveLikedTracks(likedTrackIds).catch(console.error) }, [likedTrackIds, isLikedTracksLoaded])
+
+  useEffect(() => {
+    if (!isAddModalOpen) return
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') closeAddModal() }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [isAddModalOpen])
+
+  useEffect(() => {
+    const rm1 = window.mnAPI.onUpdateAvailable(() => window.setTimeout(() => setUpdateModalType('available'), 850))
+    const rm2 = window.mnAPI.onUpdateProgress((p) => setUpdateProgress(Math.max(1, Math.min(99, Math.round(p.percent)))))
+    const rm3 = window.mnAPI.onUpdateDownloaded(() => { setUpdateProgress(100); window.setTimeout(() => setUpdateModalType('ready'), 500) })
+    return () => { rm1(); rm2(); rm3() }
+  }, [])
+
+  useEffect(() => {
+    if (activePage !== 'writeDiary') return
+    setDiaryText(todayDiaryEntry?.content ?? '')
+  }, [activePage, todayDateKey, todayDiaryEntry?.content])
+
+  useEffect(() => {
+    if (!isDiaryPickerOpen) return
+    window.requestAnimationFrame(() => {
+      diaryMonthWheelRef.current?.scrollTo({ top: diaryPickerMonthIndex * 60 })
+      diaryYearWheelRef.current?.scrollTo({ top: (diaryPickerYear - diaryPickerMinYear) * 60 })
+    })
+  }, [isDiaryPickerOpen])
+
+  useEffect(() => {
+    const hasModal = isDiaryPickerOpen || Boolean(selectedDiaryDate) || isDeleteDiaryConfirmOpen || isFullPlaylistModalOpen || isYoutubeLoginModalOpen || Boolean(updateModalType) || isAddModalOpen
+    if (!hasModal) return
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (isDeleteDiaryConfirmOpen) { setIsDeleteDiaryConfirmOpen(false); return }
+      if (selectedDiaryDate) { setSelectedDiaryDate(null); return }
+      if (isDiaryPickerOpen) { setIsDiaryPickerOpen(false); return }
+      if (isFullPlaylistModalOpen) { setIsFullPlaylistModalOpen(false); return }
+      if (isYoutubeLoginModalOpen) { setIsYoutubeLoginModalOpen(false); return }
+      if (updateModalType) { setUpdateModalType(null); return }
+      if (isAddModalOpen) closeAddModal()
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  }, [isDiaryPickerOpen, selectedDiaryDate, isDeleteDiaryConfirmOpen, isFullPlaylistModalOpen, isYoutubeLoginModalOpen, updateModalType, isAddModalOpen])
+
+  useEffect(() => {
+    const isMusicShortcutPage = activePage === 'home' || activePage === 'playlist'
+    if (!isMusicShortcutPage) return
+    if (!currentVideoId) return
+
+    const hasModal = isDiaryPickerOpen || Boolean(selectedDiaryDate) || isDeleteDiaryConfirmOpen || isFullPlaylistModalOpen || isYoutubeLoginModalOpen || Boolean(updateModalType) || isAddModalOpen
+    if (hasModal) return
+
+    const preventFocusedButtonSpaceClick = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' && event.key !== ' ') return
+      if (shouldIgnoreMusicShortcut(event.target)) return
+
+      event.preventDefault()
     }
 
-    return (
-      <div
-        ref={setNodeRef}
-        className={`program-list-row ${isDragging ? 'dragging' : ''}`}
-        style={style}
-      >
-        <button className="drag-handle" {...attributes} {...listeners}>
-          ⠿
-        </button>
+    const onSpaceTogglePlayback = (event: KeyboardEvent) => {
+      if (event.repeat) return
+      if (event.code !== 'Space' && event.key !== ' ') return
+      if (shouldIgnoreMusicShortcut(event.target)) return
 
-        <ProgramIcon program={program} />
+      event.preventDefault()
+      togglePlayPause()
+    }
 
-        <div className="program-info">
-          <h3>{program.name}</h3>
-          <p>{program.path}</p>
-        </div>
+    window.addEventListener('keydown', onSpaceTogglePlayback)
+    window.addEventListener('keyup', preventFocusedButtonSpaceClick)
 
-        <button
-          className={`toggle ${program.enabled ? 'on' : ''}`}
-          onClick={() => onToggle(program.id)}
-        >
-          <span></span>
-        </button>
+    return () => {
+      window.removeEventListener('keydown', onSpaceTogglePlayback)
+      window.removeEventListener('keyup', preventFocusedButtonSpaceClick)
+    }
+  }, [
+    activePage,
+    currentVideoId,
+    isDiaryPickerOpen,
+    selectedDiaryDate,
+    isDeleteDiaryConfirmOpen,
+    isFullPlaylistModalOpen,
+    isYoutubeLoginModalOpen,
+    updateModalType,
+    isAddModalOpen,
+    isHomeMusicPlaying,
+  ])
 
-        <div className="row-menu-wrap">
-          <button className="more-button" onClick={() => onMenuToggle(program.id)}>
-            •••
-          </button>
+  useEffect(() => {
+    homeMusicVolumeRef.current = homeMusicVolume
+    if (!currentVideoId) return
+    applyYtVolumeWithRetry()
+  }, [homeMusicVolume, currentVideoId])
 
-          {isMenuOpen && (
-            <div className="row-menu">
-              <button onClick={() => onDelete(program.id)}>Delete</button>
-            </div>
-          )}
+  useEffect(() => { if (!isSettingsLoaded) return; updateSettings({ musicVolume: homeMusicVolume }) }, [homeMusicVolume, isSettingsLoaded])
+
+  useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      try {
+        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+        if (data?.event === 'infoDelivery' && data?.info) {
+          if (isPreparingNextVideoRef.current) return
+          const { currentTime, duration: recv } = data.info
+          const duringChange = Date.now() < pendingVideoChangeUntilRef.current
+          if (typeof currentTime === 'number' && !isSeekingRef.current) {
+            if (isWaitingForFreshVideoTimeRef.current) {
+              if (duringChange && currentTime > 2) return
+              isWaitingForFreshVideoTimeRef.current = false
+              pendingVideoChangeUntilRef.current = 0
+              setYtCurrentTime(0); setHomeMusicProgress(0)
+            }
+            if (duringChange && currentTime > 2) return
+            const fallback = typeof recv === 'number' && recv > 0 ? Math.round(recv) : 0
+            const dur = ytDurationRef.current > 0 ? ytDurationRef.current : fallback
+            const next = dur > 0 ? Math.min(Math.floor(currentTime), dur) : Math.max(0, Math.floor(currentTime))
+            setYtCurrentTime(next)
+            if (dur > 0) { setYtDuration(dur); ytDurationRef.current = dur; setHomeMusicProgress(Math.max(0, Math.min(100, (next / dur) * 100))) }
+          }
+        }
+        if (data?.event === 'onReady') {
+          const readyId = currentVideoIdRef.current
+          ytIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*')
+          applyYtVolumeWithRetry()
+          if (isWaitingForFreshVideoTimeRef.current) {
+            setYtCurrentTime(0); setHomeMusicProgress(0)
+            sendYtCommand('seekTo', [0, true])
+            window.setTimeout(() => {
+              if (currentVideoIdRef.current !== readyId) return
+              setYtCurrentTime(0); setHomeMusicProgress(0)
+              sendYtCommand('playVideo')
+              applyYtVolume()
+            }, 160)
+            window.setTimeout(() => {
+              if (currentVideoIdRef.current !== readyId) return
+              isPreparingNextVideoRef.current = false
+              isWaitingForFreshVideoTimeRef.current = false
+              pendingVideoChangeUntilRef.current = 0
+              applyYtVolume()
+            }, 360)
+          }
+        }
+        if (data?.event === 'onStateChange' && data?.info === 1) {
+          isPreparingNextVideoRef.current = false
+          isWaitingForFreshVideoTimeRef.current = false
+          pendingVideoChangeUntilRef.current = 0
+          applyYtVolumeWithRetry()
+        }
+        if (data?.event === 'onStateChange' && data?.info === 0) {
+          if (isPreparingNextVideoRef.current || isWaitingForFreshVideoTimeRef.current || Date.now() < pendingVideoChangeUntilRef.current) return
+          playNextTrackRef.current()
+        }
+      } catch { /* 무시 */ }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  useEffect(() => {
+    if (!currentVideoId || !isHomeMusicPlaying) return
+    ytIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*')
+    const id = window.setInterval(() => {
+      if (isSeekingRef.current || isPreparingNextVideoRef.current) return
+      if (isWaitingForFreshVideoTimeRef.current) { if (Date.now() < pendingVideoChangeUntilRef.current) return; isWaitingForFreshVideoTimeRef.current = false; pendingVideoChangeUntilRef.current = 0 }
+      if (Date.now() < pendingVideoChangeUntilRef.current) return
+      const dur = ytDurationRef.current
+      setYtCurrentTime((prev) => {
+        if (dur > 0 && prev < dur) { const next = Math.min(prev + 1, dur); setHomeMusicProgress(Math.max(0, Math.min(100, (next / dur) * 100))); if (next >= dur) setTimeout(() => playNextTrackRef.current(), 800); return next }
+        return prev
+      })
+    }, 1000)
+    return () => window.clearInterval(id)
+  }, [currentVideoId, isHomeMusicPlaying])
+
+  // ─── Render ───────────────────────────────────────────────────────────────
+  return (
+    <div
+      className="app"
+      data-theme={activeTheme}
+      data-accent={settings.accentColor}
+      data-wallpaper={isCustomWallpaperMode && settings.customWallpaper ? 'true' : undefined}
+      style={appStyle}
+    >
+      {/* 타이틀바 */}
+      <div className="custom-titlebar">
+        <div className="custom-titlebar-controls">
+          <button type="button" className="titlebar-minimize" onClick={() => window.mnAPI.minimizeWindow()}></button>
+          <button type="button" onClick={() => window.mnAPI.closeWindow()}>×</button>
         </div>
       </div>
-    )
-  }
 
-  function App() {
-    const [activePage, setActivePage] = useState<Page>('home')
-    const [selectedPreset, setSelectedPreset] = useState(1)
-    const [selectedAudioDevice, setSelectedAudioDevice] = useState<AudioDevice>('speaker')
-    const [selectedMonitorOrientation, setSelectedMonitorOrientation] =
-      useState<MonitorOrientation>('horizontal')
-    const [programs, setPrograms] = useState<ProgramItem[]>(initialPrograms)
-    const [settings, setSettings] = useState<AppSettings>(defaultSettings)
-    const [launchStatuses, setLaunchStatuses] = useState<Record<string, LaunchStatus>>({})
-    const [isLaunching, setIsLaunching] = useState(false)
-    const cancelLaunchRef = useRef(false)
-    const [systemTheme, setSystemTheme] = useState<ResolvedTheme>('light')
-    const [currentDate, setCurrentDate] = useState(new Date())
-    const [appVersion, setAppVersion] = useState('')
-
-    const [isProgramsLoaded, setIsProgramsLoaded] = useState(false)
-    const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
-    const [isDiariesLoaded, setIsDiariesLoaded] = useState(false)
-
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-    const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-
-    const [newProgramName, setNewProgramName] = useState('')
-    const [newProgramType, setNewProgramType] = useState<ProgramType>('Program')
-    const [newProgramPath, setNewProgramPath] = useState('')
-    const [newProgramEnabled, setNewProgramEnabled] = useState(true)
-    const [newProgramIconImage, setNewProgramIconImage] = useState<string | null>(null)
-
-    const [isCheckingUpdates, setIsCheckingUpdates] = useState(false)
-    const [updateModalType, setUpdateModalType] = useState<'available' | 'downloading' | 'ready' | 'latest' | 'error' | null>(null)
-    const [updateProgress, setUpdateProgress] = useState(0)
-
-    const [diaryEntries, setDiaryEntries] = useState<Record<string, DiaryEntry>>(initialDiaryEntries)
-    const [diaryDisplayDate, setDiaryDisplayDate] = useState(new Date(2026, 5, 1))
-    const [isDiaryPickerOpen, setIsDiaryPickerOpen] = useState(false)
-    const [selectedDiaryDate, setSelectedDiaryDate] = useState<Date | null>(null)
-    const [diaryText, setDiaryText] = useState('')
-    const [isDeleteDiaryConfirmOpen, setIsDeleteDiaryConfirmOpen] = useState(false)
-    const [isDiarySavedVisible, setIsDiarySavedVisible] = useState(false)
-    const [isDiarySaveButtonPressed, setIsDiarySaveButtonPressed] = useState(false)
-    const [diaryPickerMonthIndex, setDiaryPickerMonthIndex] = useState(diaryDisplayDate.getMonth())
-    const [diaryPickerYear, setDiaryPickerYear] = useState(diaryDisplayDate.getFullYear())
-    const diaryMonthWheelRef = useRef<HTMLDivElement | null>(null)
-    const diaryYearWheelRef = useRef<HTMLDivElement | null>(null)
-
-    const sensors = useSensors(
-      useSensor(PointerSensor, {
-        activationConstraint: {
-          distance: 6,
-        },
-      }),
-    )
-
-    const presetPrograms = programs.filter((program) =>
-      getProgramPresets(program).includes(selectedPreset),
-    )
-    const enabledPrograms = presetPrograms.filter((program) => program.enabled)
-    const enabledProgramCount = enabledPrograms.length
-
-    const currentTimeParts = currentDate
-      .toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true,
-      })
-      .split(' ')
-
-    const [hours, minutes, seconds] = currentTimeParts[0].split(':')
-
-    const currentTimeText =
-      `${hours} : ${minutes} : ${seconds}`
-    const currentMeridiemText = currentTimeParts[1]
-
-    const currentDateText = currentDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    })
-
-    const currentWeekdayText = currentDate.toLocaleDateString('en-US', {
-      weekday: 'short',
-    })
-
-    const todayDateKey = formatDateKey(currentDate)
-    const todayDiaryEntry = diaryEntries[todayDateKey]
-    const selectedDiaryEntry = selectedDiaryDate
-      ? diaryEntries[formatDateKey(selectedDiaryDate)]
-      : null
-    const diaryCalendarDays = getDiaryCalendarDays(diaryDisplayDate)
-    const diaryPickerMonthOptions = monthNames.map((monthName, monthIndex) => ({
-      monthName,
-      monthIndex,
-    }))
-    const diaryPickerMinYear = currentDate.getFullYear() - 50
-    const diaryPickerMaxYear = currentDate.getFullYear() + 50
-    const diaryPickerYearOptions = Array.from(
-      { length: diaryPickerMaxYear - diaryPickerMinYear + 1 },
-      (_, index) => diaryPickerMinYear + index,
-    )
-
-    const handleOpenDiaryDate = (date: Date) => {
-      const dateKey = formatDateKey(date)
-
-      if (!diaryEntries[dateKey]) {
-        return
-      }
-
-      setSelectedDiaryDate(date)
-    }
-
-    const handleDeleteDiary = () => {
-      setIsDeleteDiaryConfirmOpen(true)
-    }
-
-    const handleConfirmDeleteDiary = () => {
-      if (!selectedDiaryDate) {
-        return
-      }
-
-      const dateKey = formatDateKey(selectedDiaryDate)
-
-      setDiaryEntries((prev) => {
-        const nextEntries = { ...prev }
-
-        delete nextEntries[dateKey]
-
-        return nextEntries
-      })
-
-      setIsDeleteDiaryConfirmOpen(false)
-      setSelectedDiaryDate(null)
-    }
-
-    const handleMoveDiaryMonth = (monthOffset: number) => {
-      setDiaryDisplayDate((prev) => createMonthDate(prev, monthOffset))
-    }
-
-    const handleDiaryMonthScroll = () => {
-      const scrollElement = diaryMonthWheelRef.current
-
-      if (!scrollElement) {
-        return
-      }
-
-      const nextMonthIndex = Math.round(scrollElement.scrollTop / 60)
-
-      setDiaryPickerMonthIndex(Math.max(0, Math.min(11, nextMonthIndex)))
-    }
-
-    const handleDiaryYearScroll = () => {
-      const scrollElement = diaryYearWheelRef.current
-
-      if (!scrollElement) {
-        return
-      }
-
-      const nextYearIndex = Math.round(scrollElement.scrollTop / 60)
-      const nextYear = diaryPickerMinYear + nextYearIndex
-
-      setDiaryPickerYear(Math.max(diaryPickerMinYear, Math.min(diaryPickerMaxYear, nextYear)))
-    }
-
-    const handleSaveDiary = () => {
-      const content = diaryText.trim()
-
-      if (!content) {
-        return
-      }
-
-      const now = new Date().toISOString()
-
-      setDiaryEntries((prev) => ({
-        ...prev,
-        [todayDateKey]: {
-          date: todayDateKey,
-          content,
-          createdAt: prev[todayDateKey]?.createdAt ?? now,
-          updatedAt: now,
-        },
-      }))
-
-      setIsDiarySaveButtonPressed(true)
-      setIsDiarySavedVisible(true)
-
-      window.setTimeout(() => {
-        setIsDiarySaveButtonPressed(false)
-      }, 280)
-
-      window.setTimeout(() => {
-        setIsDiarySavedVisible(false)
-      }, 1400)
-    }
-
-    const activeTheme: ResolvedTheme =
-      settings.theme === 'System'
-        ? systemTheme
-        : settings.theme.toLowerCase() as ResolvedTheme
-
-    const appStyle = {
-      '--accent-color': accentColorMap[settings.accentColor],
-      '--accent-ring': accentRingMap[settings.accentColor],
-    } as CSSProperties
-
-    const getThemeIcon = (
-      iconName: keyof typeof iconMap,
-      isActive = true,
-    ) => {
-      if (activeTheme === 'dark') {
-        return iconMap[iconName].white
-      }
-
-      return isActive
-        ? iconMap[iconName][settings.accentColor]
-        : iconMap[iconName].gray
-    }
-
-    const updateSettings = (partialSettings: Partial<AppSettings>) => {
-      setSettings((prev) => ({
-        ...prev,
-        ...partialSettings,
-      }))
-    }
-
-    const resetAddProgramForm = () => {
-      setNewProgramName('')
-      setNewProgramType('Program')
-      setNewProgramPath('')
-      setNewProgramEnabled(true)
-      setNewProgramIconImage(null)
-    }
-
-    const closeAddModal = () => {
-      setIsAddModalOpen(false)
-      resetAddProgramForm()
-    }
-
-    const handleBrowse = async () => {
-      try {
-        if (newProgramType === 'URL') {
-          return
-        }
-
-        const selectedPath =
-          newProgramType === 'Folder'
-            ? await window.mnAPI.selectFolder()
-            : await window.mnAPI.selectProgram()
-
-        if (!selectedPath) {
-          return
-        }
-
-        setNewProgramPath(selectedPath)
-
-        if (!newProgramName.trim()) {
-          setNewProgramName(getNameFromPath(selectedPath))
-        }
-
-        if (newProgramType === 'Program') {
-          const iconImage = await window.mnAPI.getFileIcon(selectedPath)
-          setNewProgramIconImage(iconImage)
-        } else {
-          setNewProgramIconImage(null)
-        }
-      } catch (error) {
-        console.error('Browse failed:', error)
-      }
-    }
-
-    const handleAddProgram = () => {
-      if (!newProgramName.trim() || !newProgramPath.trim()) {
-        return
-      }
-
-      const iconData = getProgramIcon(newProgramType)
-
-      const newProgram: ProgramItem = {
-        id: createId(),
-        name: newProgramName.trim(),
-        path: newProgramPath.trim(),
-        type: newProgramType,
-        iconClass: iconData.iconClass,
-        icon: iconData.icon,
-        iconImage: newProgramIconImage,
-        enabled: newProgramEnabled,
-        presets: [selectedPreset],
-      }
-
-      setPrograms((prev) => [...prev, newProgram])
-      closeAddModal()
-    }
-
-    const handleToggleProgram = (id: string) => {
-      setPrograms((prev) =>
-        prev.map((program) =>
-          program.id === id
-            ? { ...program, enabled: !program.enabled }
-            : program,
-        ),
-      )
-    }
-
-    const handleDeleteProgram = (id: string) => {
-      setPrograms((prev) => prev.filter((program) => program.id !== id))
-      setOpenMenuId(null)
-    }
-
-    const handleDragEnd = (event: DragEndEvent) => {
-      const { active, over } = event
-
-      if (!over || active.id === over.id) {
-        return
-      }
-
-      setPrograms((prev) => {
-        const oldIndex = prev.findIndex((program) => program.id === active.id)
-        const newIndex = prev.findIndex((program) => program.id === over.id)
-
-        return arrayMove(prev, oldIndex, newIndex)
-      })
-    }
-
-    const getLaunchDelayMs = () => {
-      if (settings.launchDelay === '1 second') return 1000
-      if (settings.launchDelay === '2 seconds') return 2000
-      if (settings.launchDelay === '3 seconds') return 3000
-      if (settings.launchDelay === '5 seconds') return 5000
-
-      return 1000
-    }
-
-    const wait = (ms: number) =>
-      new Promise((resolve) => {
-        window.setTimeout(resolve, ms)
-      })
-
-    const resetStatusesAfterDelay = async () => {
-      await wait(2000)
-
-      setLaunchStatuses(
-        enabledPrograms.reduce<Record<string, LaunchStatus>>(
-          (result, program) => ({
-            ...result,
-            [program.id]: 'waiting',
-          }),
-          {},
-        ),
-      )
-    }
-
-    const handleLaunchSingleProgram = async (program: ProgramItem) => {
-      const currentStatus = launchStatuses[program.id] ?? 'waiting'
-
-      if (isLaunching || currentStatus !== 'waiting') {
-        return
-      }
-
-      setLaunchStatuses((prev) => ({
-        ...prev,
-        [program.id]: 'launching',
-      }))
-
-      const result = await window.mnAPI.launchProgram({
-        path: program.path,
-        type: program.type,
-      })
-
-      await wait(1500)
-
-      setLaunchStatuses((prev) => ({
-        ...prev,
-        [program.id]: result.success ? 'completed' : 'failed',
-      }))
-
-      await wait(2000)
-
-      setLaunchStatuses((prev) => ({
-        ...prev,
-        [program.id]: 'waiting',
-      }))
-    }
-
-    const handleLaunchPrograms = async () => {
-      if (isLaunching) {
-        cancelLaunchRef.current = true
-        return
-      }
-
-      if (enabledPrograms.length === 0) {
-        return
-      }
-
-      cancelLaunchRef.current = false
-      setIsLaunching(true)
-
-      const initialStatuses = enabledPrograms.reduce<Record<string, LaunchStatus>>(
-        (result, program) => ({
-          ...result,
-          [program.id]: 'waiting',
-        }),
-        {},
-      )
-
-      setLaunchStatuses(initialStatuses)
-
-      if (settings.launchBehavior === 'Launch all at once') {
-        setLaunchStatuses((prev) => {
-          const nextStatuses = { ...prev }
-
-          enabledPrograms.forEach((program) => {
-            nextStatuses[program.id] = 'launching'
-          })
-
-          return nextStatuses
-        })
-
-        const launchResults = await Promise.all(
-          enabledPrograms.map(async (program) => {
-            const result = await window.mnAPI.launchProgram({
-              path: program.path,
-              type: program.type,
-            })
-
-            return {
-              program,
-              result,
-            }
-          }),
-        )
-
-        await wait(1500)
-
-        if (cancelLaunchRef.current) {
-          setLaunchStatuses((prev) => {
-            const nextStatuses = { ...prev }
-
-            enabledPrograms.forEach((program) => {
-              if (nextStatuses[program.id] === 'launching') {
-                nextStatuses[program.id] = 'cancelled'
-              }
-            })
-
-            return nextStatuses
-          })
-
-          setIsLaunching(false)
-          await resetStatusesAfterDelay()
-          return
-        }
-
-        setLaunchStatuses((prev) => {
-          const nextStatuses = { ...prev }
-
-          launchResults.forEach(({ program, result }) => {
-            nextStatuses[program.id] = result.success ? 'completed' : 'failed'
-          })
-
-          return nextStatuses
-        })
-
-        setIsLaunching(false)
-        await resetStatusesAfterDelay()
-        return
-      }
-
-      const delayMs = getLaunchDelayMs()
-
-      for (const program of enabledPrograms) {
-        if (cancelLaunchRef.current) {
-          setLaunchStatuses((prev) => ({
-            ...prev,
-            [program.id]: 'cancelled',
-          }))
-
-          break
-        }
-
-        setLaunchStatuses((prev) => ({
-          ...prev,
-          [program.id]: 'launching',
-        }))
-
-        const result = await window.mnAPI.launchProgram({
-          path: program.path,
-          type: program.type,
-        })
-
-        await wait(1500)
-
-        if (cancelLaunchRef.current) {
-          setLaunchStatuses((prev) => ({
-            ...prev,
-            [program.id]: 'cancelled',
-          }))
-
-          break
-        }
-
-        setLaunchStatuses((prev) => ({
-          ...prev,
-          [program.id]: result.success ? 'completed' : 'failed',
-        }))
-
-        if (!result.success && settings.stopLaunchingOnError) {
-          break
-        }
-
-        await wait(delayMs)
-      }
-
-      setIsLaunching(false)
-      await resetStatusesAfterDelay()
-    }
-
-    const handleToggleStartWithWindows = async () => {
-      const nextValue = !settings.startWithWindows
-
-      updateSettings({
-        startWithWindows: nextValue,
-      })
-
-      const appliedValue = await window.mnAPI.setStartWithWindows(nextValue)
-
-      updateSettings({
-        startWithWindows: appliedValue,
-      })
-    }
-
-    const handleCheckForUpdates = async () => {
-      setIsCheckingUpdates(true)
-      setUpdateProgress(0)
-
-      const hasUpdate = await window.mnAPI.checkForUpdates()
-
-      if (!hasUpdate) {
-        setUpdateModalType('latest')
-      }
-
-      window.setTimeout(() => {
-        setIsCheckingUpdates(false)
-      }, 2000)
-    }
-
-    const handleStartUpdateDownload = async () => {
-      setUpdateModalType('downloading')
-      setUpdateProgress(1)
-
-      try {
-        const result = await window.mnAPI.downloadUpdate()
-
-        if (!result) {
-          setUpdateProgress(0)
-          setUpdateModalType('error')
-        }
-      } catch (error) {
-        console.error('Update download failed:', error)
-        setUpdateProgress(0)
-        setUpdateModalType('error')
-      }
-    }
-
-    const refreshDeviceStates = async () => {
-      try {
-        const [audioDevice, monitorOrientation] = await Promise.all([
-          window.mnAPI.getAudioDevice(),
-          window.mnAPI.getMonitorOrientation(),
-        ])
-
-        if (audioDevice) {
-          setSelectedAudioDevice(audioDevice)
-        }
-
-        if (monitorOrientation) {
-          setSelectedMonitorOrientation(monitorOrientation)
-        }
-      } catch (error) {
-        console.error('Failed to refresh device states:', error)
-      }
-    }
-
-    const handleSelectAudioDevice = async (device: AudioDevice) => {
-      const result = await window.mnAPI.setAudioDevice(device)
-
-      if (!result.success) {
-        console.error('Failed to set audio device:', result.error || result.stderr)
-        return
-      }
-
-      await refreshDeviceStates()
-    }
-
-    const handleSelectMonitorOrientation = async (
-      orientation: MonitorOrientation,
-    ) => {
-      const result = await window.mnAPI.setMonitorOrientation(orientation)
-
-      if (!result.success) {
-        console.error('Failed to set monitor orientation:', result.error || result.stderr)
-        return
-      }
-
-      await refreshDeviceStates()
-    }
-
-    useEffect(() => {
-      window.mnAPI.getAppVersion().then((version) => {
-        setAppVersion(version)
-      })
-    }, [])
-
-    useEffect(() => {
-      if (activePage !== 'home') {
-        return
-      }
-
-      const refresh = () => {
-        refreshDeviceStates()
-      }
-
-      refresh()
-
-      const timerId = window.setInterval(refresh, 1000)
-
-      window.addEventListener('focus', refresh)
-      document.addEventListener('visibilitychange', refresh)
-
-      return () => {
-        window.clearInterval(timerId)
-        window.removeEventListener('focus', refresh)
-        document.removeEventListener('visibilitychange', refresh)
-      }
-    }, [activePage])
-
-    useEffect(() => {
-      const updateCurrentDate = () => {
-        setCurrentDate(new Date())
-      }
-
-      updateCurrentDate()
-
-      const timerId = window.setInterval(updateCurrentDate, 1000)
-
-      window.addEventListener('focus', updateCurrentDate)
-      document.addEventListener('visibilitychange', updateCurrentDate)
-
-      return () => {
-        window.clearInterval(timerId)
-        window.removeEventListener('focus', updateCurrentDate)
-        document.removeEventListener('visibilitychange', updateCurrentDate)
-      }
-    }, [])
-
-    useEffect(() => {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-
-      setSystemTheme(mediaQuery.matches ? 'dark' : 'light')
-
-      const handleSystemThemeChange = (event: MediaQueryListEvent) => {
-        setSystemTheme(event.matches ? 'dark' : 'light')
-      }
-
-      mediaQuery.addEventListener('change', handleSystemThemeChange)
-
-      return () => {
-        mediaQuery.removeEventListener('change', handleSystemThemeChange)
-      }
-    }, [])
-
-    useEffect(() => {
-      const loadPrograms = async () => {
-        try {
-          const savedPrograms = await window.mnAPI.loadPrograms()
-
-          if (isProgramList(savedPrograms)) {
-            setPrograms(savedPrograms)
-          }
-        } catch (error) {
-          console.error('Failed to load programs:', error)
-        } finally {
-          setIsProgramsLoaded(true)
-        }
-      }
-
-      loadPrograms()
-    }, [])
-
-    useEffect(() => {
-      const loadSettings = async () => {
-        try {
-          const savedSettings = await window.mnAPI.loadSettings()
-
-          if (isSettings(savedSettings)) {
-            setSettings(savedSettings)
-          }
-        } catch (error) {
-          console.error('Failed to load settings:', error)
-        } finally {
-          setIsSettingsLoaded(true)
-        }
-      }
-
-      loadSettings()
-    }, [])
-
-    useEffect(() => {
-      const loadDiaries = async () => {
-        try {
-          const savedDiaries = await window.mnAPI.loadDiaries()
-
-          if (isDiaryEntries(savedDiaries)) {
-            setDiaryEntries(savedDiaries)
-          }
-        } catch (error) {
-          console.error('Failed to load diaries:', error)
-        } finally {
-          setIsDiariesLoaded(true)
-        }
-      }
-
-      loadDiaries()
-    }, [])
-
-    useEffect(() => {
-      if (!isProgramsLoaded) return
-
-      window.mnAPI.savePrograms(programs).catch((error) => {
-        console.error('Failed to save programs:', error)
-      })
-    }, [programs, isProgramsLoaded])
-
-    useEffect(() => {
-      if (!isSettingsLoaded) return
-
-      window.mnAPI.saveSettings(settings).catch((error) => {
-        console.error('Failed to save settings:', error)
-      })
-    }, [settings, isSettingsLoaded])
-
-    useEffect(() => {
-      if (!isDiariesLoaded) return
-
-      window.mnAPI.saveDiaries(diaryEntries).catch((error) => {
-        console.error('Failed to save diaries:', error)
-      })
-    }, [diaryEntries, isDiariesLoaded])
-
-    useEffect(() => {
-      if (!isAddModalOpen) return
-
-      const handleEsc = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-          closeAddModal()
-        }
-      }
-
-      window.addEventListener('keydown', handleEsc)
-
-      return () => {
-        window.removeEventListener('keydown', handleEsc)
-      }
-    }, [isAddModalOpen])
-
-    useEffect(() => {
-      const removeUpdateAvailableListener = window.mnAPI.onUpdateAvailable(() => {
-        window.setTimeout(() => {
-          setUpdateModalType('available')
-        }, 850)
-      })
-
-      const removeUpdateProgressListener = window.mnAPI.onUpdateProgress((progress) => {
-        const percent = Math.max(1, Math.min(99, Math.round(progress.percent)))
-
-        setUpdateProgress(percent)
-      })
-
-      const removeUpdateDownloadedListener = window.mnAPI.onUpdateDownloaded(() => {
-        setUpdateProgress(100)
-
-        window.setTimeout(() => {
-          setUpdateModalType('ready')
-        }, 500)
-      })
-
-      return () => {
-        removeUpdateAvailableListener()
-        removeUpdateProgressListener()
-        removeUpdateDownloadedListener()
-      }
-    }, [])
-
-    useEffect(() => {
-      if (activePage !== 'writeDiary') {
-        return
-      }
-
-      setDiaryText(todayDiaryEntry?.content ?? '')
-    }, [activePage, todayDateKey, todayDiaryEntry?.content])
-
-    useEffect(() => {
-      if (!isDiaryPickerOpen) {
-        return
-      }
-
-      window.requestAnimationFrame(() => {
-        diaryMonthWheelRef.current?.scrollTo({
-          top: diaryPickerMonthIndex * 60,
-        })
-
-        diaryYearWheelRef.current?.scrollTo({
-          top: (diaryPickerYear - diaryPickerMinYear) * 60,
-        })
-      })
-    }, [isDiaryPickerOpen])
-
-    useEffect(() => {
-      const hasOpenModal =
-        isDiaryPickerOpen ||
-        Boolean(selectedDiaryDate) ||
-        isDeleteDiaryConfirmOpen ||
-        Boolean(updateModalType) ||
-        isAddModalOpen
-
-      if (!hasOpenModal) {
-        return
-      }
-
-      const handleEsc = (event: KeyboardEvent) => {
-        if (event.key !== 'Escape') {
-          return
-        }
-
-        if (isDeleteDiaryConfirmOpen) {
-          setIsDeleteDiaryConfirmOpen(false)
-          return
-        }
-
-        if (selectedDiaryDate) {
-          setSelectedDiaryDate(null)
-          return
-        }
-
-        if (isDiaryPickerOpen) {
-          setIsDiaryPickerOpen(false)
-          return
-        }
-
-        if (updateModalType) {
-          setUpdateModalType(null)
-          return
-        }
-
-        if (isAddModalOpen) {
-          closeAddModal()
-        }
-      }
-
-      window.addEventListener('keydown', handleEsc)
-
-      return () => {
-        window.removeEventListener('keydown', handleEsc)
-      }
-    }, [
-      isDiaryPickerOpen,
-      selectedDiaryDate,
-      isDeleteDiaryConfirmOpen,
-      updateModalType,
-      isAddModalOpen,
-    ])
-    
-    return (
-      <div
-        className="app"
-        data-theme={activeTheme}
-        data-accent={settings.accentColor}
-        style={appStyle}
-      >
-        <div className="custom-titlebar">
-          <div className="custom-titlebar-controls">
-            <button
-              type="button"
-              className="titlebar-minimize"
-              onClick={() => window.mnAPI.minimizeWindow()}
-            ></button>
-
-            <button
-              type="button"
-              onClick={() => window.mnAPI.closeWindow()}
-            >
-              ×
+      {/* 사이드바 */}
+      <aside className="sidebar">
+        <button type="button" className={`brand ${activePage === 'home' ? 'active' : ''}`} onClick={() => setActivePage('home')}>
+          <img src={logoMap[settings.accentColor]} alt="MN Logo" className="brand-logo" />
+        </button>
+        <nav className="menu">
+          {([
+            { page: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
+            { page: 'programs',  icon: 'programs',  label: 'Programs'  },
+          ] as const).map(({ page, icon, label }) => (
+            <button key={page} className={`menu-item ${activePage === page ? 'active' : ''}`} onClick={() => setActivePage(page)}>
+              <img src={getThemeIcon(icon, activePage === page)} alt="" className="menu-icon" />
+              {label}
             </button>
-          </div>
-        </div>
-
-        <aside className="sidebar">
+          ))}
+          <button className={`menu-item ${activePage === 'diary' || activePage === 'writeDiary' ? 'active' : ''}`} onClick={() => setActivePage('diary')}>
+            <img src={getThemeIcon('date', activePage === 'diary' || activePage === 'writeDiary')} alt="" className="menu-icon" />
+            Diary
+          </button>
+          <button className={`menu-item ${activePage === 'playlist' ? 'active' : ''}`} onClick={() => setActivePage('playlist')}>
+            <img
+              src={
+                activeTheme === 'dark'
+                  ? musicControlIconMap.playlist.white
+                  : getMusicControlIcon('playlist', activePage === 'playlist')
+              }
+              alt=""
+              className="menu-icon"
+            />
+            Playlist
+          </button>
+          <button className={`menu-item ${activePage === 'settings' ? 'active' : ''}`} onClick={() => setActivePage('settings')}>
+            <img src={getThemeIcon('settings', activePage === 'settings')} alt="" className="menu-icon" />
+            Settings
+          </button>
+        </nav>
+        <div className="sidebar-accent-picker" aria-label="Quick appearance controls">
           <button
             type="button"
-            className={`brand ${activePage === 'home' ? 'active' : ''}`}
-            onClick={() => setActivePage('home')}
+            className="sidebar-theme-toggle"
+            aria-label={activeTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={activeTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+            onMouseEnter={() => setIsSidebarThemeToggleHovered(true)}
+            onMouseLeave={() => setIsSidebarThemeToggleHovered(false)}
+            onClick={() => updateSettings({ theme: activeTheme === 'dark' ? 'Light' : 'Dark' })}
           >
             <img
-              src={logoMap[settings.accentColor]}
-              alt="MN Logo"
-              className="brand-logo"
+              src={themeIconMap[activeTheme][isSidebarThemeToggleHovered ? settings.accentColor : 'gray']}
+              alt=""
+              className="sidebar-theme-icon"
             />
           </button>
-
-          <nav className="menu">
+          {(['purple', 'blue', 'green', 'orange', 'red', 'gray'] as const).map((color) => (
             <button
-              className={`menu-item ${activePage === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActivePage('dashboard')}
-            >
-              <img
-                src={getThemeIcon('dashboard', activePage === 'dashboard')}
-                alt=""
-                className="menu-icon"
-              />
-              Dashboard
-            </button>
-
-            <button
-              className={`menu-item ${activePage === 'programs' ? 'active' : ''}`}
-              onClick={() => setActivePage('programs')}
-            >
-              <img
-                src={getThemeIcon('programs', activePage === 'programs')}
-                alt=""
-                className="menu-icon"
-              />
-              Programs
-            </button>
-
-            <button
-              className={`menu-item ${
-                activePage === 'diary' || activePage === 'writeDiary' ? 'active' : ''
-              }`}
-              onClick={() => setActivePage('diary')}
-            >
-              <img
-                src={getThemeIcon('date', activePage === 'diary' || activePage === 'writeDiary')}
-                alt=""
-                className="menu-icon"
-              />
-              Diary
-            </button>
-
-            <button
-              className={`menu-item ${activePage === 'settings' ? 'active' : ''}`}
-              onClick={() => setActivePage('settings')}
-            >
-              <img
-                src={getThemeIcon('settings', activePage === 'settings')}
-                alt=""
-                className="menu-icon"
-              />
-              Settings
-            </button>
-          </nav>
-        </aside>
-
-        <main className="content" onClick={() => setOpenMenuId(null)}>
-          {activePage === 'home' && (
-            <section className="home-page">
-              <div className="home-card">
-                <div className="home-preset-section">
-                  <p className="dashboard-preset-title dashboard-section-title">
-                    <img
-                      src={getThemeIcon('preset')}
-                      alt=""
-                      className="dashboard-title-icon"
-                    />
-                    Current Preset
-                  </p>
-
-                  <div
-                    className="home-preset-track"
-                    style={
-                      {
-                        '--selected-preset-index': selectedPreset - 1,
-                      } as CSSProperties
-                    }
-                  >
-                    <span className="home-preset-active-dot"></span>
-
-                    {[1, 2, 3, 4].map((presetNumber) => (
-                      <button
-                        key={presetNumber}
-                        className={`home-preset-dot ${
-                          selectedPreset === presetNumber ? 'active' : ''
-                        }`}
-                        onClick={() => setSelectedPreset(presetNumber)}
-                      >
-                        <span></span>
-                        <b>{String(presetNumber).padStart(2, '0')}</b>
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    className={`home-launch-button ${isLaunching ? 'launching' : ''}`}
-                    onClick={handleLaunchPrograms}
-                    disabled={enabledProgramCount === 0}
-                  >
-                    <img
-                      src={
-                        isLaunching
-                          ? rocketActive
-                          : rocketMap[settings.accentColor]
-                      }
-                      alt=""
-                      className="home-launch-icon"
-                    />
-                  </button>
-                </div>
-
-                <div className="home-divider"></div>
-
-                <div className="home-device-section">
-                  <div className="home-device-group">
-                    <p className="home-device-title home-device-title-audio">
-                      <img
-                        src={getThemeIcon('speaker')}
-                        alt=""
-                        className="home-device-title-icon"
-                      />
-                      Audio
-                    </p>
-
-                    <div className="home-device-buttons">
-                      <button
-                        className={`home-device-button ${
-                          selectedAudioDevice === 'speaker' ? 'active' : ''
-                        }`}
-                        onClick={() => handleSelectAudioDevice('speaker')}
-                      >
-                        <img
-                          src={getThemeIcon(
-                            'speaker',
-                            selectedAudioDevice === 'speaker',
-                          )}
-                          alt=""
-                          className="home-device-icon"
-                        />
-                      </button>
-
-                      <button
-                        className={`home-device-button ${
-                          selectedAudioDevice === 'headphone' ? 'active' : ''
-                        }`}
-                        onClick={() => handleSelectAudioDevice('headphone')}
-                      >
-                        <img
-                          src={getThemeIcon(
-                            'headphone',
-                            selectedAudioDevice === 'headphone',
-                          )}
-                          alt=""
-                          className="home-device-icon"
-                        />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="home-device-split"></div>
-
-                  <div className="home-device-group">
-                    <p className="home-device-title">
-                      <img
-                        src={getThemeIcon('hmonitor')}
-                        alt=""
-                        className="home-device-title-icon"
-                      />
-                      Monitor
-                    </p>
-
-                    <div className="home-device-buttons">
-                      <button
-                        className={`home-device-button ${
-                          selectedMonitorOrientation === 'horizontal' ? 'active' : ''
-                        }`}
-                        onClick={() => handleSelectMonitorOrientation('horizontal')}
-                      >
-                        <img
-                          src={getThemeIcon(
-                            'hmonitor',
-                            selectedMonitorOrientation === 'horizontal',
-                          )}
-                          alt=""
-                          className="home-device-icon"
-                        />
-                      </button>
-
-                      <button
-                        className={`home-device-button ${
-                          selectedMonitorOrientation === 'vertical' ? 'active' : ''
-                        }`}
-                        onClick={() => handleSelectMonitorOrientation('vertical')}
-                      >
-                        <img
-                          src={getThemeIcon(
-                            'vmonitor',
-                            selectedMonitorOrientation === 'vertical',
-                          )}
-                          alt=""
-                          className="home-device-icon"
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activePage === 'dashboard' && (
-            <>
-              <section className="top-card">
-                <div className="dashboard-time">
-                  <p className="dashboard-section-title">
-                    <img
-                      src={getThemeIcon('time')}
-                      alt=""
-                      className="dashboard-title-icon"
-                    />
-                    Current Time
-                  </p>
-
-                  <h1>
-                    {currentTimeText}
-                    <em>{currentMeridiemText}</em>
-                  </h1>
-
-                  <span>
-                    {currentDateText}
-                    <i></i>
-                    {currentWeekdayText}
-                  </span>
-                </div>
-
-                <div className="dashboard-preset">
-                  <p className="dashboard-preset-title dashboard-section-title">
-                    <img
-                      src={getThemeIcon('preset')}
-                      alt=""
-                      className="dashboard-title-icon"
-                    />
-                    Current Preset
-                  </p>
-
-                  <div
-                    className="dashboard-preset-track"
-                    style={
-                      {
-                        '--selected-preset-index': selectedPreset - 1,
-                      } as CSSProperties
-                    }
-                  >
-                    <span className="dashboard-preset-active-dot"></span>
-
-                    {[1, 2, 3, 4].map((presetNumber) => (
-                      <button
-                        key={presetNumber}
-                        className={`dashboard-preset-dot ${
-                          selectedPreset === presetNumber ? 'active' : ''
-                        }`}
-                        onClick={() => setSelectedPreset(presetNumber)}
-                      >
-                        <span></span>
-                        <b>{String(presetNumber).padStart(2, '0')}</b>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  className={`launch-button ${isLaunching ? 'launching' : ''}`}
-                  onClick={handleLaunchPrograms}
-                  disabled={enabledProgramCount === 0}
-                >
-                  <img
-                    src={
-                      isLaunching
-                        ? rocketActive
-                        : rocketMap[settings.accentColor]
-                    }
-                    alt=""
-                    className="launch-icon"
-                  />
-                </button>
-              </section>
-
-              <section className="timeline-card">
-                <AnimatePresence mode="wait">
-                  {enabledPrograms.map((program, index) => {
-                    const status = launchStatuses[program.id] ?? 'waiting'
-
-                    return (
-                      <motion.div
-                        key={`${selectedPreset}-${program.id}`}
-                        className="timeline-motion-row"
-                        initial={{
-                          opacity: 0,
-                          y: 18,
-                        }}
-                        animate={{
-                          opacity: 1,
-                          y: 0,
-                        }}
-                        exit={{
-                          opacity: 0,
-                          y: -18,
-                        }}
-                        transition={{
-                          duration: 0.24,
-                          delay: index * 0.035,
-                          ease: [0.2, 0.9, 0.3, 1],
-                        }}
-                      >
-                        <div
-                          className={`program ${
-                            status === 'completed'
-                              ? 'done'
-                              : status === 'launching'
-                                ? 'running'
-                                : status === 'failed'
-                                  ? 'failed'
-                                  : status === 'cancelled'
-                                    ? 'cancelled'
-                                    : 'waiting'}
-                          }`}
-                        >
-                          <button
-                            className="program-status-button"
-                            onClick={() => handleLaunchSingleProgram(program)}
-                            disabled={status !== 'waiting' || isLaunching}
-                          />
-
-                          <ProgramIcon program={program} />
-                          <div>
-                            <h3>{program.name}</h3>
-                            <p>
-                              {status === 'completed'
-                                ? 'Completed'
-                                : status === 'launching'
-                                  ? 'Launching...'
-                                  : status === 'failed'
-                                    ? 'failed'
-                                    : status === 'cancelled'
-                                      ? 'Cancelled'
-                                      : 'waiting'}
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )
-                  })}
-                </AnimatePresence>
-              </section>
-            </>
-          )}
-
-          {activePage === 'diary' && (
-            <section className="diary-page">
-              <div className="diary-card">
-                <div className="diary-header">
-                  <div>
-                    <h1>Diary</h1>
-                    <p>Write down your thoughts in 300 characters every day.</p>
-                  </div>
-
-                  <button
-                    className="diary-write-button"
-                    onClick={() => setActivePage('writeDiary')}
-                  >
-                    <img
-                      src={writeIcon}
-                      alt=""
-                      className="diary-button-icon"
-                    />
-                    {todayDiaryEntry ? 'Edit Diary' : 'Write Diary'}
-                  </button>
-                </div>
-
-                <div className="diary-calendar-header">
-                  <div className="diary-month-control">
-                    <button onClick={() => handleMoveDiaryMonth(-1)}>
-                      ‹
-                    </button>
-
-                    <button
-                      className="diary-current-month"
-                      onClick={() => {
-                        setDiaryPickerMonthIndex(diaryDisplayDate.getMonth())
-                        setDiaryPickerYear(diaryDisplayDate.getFullYear())
-                        setIsDiaryPickerOpen(true)
-                      }}
-                    >
-                      <strong>{formatDiaryMonthTitle(diaryDisplayDate)}</strong>
-                      <span>{diaryDisplayDate.getFullYear()}</span>
-                    </button>
-
-                    <button onClick={() => handleMoveDiaryMonth(1)}>
-                      ›
-                    </button>
-                  </div>
-
-                  <button
-                    className="diary-today-button"
-                    onClick={() => setDiaryDisplayDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1))}
-                  >
-                    Today
-                  </button>
-                </div>
-
-                <div className="diary-weekdays">
-                  {calendarWeekdays.map((weekday) => (
-                    <span key={weekday}>{weekday}</span>
-                  ))}
-                </div>
-
-                <div className="diary-calendar-grid">
-                  {diaryCalendarDays.map((date) => {
-                    const dateKey = formatDateKey(date)
-                    const hasDiary = Boolean(diaryEntries[dateKey])
-                    const isToday = isSameDate(date, currentDate)
-                    const isMuted = !isCurrentMonth(date, diaryDisplayDate)
-
-                    return (
-                      <button
-                        key={dateKey}
-                        className={`diary-day ${isToday ? 'today' : ''} ${isMuted ? 'muted' : ''}`}
-                        onClick={() => handleOpenDiaryDate(date)}
-                      >
-                        <span>{date.getDate()}</span>
-
-                        {hasDiary && (
-                          <i></i>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activePage === 'writeDiary' && (
-            <section className="write-diary-page">
-              <div className="write-diary-header">
-                <h1>Write Diary</h1>
-                <p>Write down your thoughts in 300 characters every day.</p>
-              </div>
-
-              <div className="write-diary-card">
-                <div className="write-diary-top">
-                  <button
-                    className="write-diary-back-button"
-                    onClick={() => setActivePage('diary')}
-                  >
-                    ‹ Back
-                  </button>
-
-                  <div className="write-diary-date">
-                    <span>
-                      <img
-                        src={getThemeIcon('date')}
-                        alt=""
-                        className="diary-date-icon"
-                      />
-                    </span>
-                    <div>
-                      <h2>
-                        {getWriteDiaryTitleParts(currentDate).monthDay}
-                        <em>{getWriteDiaryTitleParts(currentDate).year}</em>
-                      </h2>
-                      <p>{weekdayNames[currentDate.getDay()]}</p>
-                    </div>
-                  </div>
-
-                  <div className="write-diary-actions">
-                    <button
-                      className={`write-diary-save-button ${isDiarySaveButtonPressed ? 'pressed' : ''}`}
-                      onClick={handleSaveDiary}
-                      disabled={diaryText.trim().length === 0 || diaryText.length > 300}
-                    >
-                      <img
-                        src={saveIcon}
-                        alt=""
-                        className="diary-button-icon"
-                      />
-                      Save
-                    </button>
-                  </div>
-                </div>
-
-                <textarea
-                  className="write-diary-textarea"
-                  placeholder="Start writing your diary..."
-                  value={diaryText}
-                  maxLength={300}
-                  spellCheck={false}
-                  onChange={(event) => setDiaryText(event.target.value)}
-                />
-
-                <div className="write-diary-bottom">
-                  <span>{diaryText.length} / 300 characters</span>
-
-                  {isDiarySavedVisible && (
-                    <strong>
-                      ● Saved
-                    </strong>
-                  )}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {activePage === 'programs' && (
-            <section className="programs-page">
-              <div className="page-header">
-                <div>
-                  <h1>Programs</h1>
-                  <p>Add or remove programs to customize your MN WORKSPACE.</p>
-                </div>
-
-                <button
-                  className="add-program-button"
-                  onClick={() => setIsAddModalOpen(true)}
-                >
-                  ＋ Add Program
-                </button>
-              </div>
-
-              <div className="program-list-card" onClick={(event) => event.stopPropagation()}>
-                <div className="program-list-header">
-                  <div className="preset-header">
-                    <span className="preset-title">Preset</span>
-
-                    <div
-                      className="preset-tabs"
-                      style={
-                        {
-                          '--selected-preset-index': selectedPreset - 1,
-                        } as CSSProperties
-                      }
-                    >
-                      <span className="preset-active-dot"></span>
-
-                      {[1, 2, 3, 4].map((presetNumber) => (
-                        <div className="preset-tab-wrap" key={presetNumber}>
-                          <button
-                            className={`preset-tab ${
-                              selectedPreset === presetNumber ? 'active' : ''
-                            }`}
-                            onClick={() => setSelectedPreset(presetNumber)}
-                          >
-                            {String(presetNumber).padStart(2, '0')}
-                          </button>
-
-                          {presetNumber !== 4 && (
-                            <span className="preset-tab-divider"></span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="program-list-meta">
-                    <strong>Program List ({presetPrograms.length})</strong>
-                    <span>⠿ Drag to reorder</span>
-                  </div>
-                </div>
-
-                <DndContext
-                  key={selectedPreset}
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={presetPrograms.map((program) => program.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <AnimatePresence mode="wait">
-                      {presetPrograms.map((program, index) => (
-                        <motion.div
-                          key={`${selectedPreset}-${program.id}`}
-                          className="program-list-motion-row"
-                          initial={{
-                            opacity: 0,
-                            y: 18,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            y: 0,
-                          }}
-                          exit={{
-                            opacity: 0,
-                            y: -18,
-                          }}
-                          transition={{
-                            duration: 0.28,
-                            delay: index * 0.045,
-                            ease: [0.2, 0.9, 0.3, 1],
-                          }}
-                        >
-                          <SortableProgramRow
-                            program={program}
-                            isMenuOpen={openMenuId === program.id}
-                            onToggle={handleToggleProgram}
-                            onMenuToggle={(id) =>
-                              setOpenMenuId((prev) => (prev === id ? null : id))
-                            }
-                            onDelete={handleDeleteProgram}
-                          />
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </SortableContext>
-                </DndContext>
-              </div>
-
-              <div className="save-note">ⓘ Changes are saved automatically.</div>
-            </section>
-          )}
-
-          {activePage === 'settings' && (
-            <section className="settings-page">
-              <div className="settings-header">
-                <h1>Settings</h1>
-                <p>Configure workspace auto-launch and application preferences.</p>
-              </div>
-
-              <div className="settings-card">
-                <h3>General</h3>
-
-                <div className="setting-row">
-                  <div>
-                    <strong>Start with Windows</strong>
-                    <p>Launch MN WORKSPACE automatically when Windows starts.</p>
-                  </div>
-                  <button
-                    className={`toggle ${settings.startWithWindows ? 'on' : ''}`}
-                    onClick={handleToggleStartWithWindows}
-                  >
-                    <span></span>
-                  </button>
-                </div>
-
-                <div className="setting-row">
-                  <div>
-                    <strong>Minimize to system tray</strong>
-                    <p>Minimize application to system tray instead of taskbar.</p>
-                  </div>
-                  <button
-                    className={`toggle ${settings.minimizeToTray ? 'on' : ''}`}
-                    onClick={() =>
-                      updateSettings({
-                        minimizeToTray: !settings.minimizeToTray,
-                      })
-                    }
-                  >
-                    <span></span>
-                  </button>
-                </div>
-
-                <div className="setting-row">
-                  <div>
-                    <strong>Check for updates</strong>
-                    <p>Automatically check for updates on startup.</p>
-                  </div>
-
-                  <div className="setting-update-actions">
-                    <button
-                      className={`setting-icon-action ${
-                        isCheckingUpdates ? 'checking' : ''
-                      }`}
-                      onClick={handleCheckForUpdates}
-                      title="Check for updates"
-                    >
-                      <img
-                        src={
-                          isCheckingUpdates
-                            ? iconMap.check[settings.accentColor]
-                            : activeTheme === 'dark'
-                              ? iconMap.check.white
-                              : iconMap.check.gray
-                        }
-                        alt=""
-                      />
-                    </button>
-
-                    <button
-                      className={`toggle ${settings.checkForUpdates ? 'on' : ''}`}
-                      onClick={() =>
-                        updateSettings({
-                          checkForUpdates: !settings.checkForUpdates,
-                        })
-                      }
-                    >
-                      <span></span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="settings-card">
-                <h3>Auto Launch</h3>
-
-                <div className="setting-row">
-                  <div>
-                    <strong>Launch delay</strong>
-                    <p>Set a delay before launching the next program.</p>
-                  </div>
-
-                  <select
-                    className="setting-select"
-                    value={settings.launchDelay}
-                    onChange={(event) =>
-                      updateSettings({
-                        launchDelay: event.target.value as LaunchDelay,
-                      })
-                    }
-                  >
-                    <option>1 second</option>
-                    <option>2 seconds</option>
-                    <option>3 seconds</option>
-                    <option>5 seconds</option>
-                  </select>
-                </div>
-
-                <div className="setting-row">
-                  <div>
-                    <strong>Launch behavior</strong>
-                    <p>Choose how programs are launched.</p>
-                  </div>
-
-                  <select
-                    className="setting-select"
-                    value={settings.launchBehavior}
-                    onChange={(event) =>
-                      updateSettings({
-                        launchBehavior: event.target.value as LaunchBehavior,
-                      })
-                    }
-                  >
-                    <option>Launch in order</option>
-                    <option>Launch all at once</option>
-                  </select>
-                </div>
-
-                <div className="setting-row">
-                  <div>
-                    <strong>Stop launching on error</strong>
-                    <p>Stop the sequence if a program fails to launch.</p>
-                  </div>
-
-                  <button
-                    className={`toggle ${settings.stopLaunchingOnError ? 'on' : ''}`}
-                    onClick={() =>
-                      updateSettings({
-                        stopLaunchingOnError: !settings.stopLaunchingOnError,
-                      })
-                    }
-                  >
-                    <span></span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="settings-card">
-                <h3>Appearance</h3>
-
-                <div className="setting-row">
-                  <div>
-                    <strong>Theme</strong>
-                    <p>Choose the application theme.</p>
-                  </div>
-
-                  <select
-                    className="setting-select"
-                    value={settings.theme}
-                    onChange={(event) =>
-                      updateSettings({
-                        theme: event.target.value as Theme,
-                      })
-                    }
-                  >
-                    <option>Light</option>
-                    <option>Dark</option>
-                    <option>System</option>
-                  </select>
-                </div>
-
-                <div className="setting-row">
-                  <div>
-                    <strong>Accent color</strong>
-                    <p>Choose the accent color for the application.</p>
-                  </div>
-
-                  <div className="accent-list">
-                    {(
-                      [
-                        'purple',
-                        'blue',
-                        'green',
-                        'orange',
-                        'red',
-                        'gray',
-                      ] as AccentColor[]
-                    ).map((color) => (
-                      <button
-                        key={color}
-                        className={`accent-dot ${color} ${
-                          settings.accentColor === color ? 'active' : ''
-                        }`}
-                        onClick={() =>
-                          updateSettings({
-                            accentColor: color,
-                          })
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="settings-footer">
-                MN WORKSPACE v{appVersion}
-              </div>
-            </section>
-          )}
-          {isDiaryPickerOpen && (
-            <div className="modal-overlay">
-              <div className="diary-picker-modal">
-                <button
-                  className="diary-modal-close"
-                  onClick={() => setIsDiaryPickerOpen(false)}
-                >
-                  ×
-                </button>
-
-                <div className="diary-wheel-picker">
-                  <div
-                    ref={diaryMonthWheelRef}
-                    className="diary-wheel-column"
-                    onScroll={handleDiaryMonthScroll}
-                  >
-                    {diaryPickerMonthOptions.map(({ monthName, monthIndex }) => {
-                      const distance = Math.min(Math.abs(monthIndex - diaryPickerMonthIndex), 3)
-
-                      return (
-                        <div
-                          key={monthName}
-                          className={`diary-wheel-item diary-wheel-distance-${distance} ${
-                            monthIndex === diaryPickerMonthIndex ? 'active' : ''
-                          }`}
-                        >
-                          {monthName}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <div
-                    ref={diaryYearWheelRef}
-                    className="diary-wheel-column"
-                    onScroll={handleDiaryYearScroll}
-                  >
-                    {diaryPickerYearOptions.map((year) => {
-                      const distance = Math.min(Math.abs(year - diaryPickerYear), 3)
-
-                      return (
-                        <div
-                          key={year}
-                          className={`diary-wheel-item diary-wheel-distance-${distance} ${
-                            year === diaryPickerYear ? 'active' : ''
-                          }`}
-                        >
-                          {year}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  <button
-                    className="diary-wheel-select"
-                    onWheel={(event) => {
-                      event.preventDefault()
-
-                      const pickerElement = event.currentTarget.parentElement
-                      const columnWidth = pickerElement
-                        ? pickerElement.clientWidth / 2
-                        : 0
-
-                      if (event.nativeEvent.offsetX < columnWidth) {
-                        diaryMonthWheelRef.current?.scrollBy({
-                          top: event.deltaY,
-                          behavior: 'smooth',
-                        })
-
-                        return
-                      }
-
-                      diaryYearWheelRef.current?.scrollBy({
-                        top: event.deltaY,
-                        behavior: 'smooth',
-                      })
-                    }}
-                    onClick={() => {
-                      setDiaryDisplayDate(
-                        new Date(diaryPickerYear, diaryPickerMonthIndex, 1),
-                      )
-                      setIsDiaryPickerOpen(false)
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {selectedDiaryDate && selectedDiaryEntry && (
-            <div className="modal-overlay">
-              <div className="diary-view-modal">
-                <button
-                  className="diary-modal-close"
-                  onClick={() => setSelectedDiaryDate(null)}
-                >
-                  ×
-                </button>
-
-                <div className="diary-view-header">
-                  <span>
-                    <img
-                      src={getThemeIcon('date')}
-                      alt=""
-                      className="diary-date-icon"
-                    />
-                  </span>
-
-                  <div>
-                    <h2>
-                      {monthNames[selectedDiaryDate.getMonth()]} {selectedDiaryDate.getDate()}
-                      <em>{selectedDiaryDate.getFullYear()}</em>
-                    </h2>
-                    <p>{weekdayNames[selectedDiaryDate.getDay()]}</p>
-                  </div>
-                </div>
-
-                <div className="diary-view-content">
-                  {selectedDiaryEntry.content.split('\n').map((line, index) => (
-                    <p key={index}>{line || '\u00A0'}</p>
-                  ))}
-                </div>
-
-                <div className="diary-view-footer">
-                  <span>{selectedDiaryEntry.content.length} / 300</span>
-
-                  <button onClick={handleDeleteDiary}>
-                    <img
-                      src={trashIcon}
-                      alt=""
-                      className="diary-trash-icon"
-                    />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {isDeleteDiaryConfirmOpen && (
-            <div className="modal-overlay">
-              <div className="diary-delete-confirm-modal">
-                <h2>Delete Diary?</h2>
-                <p>This diary will be permanently deleted.</p>
-
-                <div className="diary-delete-confirm-actions">
-                  <button
-                    className="diary-delete-cancel-button"
-                    onClick={() => setIsDeleteDiaryConfirmOpen(false)}
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    className="diary-delete-button"
-                    onClick={handleConfirmDeleteDiary}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {updateModalType && (
-            <div className="modal-overlay">
-              <div className="update-modal">
-                <div className="update-modal-icon">
-                  <img
-                    src={iconMap.check[settings.accentColor]}
-                    alt=""
-                  />
-                </div>
-
-                <h2>
-                  {updateModalType === 'available' && 'Update Available'}
-                  {updateModalType === 'downloading' && 'Downloading Update'}
-                  {updateModalType === 'ready' && 'Update Ready'}
-                  {updateModalType === 'latest' && 'Already Up to Date'}
-                  {updateModalType === 'error' && 'Update Failed'}
-                </h2>
-
-                <p>
-                  {updateModalType === 'available' &&
-                    'A new version of MN WORKSPACE is ready.'}
-
-                  {updateModalType === 'downloading' &&
-                    'Please wait while the update is being downloaded.'}
-
-                  {updateModalType === 'ready' &&
-                    'The update is ready to install.'}
-
-                  {updateModalType === 'latest' &&
-                    'You are already using the latest version.'}
-
-                  {updateModalType === 'error' &&
-                    'The update could not be downloaded.'}
-                </p>
-
-                <div className="update-modal-version">
-                  {updateModalType === 'available' && (
-                    <>
-                      <span>Current v{appVersion}</span>
-                      <b>→</b>
-                      <span>New version</span>
-                    </>
-                  )}
-
-                  {updateModalType === 'downloading' && (
-                    <div className="update-progress-wrap">
-                      <div className="update-progress-info">
-                        <span>Downloading update</span>
-                        <b>{updateProgress}%</b>
-                      </div>
-
-                      <div className="update-progress-bar">
-                        <span
-                          style={{
-                            width: `${updateProgress}%`,
-                          }}
-                        ></span>
-                      </div>
-                    </div>
-                  )}
-
-                  {updateModalType === 'ready' && (
-                    <>
-                      <span>MN WORKSPACE v{appVersion}</span>
-                      <b>→</b>
-                      <span>Restart required</span>
-                    </>
-                  )}
-
-                  {updateModalType === 'latest' && (
-                    <>
-                      <span>MN WORKSPACE v{appVersion}</span>
-                    </>
-                  )}
-
-                  {updateModalType === 'error' && (
-                    <>
-                      <span>Download failed</span>
-                    </>
-                  )}
-                </div>
-
-                {updateModalType !== 'downloading' && (
-                  <div className="update-modal-actions">
-                    {updateModalType !== 'latest' && updateModalType !== 'ready' && (
-                      <button
-                        className="modal-cancel-button"
-                        onClick={() => setUpdateModalType(null)}
-                      >
-                        Later
-                      </button>
-                    )}
-
-                    <button
-                      className="modal-add-button"
-                      onClick={() =>
-                        updateModalType === 'available'
-                          ? handleStartUpdateDownload()
-                          : updateModalType === 'ready'
-                            ? window.mnAPI.installUpdate()
-                            : setUpdateModalType(null)
-                      }
-                    >
-                      {updateModalType === 'available'
-                        ? 'Update'
-                        : updateModalType === 'ready'
-                          ? 'Restart'
-                          : 'OK'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {isAddModalOpen && (
-            <div className="modal-overlay">
-              <div className="add-modal">
-                <div className="modal-header">
-                  <div>
-                    <h2>Add Program</h2>
-                    <p>Add a program, folder, or URL to your workspace launch list.</p>
-                  </div>
-
-                  <button className="modal-close-button" onClick={closeAddModal}>
-                    ×
-                  </button>
-                </div>
-
-                <div className="modal-form">
-                  <label>
-                    Program Name
-                    <input
-                      type="text"
-                      placeholder="Program"
-                      value={newProgramName}
-                      onChange={(event) => setNewProgramName(event.target.value)}
-                    />
-                  </label>
-
-                  <label>
-                    Type
-                    <select
-                      value={newProgramType}
-                      onChange={(event) => {
-                        const selectedType = event.target.value as ProgramType
-                        setNewProgramType(selectedType)
-
-                        if (selectedType === 'URL') {
-                          setNewProgramPath('')
-                          setNewProgramIconImage(null)
-                        }
-                      }}
-                    >
-                      <option>Program</option>
-                      <option>Folder</option>
-                      <option>URL</option>
-                    </select>
-                  </label>
-
-                  <label>
-                    Path or URL
-                    <div className="path-row">
-                      <input
-                        type="text"
-                        placeholder={
-                          newProgramType === 'URL'
-                            ? 'https://music.youtube.com'
-                            : 'C:\\Program Files\\...'
-                        }
-                        value={newProgramPath}
-                        onChange={(event) => {
-                          setNewProgramPath(event.target.value)
-
-                          if (newProgramType !== 'Program') {
-                            setNewProgramIconImage(null)
-                          }
-                        }}
-                      />
-
-                      {newProgramType !== 'URL' && (
-                        <button
-                          type="button"
-                          onClick={handleBrowse}
-                        >
-                          Browse
-                        </button>
-                      )}
-                    </div>
-                  </label>
-
-                  <div className="modal-toggle-row">
-                    <div>
-                      <strong>Enabled</strong>
-                      <p>Include this item when launching workspace.</p>
-                    </div>
-
-                    <button
-                      className={`toggle ${newProgramEnabled ? 'on' : ''}`}
-                      onClick={() => setNewProgramEnabled((prev) => !prev)}
-                    >
-                      <span></span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="modal-actions">
-                  <button className="modal-cancel-button" onClick={closeAddModal}>
-                    Cancel
-                  </button>
-
-                  <button className="modal-add-button" onClick={handleAddProgram}>
-                    Add Program
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </main>
-      </div>
-    )
-  }
-
-  export default App
+              key={color}
+              type="button"
+              className={`sidebar-accent-dot ${settings.accentColor === color ? 'active' : ''}`}
+              style={{
+                '--sidebar-dot-color': accentColorMap[color],
+                '--sidebar-dot-ring': accentRingMap[color],
+              } as CSSProperties}
+              aria-label={`Set accent color to ${color}`}
+              title={color}
+              onClick={() => updateSettings({ accentColor: color })}
+            />
+          ))}
+        </div>
+      </aside>
+
+      {/* 메인 콘텐츠 */}
+      <main className="content" onClick={() => setOpenMenuId(null)}>
+        {activePage === 'home' && (
+          <HomePage
+            selectedPreset={selectedPreset} isLaunching={isLaunching} enabledProgramCount={enabledProgramCount}
+            accentColor={settings.accentColor}
+            isDarkTheme={activeTheme === 'dark'}
+            onSetSelectedPreset={setSelectedPreset} onLaunchPrograms={handleLaunchPrograms}
+            selectedAudioDevice={selectedAudioDevice} selectedMonitorOrientation={selectedMonitorOrientation}
+            onSelectAudioDevice={handleSelectAudioDevice} onSelectMonitorOrientation={handleSelectMonitorOrientation}
+            homeMusicPlaylists={homeMusicPlaylistsWithLiked} homeMusicPlaylistPage={homeMusicPlaylistPage}
+            selectedHomeMusicPlaylistId={selectedHomeMusicPlaylistId} playingPlaylistId={playingPlaylistId}
+            isHomeMusicPlaying={isHomeMusicPlaying} overflowingHomeMusicPlaylistIds={overflowingHomeMusicPlaylistIds}
+            homeMusicPlaylistTitleRefs={homeMusicPlaylistTitleRefs}
+            onSetSelectedHomeMusicPlaylistId={setSelectedHomeMusicPlaylistId}
+            onMoveHomeMusicPlaylist={handleMoveHomeMusicPlaylist} onHomeMusicPlaylistWheel={handleHomeMusicPlaylistWheel}
+            onPlaylistPlay={handlePlaylistPlay}
+            currentTrack={currentTrack} currentVideoId={currentVideoId} isYtAuthenticated={isYtAuthenticated}
+            homeMusicVolume={homeMusicVolume} homeMusicProgress={homeMusicProgress}
+            homeMusicCurrentSeconds={homeMusicCurrentSeconds} homeMusicDurationSeconds={homeMusicDurationSeconds}
+            isShuffleEnabled={isShuffleEnabled}
+            isTrackLiked={isTrackLiked} onToggleTrackLike={handleToggleTrackLike}
+            onPlayPrevTrack={playPrevTrack} onPlayNextTrack={playNextTrack} onTogglePlayPause={togglePlayPause}
+            onPlayVideo={playVideo}
+            onVolumePointerDown={handleHomeMusicVolumePointerDown} onVolumePointerMove={handleHomeMusicVolumePointerMove}
+            onProgressPointerDown={handleHomeMusicProgressPointerDown} onProgressPointerMove={handleHomeMusicProgressPointerMove}
+            onProgressPointerUp={handleHomeMusicProgressPointerUp}
+            onSetIsShuffleEnabled={setIsShuffleEnabled}
+            onOpenFullPlaylist={() => setIsFullPlaylistModalOpen(true)} onOpenYoutubeLogin={() => setIsYoutubeLoginModalOpen(true)}
+            formatHomeMusicTime={formatHomeMusicTime} getThemeIcon={getThemeIcon} getMusicControlIcon={getMusicControlIcon}
+            getLikeIcon={getLikeIcon}
+            renderMarqueeTitle={renderMarqueeTitle} isMarqueeTitleOverflowing={isMarqueeTitleOverflowing}
+            marqueeTitleWrapRefs={marqueeTitleWrapRefs}
+          />
+        )}
+
+        {activePage === 'playlist' && (
+          <PlaylistPage
+            homeMusicPlaylists={homeMusicPlaylistsWithLiked} filteredHomeMusicPlaylists={filteredHomeMusicPlaylists}
+            selectedHomeMusicPlaylistId={selectedHomeMusicPlaylistId} selectedHomeMusicPlaylist={selectedHomeMusicPlaylist}
+            playingPlaylistId={playingPlaylistId} isHomeMusicPlaying={isHomeMusicPlaying}
+            accentColor={settings.accentColor}
+            playlistViewMode={playlistViewMode} playlistSearchQuery={playlistSearchQuery}
+            isPlaylistRefreshing={isPlaylistRefreshing} isYtAuthenticated={isYtAuthenticated}
+            ytPlaylistTracks={selectedPlaylistTracks} fallbackPlaylistTracks={fallbackPlaylistTracks}
+            currentTrack={currentTrack} playingFullPlaylistTrackId={playingFullPlaylistTrackId}
+            homeMusicProgress={homeMusicProgress} homeMusicCurrentSeconds={homeMusicCurrentSeconds}
+            homeMusicDurationSeconds={homeMusicDurationSeconds} homeMusicVolume={homeMusicVolume}
+            isShuffleEnabled={isShuffleEnabled}
+            isTrackLiked={isTrackLiked} onToggleTrackLike={handleToggleTrackLike}
+            onSetSelectedHomeMusicPlaylistId={setSelectedHomeMusicPlaylistId}
+            onSetHomeMusicPlaylists={(playlists) => setHomeMusicPlaylists(playlists.filter((playlist) => playlist.id !== LIKED_PLAYLIST_ID))} onUpdateSettings={updateSettings}
+            onPlaylistPlay={handlePlaylistPlay} onPlayVideo={playVideo} onTogglePlayPause={togglePlayPause}
+            onSetPlaylistViewMode={(mode) => {
+              setPlaylistViewMode(mode)
+              updateSettings({ playlistViewMode: mode })
+            }} onSetPlaylistSearchQuery={setPlaylistSearchQuery}
+            onRefreshPlaylists={handleRefreshPlaylists}
+            onOpenYoutubeLogin={() => setIsYoutubeLoginModalOpen(true)}
+            onOpenFullPlaylist={() => setIsFullPlaylistModalOpen(true)}
+            onChangeCover={handleChangePlaylistCover} onSetIsShuffleEnabled={setIsShuffleEnabled}
+            onVolumePointerDown={handleHomeMusicVolumePointerDown} onVolumePointerMove={handleHomeMusicVolumePointerMove}
+            onProgressPointerDown={handleHomeMusicProgressPointerDown} onProgressPointerMove={handleHomeMusicProgressPointerMove}
+            onProgressPointerUp={handleHomeMusicProgressPointerUp}
+            formatHomeMusicTime={formatHomeMusicTime} getThemeIcon={getThemeIcon} getMusicControlIcon={getMusicControlIcon}
+            getLikeIcon={getLikeIcon}
+            renderMarqueeTitle={renderMarqueeTitle} isMarqueeTitleOverflowing={isMarqueeTitleOverflowing}
+            marqueeTitleWrapRefs={marqueeTitleWrapRefs}
+          />
+        )}
+
+        {activePage === 'dashboard' && (
+          <DashboardPage
+            currentTimeText={currentTimeText} currentMeridiemText={currentMeridiemText}
+            currentDateText={currentDateText} currentWeekdayText={currentWeekdayText}
+            selectedPreset={selectedPreset} isLaunching={isLaunching} enabledProgramCount={enabledProgramCount}
+            enabledPrograms={enabledPrograms} launchStatuses={launchStatuses} accentColor={settings.accentColor}
+            onSetSelectedPreset={setSelectedPreset} onLaunchPrograms={handleLaunchPrograms}
+            onLaunchSingleProgram={handleLaunchSingleProgram} getThemeIcon={getThemeIcon}
+          />
+        )}
+
+        {activePage === 'diary' && (
+          <DiaryPage
+            currentDate={currentDate} diaryDisplayDate={diaryDisplayDate}
+            diaryEntries={diaryEntries} todayDiaryEntry={todayDiaryEntry}
+            onSetActivePage={(p) => setActivePage(p)} onMoveDiaryMonth={handleMoveDiaryMonth}
+            onOpenDiaryPickerWithDate={() => { setDiaryPickerMonthIndex(diaryDisplayDate.getMonth()); setDiaryPickerYear(diaryDisplayDate.getFullYear()); setIsDiaryPickerOpen(true) }}
+            onSetDiaryDisplayDate={setDiaryDisplayDate} onOpenDiaryDate={handleOpenDiaryDate}
+          />
+        )}
+
+        {activePage === 'writeDiary' && (
+          <WriteDiaryPage
+            currentDate={currentDate} diaryText={diaryText}
+            isDiarySaveButtonPressed={isDiarySaveButtonPressed} isDiarySavedVisible={isDiarySavedVisible}
+            onSetActivePage={(p) => setActivePage(p)} onSetDiaryText={setDiaryText}
+            onSaveDiary={handleSaveDiary} getThemeIcon={getThemeIcon}
+          />
+        )}
+
+        {activePage === 'programs' && (
+          <ProgramsPage
+            selectedPreset={selectedPreset} programs={programs} presetPrograms={presetPrograms}
+            openMenuId={openMenuId}
+            onSetSelectedPreset={setSelectedPreset} onSetIsAddModalOpen={setIsAddModalOpen}
+            onSetOpenMenuId={setOpenMenuId} onToggleProgram={handleToggleProgram}
+            onDeleteProgram={handleDeleteProgram} onDragEnd={handleDragEnd}
+          />
+        )}
+
+        {activePage === 'settings' && (
+          <SettingsPage
+            settings={settings} appVersion={appVersion} isCheckingUpdates={isCheckingUpdates}
+            isPlaylistRefreshing={isPlaylistRefreshing} activeTheme={activeTheme}
+            onUpdateSettings={updateSettings} onToggleStartWithWindows={handleToggleStartWithWindows}
+            onCheckForUpdates={handleCheckForUpdates} onReloadYoutubeMusicData={handleReloadYoutubeMusicData}
+            getThemeIcon={getThemeIcon}
+          />
+        )}
+
+        {/* 모달들 */}
+        {isDiaryPickerOpen && (
+          <DiaryPickerModal
+            diaryPickerMonthIndex={diaryPickerMonthIndex} diaryPickerYear={diaryPickerYear}
+            diaryPickerMinYear={diaryPickerMinYear} diaryPickerMaxYear={diaryPickerMaxYear}
+            diaryMonthWheelRef={diaryMonthWheelRef} diaryYearWheelRef={diaryYearWheelRef}
+            onClose={() => setIsDiaryPickerOpen(false)}
+            onMonthScroll={handleDiaryMonthScroll} onYearScroll={handleDiaryYearScroll}
+            onConfirm={() => { setDiaryDisplayDate(new Date(diaryPickerYear, diaryPickerMonthIndex, 1)); setIsDiaryPickerOpen(false) }}
+          />
+        )}
+
+        {selectedDiaryDate && selectedDiaryEntry && (
+          <DiaryViewModal
+            selectedDiaryDate={selectedDiaryDate} selectedDiaryEntry={selectedDiaryEntry}
+            onClose={() => setSelectedDiaryDate(null)}
+            onDelete={() => setIsDeleteDiaryConfirmOpen(true)}
+            getThemeIcon={getThemeIcon}
+          />
+        )}
+
+        {isDeleteDiaryConfirmOpen && (
+          <DiaryDeleteModal
+            onClose={() => setIsDeleteDiaryConfirmOpen(false)}
+            onConfirm={handleConfirmDeleteDiary}
+          />
+        )}
+
+        {updateModalType && (
+          <UpdateModal
+            updateModalType={updateModalType} updateProgress={updateProgress}
+            appVersion={appVersion} accentColor={settings.accentColor}
+            onClose={() => setUpdateModalType(null)}
+            onStartDownload={handleStartUpdateDownload}
+            onInstall={() => window.mnAPI.installUpdate()}
+          />
+        )}
+
+        {isYoutubeLoginModalOpen && (
+          <YoutubeLoginModal
+            onClose={() => setIsYoutubeLoginModalOpen(false)}
+            onLoginSuccess={(playlists) => {
+              setIsYtAuthenticated(true)
+              setIsYoutubeLoginModalOpen(false)
+              setHomeMusicPlaylists(playlists)
+              setSelectedHomeMusicPlaylistId(playlists[0]?.id ?? 'focus')
+            }}
+          />
+        )}
+
+        {isFullPlaylistModalOpen && (
+          <FullPlaylistModal
+            selectedHomeMusicPlaylist={selectedHomeMusicPlaylist}
+            selectedHomeMusicPlaylistId={selectedHomeMusicPlaylistId}
+            fullPlaylistTracks={fullPlaylistTracks} filteredFullPlaylistTracks={filteredFullPlaylistTracks}
+            fullPlaylistSearchQuery={fullPlaylistSearchQuery}
+            normalizedFullPlaylistSearchQuery={normalizedFullPlaylistSearchQuery}
+            currentTrack={currentTrack} playingPlaylistId={playingPlaylistId}
+            accentColor={settings.accentColor}
+            isHomeMusicPlaying={isHomeMusicPlaying} playingFullPlaylistTrackId={playingFullPlaylistTrackId}
+            isTrackLiked={isTrackLiked} onToggleTrackLike={handleToggleTrackLike}
+            onClose={() => setIsFullPlaylistModalOpen(false)}
+            onPlaylistPlay={handlePlaylistPlay} onPlayVideo={playVideo} onTogglePlayPause={togglePlayPause}
+            onSetFullPlaylistSearchQuery={setFullPlaylistSearchQuery}
+            renderMarqueeTitle={renderMarqueeTitle} isMarqueeTitleOverflowing={isMarqueeTitleOverflowing}
+            marqueeTitleWrapRefs={marqueeTitleWrapRefs} getThemeIcon={getThemeIcon}
+            getLikeIcon={getLikeIcon}
+          />
+        )}
+
+        {isAddModalOpen && (
+          <AddProgramModal
+            newProgramName={newProgramName} newProgramType={newProgramType}
+            newProgramPath={newProgramPath} newProgramEnabled={newProgramEnabled}
+            onSetNewProgramName={setNewProgramName} onSetNewProgramType={setNewProgramType}
+            onSetNewProgramPath={setNewProgramPath} onSetNewProgramIconImage={setNewProgramIconImage}
+            onSetNewProgramEnabled={setNewProgramEnabled}
+            onClose={closeAddModal} onAdd={handleAddProgram} onBrowse={handleBrowse}
+          />
+        )}
+      </main>
+
+      {shouldShowFloatingMusicPlayer && currentTrack && (
+        <FloatingMusicPlayer
+          mode={floatingPlayerMode}
+          isHidden={isFloatingPlayerHidden}
+          position={isFloatingPlayerHidden ? null : settings.floatingPlayerPosition ?? null}
+          currentTrack={currentTrack}
+          isPlaying={isHomeMusicPlaying}
+          isShuffleEnabled={isShuffleEnabled}
+          isLiked={isTrackLiked(currentTrack.id)}
+          likeIcon={getLikeIcon(isTrackLiked(currentTrack.id))}
+          getLikeIcon={getLikeIcon}
+          accentColor={settings.accentColor}
+          progress={homeMusicProgress}
+          volume={homeMusicVolume}
+          currentSeconds={homeMusicCurrentSeconds}
+          durationSeconds={homeMusicDurationSeconds}
+          speakerIcon={getThemeIcon('speaker')}
+          shuffleIcon={getMusicControlIcon('shuffle', isShuffleEnabled)}
+          playlistIcon={
+            activeTheme === 'dark'
+              ? musicControlIconMap.playlist.white
+              : getMusicControlIcon('playlist')
+          }
+          listIcon={getMusicControlIcon('list', activeTheme !== 'dark')}
+          listActiveIcon={getMusicControlIcon('list')}
+          onChangeMode={(mode) => {
+            updateSettings({
+              floatingPlayerMode: mode,
+              floatingPlayerPosition: null,
+            })
+          }}
+          onChangeHidden={(hidden) => {
+            updateSettings({
+              floatingPlayerHidden: hidden,
+              floatingPlayerPosition: null,
+            })
+          }}
+          onChangePosition={(position) => updateSettings({ floatingPlayerPosition: position })}
+          onTogglePlayPause={togglePlayPause}
+          onPlayPrevTrack={playPrevTrack}
+          onPlayNextTrack={playNextTrack}
+          onToggleShuffle={() => setIsShuffleEnabled((prev) => !prev)}
+          onToggleLike={() => handleToggleTrackLike(currentTrack.id)}
+          onOpenFullPlaylist={() => setIsFullPlaylistModalOpen(true)}
+          onVolumePointerDown={handleHomeMusicVolumePointerDown}
+          onVolumePointerMove={handleHomeMusicVolumePointerMove}
+          onProgressPointerDown={handleHomeMusicProgressPointerDown}
+          onProgressPointerMove={handleHomeMusicProgressPointerMove}
+          onProgressPointerUp={handleHomeMusicProgressPointerUp}
+          formatTime={formatHomeMusicTime}
+        />
+      )}
+
+      {/* 숨겨진 YouTube 플레이어 */}
+      {currentVideoId && (
+        <iframe
+          ref={ytIframeRef}
+          src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&enablejsapi=1`}
+          style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none', bottom: 0, right: 0 }}
+          allow="autoplay"
+          title="yt-player"
+        />
+      )}
+    </div>
+  )
+}
+
+export default App

@@ -4,10 +4,16 @@ import { execFile } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs/promises'
+import dotenv from 'dotenv'
+import { google } from 'googleapis'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 process.env.APP_ROOT = path.join(__dirname, '..')
+
+dotenv.config({
+  path: path.join(process.env.APP_ROOT, '.env'),
+})
 
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
@@ -25,6 +31,133 @@ let startedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin
 
 autoUpdater.autoDownload = false
 
+// ─── YouTube Data API v3 ────────────────────────────────────────────────────
+
+const YOUTUBE_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID?.trim() ?? ''
+const YOUTUBE_CLIENT_SECRET = process.env.YOUTUBE_CLIENT_SECRET?.trim() ?? ''
+const YOUTUBE_REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
+const YOUTUBE_SCOPES = ['https://www.googleapis.com/auth/youtube.readonly']
+
+function getYoutubeTokenPath() {
+  return path.join(app.getPath('userData'), 'youtube-token.json')
+}
+
+function getPlaylistCachePath() {
+  return path.join(app.getPath('userData'), 'playlist-cache.json')
+}
+
+function getPlaylistCoverMapPath() {
+  return path.join(app.getPath('userData'), 'playlist-cover-map.json')
+}
+
+function getPlaylistCoverDirPath() {
+  return path.join(app.getPath('userData'), 'playlist-covers')
+}
+
+function sanitizePlaylistCoverFileName(playlistId: string) {
+  return playlistId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120) || 'playlist-cover'
+}
+
+function getPlaylistCoverMimeType(filePath: string) {
+  const extension = path.extname(filePath).toLowerCase()
+
+  if (extension === '.jpg' || extension === '.jpeg') return 'image/jpeg'
+  if (extension === '.webp') return 'image/webp'
+
+  return 'image/png'
+}
+
+async function createPlaylistCoverDataUrl(filePath: string) {
+  const data = await fs.readFile(filePath)
+  const mimeType = getPlaylistCoverMimeType(filePath)
+
+  return `data:${mimeType};base64,${data.toString('base64')}`
+}
+
+async function loadPlaylistCoverMap() {
+  try {
+    const data = await fs.readFile(getPlaylistCoverMapPath(), 'utf-8')
+    const parsed = JSON.parse(data)
+
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {}
+    }
+
+    return parsed as Record<string, string>
+  } catch {
+    return {}
+  }
+}
+
+async function savePlaylistCoverMap(coverMap: Record<string, string>) {
+  await fs.writeFile(
+    getPlaylistCoverMapPath(),
+    JSON.stringify(coverMap, null, 2),
+    'utf-8',
+  )
+}
+
+async function createPlaylistCoverDataUrlMap() {
+  const coverMap = await loadPlaylistCoverMap()
+  const result: Record<string, string> = {}
+
+  for (const [playlistId, filePath] of Object.entries(coverMap)) {
+    try {
+      await fs.access(filePath)
+      result[playlistId] = await createPlaylistCoverDataUrl(filePath)
+    } catch {
+      // 파일이 사라진 경우 무시
+    }
+  }
+
+  return result
+}
+
+function createOAuthClient() {
+  if (!YOUTUBE_CLIENT_ID || !YOUTUBE_CLIENT_SECRET) {
+    throw new Error('Missing YouTube OAuth credentials. Check your .env file.')
+  }
+
+  return new google.auth.OAuth2(
+    YOUTUBE_CLIENT_ID,
+    YOUTUBE_CLIENT_SECRET,
+    YOUTUBE_REDIRECT_URI,
+  )
+}
+
+async function loadYoutubeToken() {
+  try {
+    const data = await fs.readFile(getYoutubeTokenPath(), 'utf-8')
+    return JSON.parse(data)
+  } catch {
+    return null
+  }
+}
+
+async function saveYoutubeToken(token: object) {
+  await fs.writeFile(getYoutubeTokenPath(), JSON.stringify(token, null, 2), 'utf-8')
+}
+
+async function getAuthenticatedClient() {
+  const oauth2Client = createOAuthClient()
+  const token = await loadYoutubeToken()
+
+  if (!token) return null
+
+  oauth2Client.setCredentials(token)
+
+  // 토큰 갱신 시 자동 저장
+  oauth2Client.on('tokens', async (newTokens) => {
+    const merged = { ...token, ...newTokens }
+    await saveYoutubeToken(merged)
+    oauth2Client.setCredentials(merged)
+  })
+
+  return oauth2Client
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+
 function getProgramsFilePath() {
   return path.join(app.getPath('userData'), 'programs.json')
 }
@@ -35,6 +168,118 @@ function getSettingsFilePath() {
 
 function getDiariesFilePath() {
   return path.join(app.getPath('userData'), 'diaries.json')
+}
+
+function getLikedTracksFilePath() {
+  return path.join(app.getPath('userData'), 'liked-tracks.json')
+}
+
+async function readJsonFile(filePath: string) {
+  try {
+    const data = await fs.readFile(filePath, 'utf-8')
+    const trimmedData = data.trim()
+
+    if (!trimmedData) {
+      return null
+    }
+
+    return JSON.parse(trimmedData)
+  } catch (error: any) {
+    if (error?.code !== 'ENOENT') {
+      console.error(`Failed to read JSON file: ${filePath}`, error)
+    }
+
+    return null
+  }
+}
+
+const jsonWriteQueues = new Map<string, Promise<void>>()
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms)
+  })
+}
+
+function isTemporaryFileAccessError(error: unknown) {
+  const code = (error as { code?: string })?.code
+
+  return code === 'EPERM' || code === 'EACCES' || code === 'EBUSY'
+}
+
+async function replaceFileWithRetry(tempFilePath: string, filePath: string) {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      await fs.rename(tempFilePath, filePath)
+      return
+    } catch (error) {
+      if (!isTemporaryFileAccessError(error)) {
+        throw error
+      }
+
+      lastError = error
+      await wait(80 * (attempt + 1))
+    }
+  }
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      await fs.copyFile(tempFilePath, filePath)
+      await fs.unlink(tempFilePath).catch(() => undefined)
+      return
+    } catch (error) {
+      if (!isTemporaryFileAccessError(error)) {
+        throw error
+      }
+
+      lastError = error
+      await wait(80 * (attempt + 1))
+    }
+  }
+
+  throw lastError
+}
+
+async function writeJsonFileDirect(filePath: string, value: unknown) {
+  const tempFilePath = `${filePath}.${process.pid}.${Date.now()}.${Math.random()
+    .toString(36)
+    .slice(2)}.tmp`
+  const data = JSON.stringify(value, null, 2)
+
+  await fs.mkdir(path.dirname(filePath), { recursive: true })
+
+  try {
+    await fs.writeFile(tempFilePath, data, 'utf-8')
+    await replaceFileWithRetry(tempFilePath, filePath)
+  } catch (error) {
+    try {
+      await fs.unlink(tempFilePath)
+    } catch {
+      // 임시 파일이 이미 없으면 무시
+    }
+
+    throw error
+  }
+}
+
+async function writeJsonFile(filePath: string, value: unknown) {
+  const previousWrite = jsonWriteQueues.get(filePath) ?? Promise.resolve()
+
+  const nextWrite = previousWrite
+    .catch(() => undefined)
+    .then(() => writeJsonFileDirect(filePath, value))
+
+  jsonWriteQueues.set(filePath, nextWrite)
+
+  try {
+    await nextWrite
+  } finally {
+    if (jsonWriteQueues.get(filePath) === nextWrite) {
+      jsonWriteQueues.delete(filePath)
+    }
+  }
 }
 
 function runPowerShell(command: string) {
@@ -79,11 +324,9 @@ function getMonitorCommand(orientation: 'horizontal' | 'vertical') {
   let positionY: number
 
   if (isHorizontal) {
-    // 2번 모니터 가로 상태
     positionX = -1920
     positionY = -120
   } else {
-    // 2번 모니터 세로 상태
     positionX = -1080
     positionY = -580
   }
@@ -203,7 +446,7 @@ Write-Host $dm.dmDisplayOrientation
 function createTray() {
   if (tray) return
 
-    tray = new Tray(path.join(process.env.VITE_PUBLIC, 'tray-icon.png'))
+  tray = new Tray(path.join(process.env.VITE_PUBLIC, 'tray-icon.png'))
 
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -357,26 +600,12 @@ ipcMain.handle('file:get-icon', async (_event, filePath: string) => {
 })
 
 ipcMain.handle('programs:load', async () => {
-  try {
-    const filePath = getProgramsFilePath()
-    const data = await fs.readFile(filePath, 'utf-8')
-
-    return JSON.parse(data)
-  } catch (error: any) {
-    if (error?.code !== 'ENOENT') {
-      console.error('Failed to load programs:', error)
-    }
-
-    return null
-  }
+  return await readJsonFile(getProgramsFilePath())
 })
 
 ipcMain.handle('programs:save', async (_event, programs: unknown) => {
   try {
-    const filePath = getProgramsFilePath()
-    const data = JSON.stringify(programs, null, 2)
-
-    await fs.writeFile(filePath, data, 'utf-8')
+    await writeJsonFile(getProgramsFilePath(), programs)
 
     return true
   } catch (error) {
@@ -386,28 +615,14 @@ ipcMain.handle('programs:save', async (_event, programs: unknown) => {
 })
 
 ipcMain.handle('settings:load', async () => {
-  try {
-    const filePath = getSettingsFilePath()
-    const data = await fs.readFile(filePath, 'utf-8')
-
-    return JSON.parse(data)
-  } catch (error: any) {
-    if (error?.code !== 'ENOENT') {
-      console.error('Failed to load settings:', error)
-    }
-
-    return null
-  }
+  return await readJsonFile(getSettingsFilePath())
 })
 
 ipcMain.handle('settings:save', async (_event, settings: any) => {
   try {
     minimizeToTray = Boolean(settings?.minimizeToTray)
 
-    const filePath = getSettingsFilePath()
-    const data = JSON.stringify(settings, null, 2)
-
-    await fs.writeFile(filePath, data, 'utf-8')
+    await writeJsonFile(getSettingsFilePath(), settings)
 
     if (minimizeToTray) {
       createTray()
@@ -421,26 +636,12 @@ ipcMain.handle('settings:save', async (_event, settings: any) => {
 })
 
 ipcMain.handle('diaries:load', async () => {
-  try {
-    const filePath = getDiariesFilePath()
-    const data = await fs.readFile(filePath, 'utf-8')
-
-    return JSON.parse(data)
-  } catch (error: any) {
-    if (error?.code !== 'ENOENT') {
-      console.error('Failed to load diaries:', error)
-    }
-
-    return null
-  }
+  return await readJsonFile(getDiariesFilePath())
 })
 
 ipcMain.handle('diaries:save', async (_event, diaries: unknown) => {
   try {
-    const filePath = getDiariesFilePath()
-    const data = JSON.stringify(diaries, null, 2)
-
-    await fs.writeFile(filePath, data, 'utf-8')
+    await writeJsonFile(getDiariesFilePath(), diaries)
 
     return true
   } catch (error) {
@@ -448,6 +649,328 @@ ipcMain.handle('diaries:save', async (_event, diaries: unknown) => {
     return false
   }
 })
+
+ipcMain.handle('liked-tracks:load', async () => {
+  const likedTracks = await readJsonFile(getLikedTracksFilePath())
+
+  return Array.isArray(likedTracks)
+    ? likedTracks.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+    : []
+})
+
+ipcMain.handle('liked-tracks:save', async (_event, trackIds: unknown) => {
+  try {
+    const normalizedTrackIds = Array.isArray(trackIds)
+      ? [...new Set(trackIds.filter((id): id is string => typeof id === 'string' && id.trim().length > 0))]
+      : []
+
+    await writeJsonFile(getLikedTracksFilePath(), normalizedTrackIds)
+
+    return true
+  } catch (error) {
+    console.error('Failed to save liked tracks:', error)
+    return false
+  }
+})
+
+// ─── YouTube IPC 핸들러 ────────────────────────────────────────────────────
+
+// 인증 여부 확인
+ipcMain.handle('youtube-music:is-authenticated', async () => {
+  const token = await loadYoutubeToken()
+  return Boolean(token)
+})
+
+// Google 로그인 창 열기 → 코드 입력 → 토큰 저장
+ipcMain.handle('youtube-music:login', async () => {
+  try {
+    const oauth2Client = createOAuthClient()
+
+    const authUrl = oauth2Client.generateAuthUrl({
+      access_type: 'offline',
+      scope: YOUTUBE_SCOPES,
+    })
+
+    // 로그인 창 열기
+    const authWin = new BrowserWindow({
+      width: 500,
+      height: 700,
+      parent: win ?? undefined,
+      modal: true,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    })
+
+    authWin.loadURL(authUrl)
+
+    return await new Promise<boolean>((resolve) => {
+      // redirect_uri가 oob라 코드를 title에서 감지
+      authWin.webContents.on('did-navigate', async (_event, url) => {
+        try {
+          const urlObj = new URL(url)
+          const code = urlObj.searchParams.get('code')
+
+          if (code) {
+            const { tokens } = await oauth2Client.getToken(code)
+            await saveYoutubeToken(tokens)
+            authWin.close()
+            resolve(true)
+          }
+        } catch {
+          // 무시
+        }
+      })
+
+      // title에서 코드 감지 (oob 방식 fallback)
+      authWin.webContents.on('page-title-updated', async (_event, title) => {
+        const match = title.match(/code=([^&\s]+)/)
+
+        if (match) {
+          try {
+            const { tokens } = await oauth2Client.getToken(match[1])
+            await saveYoutubeToken(tokens)
+            authWin.close()
+            resolve(true)
+          } catch {
+            authWin.close()
+            resolve(false)
+          }
+        }
+      })
+
+      authWin.on('closed', () => {
+        resolve(false)
+      })
+    })
+  } catch (error) {
+    console.error('Failed to login:', error)
+    return false
+  }
+})
+
+// 로그아웃
+ipcMain.handle('youtube-music:logout', async () => {
+  try {
+    await fs.unlink(getYoutubeTokenPath())
+    try { await fs.unlink(getPlaylistCachePath()) } catch {}
+    return true
+  } catch {
+    return false
+  }
+})
+
+ipcMain.handle('youtube-music:load-track-cache', async () => {
+  try {
+    const data = await fs.readFile(getPlaylistCachePath(), 'utf-8')
+    return JSON.parse(data)
+  } catch {
+    return null
+  }
+})
+
+ipcMain.handle('youtube-music:save-track-cache', async (_event, cache: unknown) => {
+  try {
+    await fs.writeFile(getPlaylistCachePath(), JSON.stringify(cache), 'utf-8')
+    return true
+  } catch {
+    return false
+  }
+})
+
+ipcMain.handle('youtube-music:load-playlist-covers', async () => {
+  return await createPlaylistCoverDataUrlMap()
+})
+
+ipcMain.handle('youtube-music:change-playlist-cover', async (_event, playlistId: string) => {
+  try {
+    if (!playlistId) return null
+
+    const result = win
+      ? await dialog.showOpenDialog(win, {
+          title: 'Select Playlist Cover',
+          properties: ['openFile'],
+          filters: [
+            {
+              name: 'Images',
+              extensions: ['png', 'jpg', 'jpeg', 'webp'],
+            },
+          ],
+        })
+      : await dialog.showOpenDialog({
+          title: 'Select Playlist Cover',
+          properties: ['openFile'],
+          filters: [
+            {
+              name: 'Images',
+              extensions: ['png', 'jpg', 'jpeg', 'webp'],
+            },
+          ],
+        })
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return null
+    }
+
+    const selectedPath = result.filePaths[0]
+    const rawExtension = path.extname(selectedPath).toLowerCase()
+    const extension = ['.png', '.jpg', '.jpeg', '.webp'].includes(rawExtension)
+      ? rawExtension
+      : '.png'
+    const safeFileName = sanitizePlaylistCoverFileName(playlistId)
+    const coverDirPath = getPlaylistCoverDirPath()
+    const targetPath = path.join(coverDirPath, `${safeFileName}${extension}`)
+
+    await fs.mkdir(coverDirPath, { recursive: true })
+
+    if (selectedPath !== targetPath) {
+      await fs.copyFile(selectedPath, targetPath)
+    }
+
+    const coverMap = await loadPlaylistCoverMap()
+    const previousPath = coverMap[playlistId]
+
+    if (previousPath && previousPath !== targetPath) {
+      try {
+        await fs.unlink(previousPath)
+      } catch {
+        // 이전 커버 파일 삭제 실패는 무시
+      }
+    }
+
+    coverMap[playlistId] = targetPath
+    await savePlaylistCoverMap(coverMap)
+
+    return await createPlaylistCoverDataUrl(targetPath)
+  } catch (error) {
+    console.error('Failed to change playlist cover:', error)
+    return null
+  }
+})
+
+// 플레이리스트 목록
+ipcMain.handle('youtube-music:get-playlists', async () => {
+  try {
+    const auth = await getAuthenticatedClient()
+    if (!auth) return null
+
+    const youtube = google.youtube({ version: 'v3', auth })
+    const response = await youtube.playlists.list({
+      part: ['snippet', 'contentDetails'],
+      mine: true,
+      maxResults: 50,
+    })
+
+    return (response.data.items ?? []).map((item) => ({
+      id: item.id ?? '',
+      name: item.snippet?.title ?? '',
+      tracks: item.contentDetails?.itemCount ?? 0,
+      thumbnail: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url ?? '',
+    }))
+  } catch (error) {
+    console.error('Failed to get playlists:', error)
+    return null
+  }
+})
+
+// 좋아요 표시한 음악
+ipcMain.handle('youtube-music:get-liked-songs', async () => {
+  try {
+    const auth = await getAuthenticatedClient()
+    if (!auth) return null
+
+    const youtube = google.youtube({ version: 'v3', auth })
+    const response = await youtube.videos.list({
+      part: ['snippet', 'contentDetails'],
+      myRating: 'like',
+      maxResults: 50,
+    })
+
+    return (response.data.items ?? []).map((item) => ({
+      id: item.id ?? '',
+      title: item.snippet?.title ?? '',
+      artist: item.snippet?.channelTitle ?? '',
+      duration: item.contentDetails?.duration ?? '',
+      thumbnail: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url ?? '',
+    }))
+  } catch (error) {
+    console.error('Failed to get liked songs:', error)
+    return null
+  }
+})
+
+// 특정 플레이리스트 트랙
+ipcMain.handle('youtube-music:get-playlist-tracks', async (_event, playlistId: string) => {
+  try {
+    const auth = await getAuthenticatedClient()
+    if (!auth) return null
+
+    const youtube = google.youtube({ version: 'v3', auth })
+
+    // 1. nextPageToken으로 전체 플레이리스트 아이템 가져오기
+    const allItems: any[] = []
+    let nextPageToken: string | undefined = undefined
+
+    do {
+      const response: any = await youtube.playlistItems.list({
+        part: ['snippet', 'contentDetails'],
+        playlistId,
+        maxResults: 50,
+        pageToken: nextPageToken,
+      })
+      allItems.push(...(response.data.items ?? []))
+      nextPageToken = response.data.nextPageToken ?? undefined
+    } while (nextPageToken)
+
+    const videoIds = allItems
+      .map((item: any) => item.contentDetails?.videoId ?? '')
+      .filter(Boolean)
+
+    // 2. videos.list로 duration 가져오기 (50개씩 배치)
+    const durationMap: Record<string, string> = {}
+    for (let i = 0; i < videoIds.length; i += 50) {
+      const batch = videoIds.slice(i, i + 50)
+      const videosResponse = await youtube.videos.list({
+        part: ['contentDetails'],
+        id: batch,
+        maxResults: 50,
+      })
+
+      for (const video of videosResponse.data.items ?? []) {
+        if (video.id && video.contentDetails?.duration) {
+          const raw = video.contentDetails.duration
+          const match = raw.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+          if (match) {
+            const h = parseInt(match[1] ?? '0')
+            const m = parseInt(match[2] ?? '0')
+            const s = parseInt(match[3] ?? '0')
+            const formatted = h > 0
+              ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+              : `${m}:${String(s).padStart(2, '0')}`
+            durationMap[video.id] = formatted
+          }
+        }
+      }
+    }
+
+    return allItems.map((item: any) => {
+      const videoId = item.contentDetails?.videoId ?? ''
+      return {
+        id: videoId,
+        title: item.snippet?.title ?? '',
+        artist: item.snippet?.videoOwnerChannelTitle ?? '',
+        duration: durationMap[videoId] ?? '',
+        thumbnail: item.snippet?.thumbnails?.medium?.url ?? item.snippet?.thumbnails?.default?.url ?? '',
+      }
+    })
+  } catch (error) {
+    console.error('Failed to get playlist tracks:', error)
+    return null
+  }
+})
+
+// ───────────────────────────────────────────────────────────────────────────
 
 ipcMain.handle('settings:set-start-with-windows', async (_event, enabled: boolean) => {
   try {

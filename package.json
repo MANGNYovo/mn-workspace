@@ -1,7 +1,7 @@
 {
   "name": "mn-workspace",
   "private": true,
-  "version": "1.4.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,10 +11,13 @@
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/modifiers": "^9.0.0",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "dotenv": "^17.4.2",
     "electron-updater": "^6.8.9",
     "framer-motion": "^12.40.0",
+    "googleapis": "^173.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -49,9 +52,7 @@
       "target": "nsis",
       "icon": "build/icon.ico"
     },
-
     "artifactName": "MN-WORKSPACE-Setup-${version}.${ext}",
-
     "publish": {
       "provider": "github",
       "owner": "MANGNYovo",

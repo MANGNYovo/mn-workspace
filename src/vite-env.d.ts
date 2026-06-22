@@ -1,5 +1,20 @@
 /// <reference types="vite/client" />
 
+type YoutubeMusicPlaylist = {
+  id: string
+  name: string
+  tracks: number
+  thumbnail: string
+}
+
+type YoutubeMusicTrack = {
+  id: string
+  title: string
+  artist: string
+  duration: string
+  thumbnail: string
+}
+
 interface Window {
   mnAPI: {
     selectProgram: () => Promise<string | null>
@@ -21,6 +36,20 @@ interface Window {
     saveSettings: (settings: unknown) => Promise<boolean>
     loadDiaries: () => Promise<unknown | null>
     saveDiaries: (diaries: unknown) => Promise<boolean>
+    loadLikedTracks: () => Promise<string[] | null>
+    saveLikedTracks: (trackIds: string[]) => Promise<boolean>
+
+    isYoutubeMusicAuthenticated: () => Promise<boolean>
+    loginYoutubeMusic: () => Promise<boolean>
+    logoutYoutubeMusic: () => Promise<boolean>
+    getYoutubeMusicPlaylists: () => Promise<YoutubeMusicPlaylist[] | null>
+    getYoutubeMusicLikedSongs: () => Promise<YoutubeMusicTrack[] | null>
+    getYoutubeMusicPlaylistTracks: (playlistId: string) => Promise<YoutubeMusicTrack[] | null>
+    loadYoutubeMusicTrackCache: () => Promise<Record<string, YoutubeMusicTrack[]> | null>
+    saveYoutubeMusicTrackCache: (cache: unknown) => Promise<boolean>
+    loadYoutubeMusicPlaylistCovers: () => Promise<Record<string, string> | null>
+    changeYoutubeMusicPlaylistCover: (playlistId: string) => Promise<string | null>
+
     setStartWithWindows: (enabled: boolean) => Promise<boolean>
 
     getAudioDevice: () => Promise<'speaker' | 'headphone' | null>

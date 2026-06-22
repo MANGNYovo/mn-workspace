@@ -1,0 +1,615 @@
+.floating-player,
+.floating-player-restore {
+  position: fixed;
+  z-index: 80;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.floating-player.is-default {
+  right: 12px;
+  bottom: 12px;
+}
+
+.floating-player-minimized.is-default {
+  right: 12px;
+  bottom: 12px;
+}
+
+.floating-player.is-positioned,
+.floating-player-restore.is-positioned {
+  right: auto;
+  bottom: auto;
+}
+
+.floating-player {
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(14px) saturate(1.15);
+  box-shadow: 0 24px 60px rgba(20, 28, 58, 0.1);
+  color: #10172f;
+  cursor: grab;
+}
+
+.floating-player.dragging,
+.floating-player-restore.dragging {
+  cursor: grabbing;
+}
+
+.floating-player button,
+.floating-player-restore {
+  font-family: inherit;
+}
+
+.floating-player button:focus,
+.floating-player button:focus-visible,
+.floating-player-restore:focus,
+.floating-player-restore:focus-visible {
+  outline: none;
+}
+
+.floating-player-expanded {
+  width: 400px;
+  min-height: 208px;
+  border-radius: 17px;
+  padding: 18px 20px 18px;
+}
+
+.floating-player-top-actions {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.floating-player-window-button {
+  width: 26px;
+  height: 24px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #65708d;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.floating-player-window-button.minimize {
+  width: 17px;
+  height: 15px;
+  font-size: 11px;
+}
+
+.floating-player-window-button.expand {
+  color: var(--accent-color, #705bff);
+  font-size: 17px;
+}
+
+.floating-player-window-button:hover,
+.floating-player-window-button.expand:hover {
+  color: var(--accent-color, #705bff);
+  background: transparent;
+}
+
+.floating-player-window-button.close:hover {
+  color: #ff5d5d;
+  background: transparent;
+}
+
+.floating-player-main {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) 122px;
+  align-items: center;
+  gap: 15px;
+  padding-right: 8px;
+}
+
+.floating-player-cover {
+  width: 84px;
+  height: 84px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #1d2440, #705bff);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.floating-player-info {
+  min-width: 0;
+  padding-right: 4px;
+}
+
+.floating-player-marquee {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.floating-player-marquee.scrollable {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 78%,
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0%,
+    black 8%,
+    black 78%,
+    transparent 100%
+  );
+}
+
+.floating-player-marquee-track {
+  display: inline-flex;
+  width: max-content;
+  max-width: none;
+  white-space: nowrap;
+  overflow: visible;
+  transform: translateX(0);
+  will-change: transform;
+}
+
+.floating-player-marquee-text {
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.floating-player-marquee.scrollable .floating-player-marquee-text {
+  padding-right: 42px;
+}
+
+.floating-player-marquee.scrollable .floating-player-marquee-track {
+  animation: floatingPlayerMarquee 7s linear infinite;
+}
+
+.floating-player-title {
+  color: #10172f;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.floating-player-artist {
+  margin-top: 5px;
+  color: #65708d;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1.2;
+}
+
+@keyframes floatingPlayerMarquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.floating-player-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 13px;
+}
+
+.floating-player-controls button,
+.floating-player-mini-controls button {
+  border: 0;
+  background: transparent;
+  color: #65708d;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.floating-player-controls button {
+  width: 24px;
+  height: 28px;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.floating-player-controls button:hover,
+.floating-player-mini-controls button:hover {
+  color: var(--accent-color, #705bff);
+}
+
+.floating-player-play {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  background: var(--accent-color, #705bff) !important;
+  color: #ffffff !important;
+  font-size: 17px !important;
+  box-shadow: 0 0 24px color-mix(in srgb, var(--accent-color, #705bff) 28%, transparent);
+}
+
+.floating-player-play .play-icon {
+  display: inline-block;
+  font-size: 21px;
+  line-height: 1;
+  transform: translateX(1px);
+}
+
+.floating-player-progress,
+.floating-player-mini-progress {
+  position: relative;
+  width: 100%;
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(130, 140, 170, 0.22);
+  overflow: visible;
+  cursor: pointer;
+  padding: 0;
+}
+
+.floating-player-progress {
+  margin-top: 22px;
+}
+
+.floating-player-progress span,
+.floating-player-mini-progress span {
+  position: relative;
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-color, #705bff);
+}
+
+.floating-player-progress span::after,
+.floating-player-mini-progress span::after,
+.floating-player-volume-track i::after {
+  content: '';
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-color, #705bff);
+  transform: translateY(-50%);
+}
+
+.floating-player-times {
+  margin-top: 9px;
+  display: flex;
+  justify-content: space-between;
+  color: #65708d;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.floating-player-bottom {
+  margin-top: 13px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.78fr) 24px auto;
+  align-items: center;
+  gap: 14px;
+}
+
+.floating-player-volume,
+.floating-player-mini-volume {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.floating-player-volume img,
+.floating-player-mini-volume img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.floating-player-volume-track {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  min-width: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(130, 140, 170, 0.24);
+  overflow: visible;
+  cursor: pointer;
+  padding: 0;
+}
+
+.floating-player-volume-track i {
+  position: relative;
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-color, #705bff);
+}
+
+.floating-player-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.floating-player-like-button {
+  position: relative;
+  overflow: visible;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.16s ease;
+}
+
+.floating-player-like-button .like-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  display: block;
+  transition: opacity 0.16s ease;
+}
+
+.floating-player-like-button:active {
+  transform: scale(0.92);
+}
+
+.floating-player-icon-button {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.72;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.floating-player-icon-button:hover,
+.floating-player-icon-button.active {
+  opacity: 1;
+}
+
+.floating-player-icon-button:active {
+  transform: scale(0.9);
+}
+
+.floating-player-icon-button img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.floating-player-minimized {
+  width: 760px;
+  height: 72px;
+  border-radius: 14px;
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: 48px 170px 140px 76px 104px 24px 24px 24px 26px;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.floating-player-mini-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #1d2440, #705bff);
+  object-fit: cover;
+}
+
+.floating-player-mini-info {
+  min-width: 0;
+}
+
+.floating-player-mini-title {
+  color: #10172f;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.floating-player-mini-artist {
+  margin-top: 4px;
+  color: #65708d;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.2;
+}
+
+.floating-player-mini-volume {
+  width: 140px;
+}
+
+.floating-player-mini-time {
+  color: #65708d;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.floating-player-mini-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.floating-player-mini-controls button {
+  width: 24px;
+  height: 28px;
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.floating-player-mini-like-button {
+  justify-self: center;
+}
+
+.floating-player-mini-play {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(130, 140, 170, 0.24) !important;
+  color: var(--accent-color, #705bff) !important;
+  font-size: 14px !important;
+}
+
+.floating-player-mini-play:hover {
+  border-color: var(--accent-color, #705bff) !important;
+  color: var(--accent-color, #705bff) !important;
+}
+
+.floating-player-mini-play .play-icon {
+  display: inline-block;
+  font-size: 18px;
+  line-height: 1;
+  transform: translateX(1px);
+}
+
+.floating-player-restore {
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(130, 140, 170, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 36px rgba(20, 28, 58, 0.16);
+  cursor: grab;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.floating-player-restore.is-default {
+  right: 12px;
+  bottom: 12px;
+}
+
+.floating-player-restore img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.floating-player-restore:hover {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 35%, transparent);
+  box-shadow: 0 20px 40px color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent);
+}
+
+.app[data-theme='dark'] .floating-player {
+  background: rgba(43, 43, 43, 0.04);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .floating-player-title,
+.app[data-theme='dark'] .floating-player-mini-title {
+  color: #ffffff;
+}
+
+.app[data-theme='dark'] .floating-player-artist,
+.app[data-theme='dark'] .floating-player-mini-artist,
+.app[data-theme='dark'] .floating-player-times,
+.app[data-theme='dark'] .floating-player-mini-time {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .floating-player-controls button,
+.app[data-theme='dark'] .floating-player-mini-controls button,
+.app[data-theme='dark'] .floating-player-window-button {
+  color: #d8dcf0;
+}
+
+.app[data-theme='dark'] .floating-player-controls button:hover,
+.app[data-theme='dark'] .floating-player-mini-controls button:hover,
+.app[data-theme='dark'] .floating-player-window-button:hover {
+  color: var(--accent-color, #705bff);
+  background: transparent;
+}
+
+.app[data-theme='dark'] .floating-player-window-button.close:hover {
+  color: #ff5d5d;
+  background: transparent;
+}
+
+.app[data-theme='dark'] .floating-player-mini-play {
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+}
+
+.app[data-theme='dark'] .floating-player-progress,
+.app[data-theme='dark'] .floating-player-mini-progress,
+.app[data-theme='dark'] .floating-player-volume-track {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.app[data-theme='dark'] .floating-player-restore {
+  background: rgba(43, 43, 43, 0.88);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+}
+
+@media (max-width: 1280px) {
+  .floating-player-minimized {
+    width: 660px;
+    grid-template-columns: 46px 135px 115px 68px 96px 22px 22px 24px 26px;
+    gap: 10px;
+  }
+
+  .floating-player-mini-cover {
+    width: 46px;
+    height: 46px;
+  }
+
+  .floating-player-mini-volume {
+    width: 115px;
+  }
+}
+
+.floating-player-play-icon {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.floating-player-mini-play-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.floating-player-max-icon {
+  width: 15px;
+  height: 15px;
+  object-fit: contain;
+  pointer-events: none;
+}

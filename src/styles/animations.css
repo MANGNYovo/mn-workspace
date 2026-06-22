@@ -1,0 +1,141 @@
+/* ========================= */
+/* 애니메이션 */
+/* ========================= */
+
+@keyframes update-check-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(390deg);
+  }
+
+  40% {
+    transform: rotate(360deg);
+  }
+
+  60% {
+    transform: rotate(360deg);
+  }
+
+  85% {
+    transform: rotate(750deg);
+  }
+
+  100% {
+    transform: rotate(720deg);
+  }
+}
+
+@keyframes completedPop {
+  0% {
+    transform: scale(0.7);
+  }
+
+  65% {
+    transform: scale(1.18);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes launchButtonRingHeartbeat {
+  0% {
+    transform: scale(0.88);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: scale(1.00);
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: scale(0.88);
+    opacity: 0.4;
+  }
+}
+
+@keyframes spinningLoader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes cancelledPop {
+  0% {
+    transform: scale(0.7);
+  }
+
+  65% {
+    transform: scale(1.16);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes playlistTitleMarquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-65%);
+  }
+}
+
+@keyframes seamlessTitleMarquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes diarySavePress {
+  0% {
+    transform: scale(1);
+  }
+
+  28% {
+    transform: scale(0.88);
+  }
+
+  72% {
+    transform: scale(1.06);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes diarySavedFade {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  18% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  78% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+

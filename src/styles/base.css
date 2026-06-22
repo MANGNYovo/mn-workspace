@@ -1,0 +1,212 @@
+/* ========================= */
+/* 폰트 */
+/* ========================= */
+
+@font-face {
+  font-family: 'MNFont';
+  src: url('../assets/fonts/thin.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'MNFont';
+  src: url('../assets/fonts/bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* ========================= */
+/* 리셋 */
+/* ========================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'MNFont', sans-serif;
+  font-weight: 300;
+  background: #f5f6fb;
+  color: #10172f;
+}
+
+button,
+input,
+textarea,
+select {
+  font-family: inherit;
+}
+
+/* ========================= */
+/* 포커스 리셋 */
+/* ========================= */
+
+.brand:focus,
+.brand:focus-visible,
+.launch-button:focus,
+.launch-button:focus-visible,
+.program-status-button:focus,
+.program-status-button:focus-visible,
+.menu-item:focus,
+.menu-item:focus-visible,
+.dashboard-preset-dot:focus,
+.dashboard-preset-dot:focus-visible,
+.preset-tab:focus,
+.preset-tab:focus-visible,
+.add-program-button:focus,
+.add-program-button:focus-visible,
+.toggle:focus,
+.toggle:focus-visible,
+.more-button:focus,
+.more-button:focus-visible,
+.setting-select:focus,
+.setting-select:focus-visible,
+.setting-action:focus,
+.setting-action:focus-visible,
+.accent-dot:focus,
+.accent-dot:focus-visible,
+.sidebar-theme-toggle:focus,
+.sidebar-theme-toggle:focus-visible,
+.sidebar-accent-dot:focus,
+.sidebar-accent-dot:focus-visible,
+.modal-close-button:focus,
+.modal-close-button:focus-visible,
+.modal-add-button:focus,
+.modal-add-button:focus-visible,
+.modal-cancel-button:focus,
+.modal-cancel-button:focus-visible,
+.drag-handle:focus,
+.drag-handle:focus-visible,
+.row-menu button:focus,
+.row-menu button:focus-visible,
+.custom-titlebar-controls button:focus,
+.custom-titlebar-controls button:focus-visible,
+.home-preset-dot:focus,
+.home-preset-dot:focus-visible,
+.home-device-button:focus,
+.home-device-button:focus-visible,
+.home-launch-button:focus,
+.home-launch-button:focus-visible,
+.setting-icon-action:focus,
+.setting-icon-action:focus-visible,
+.diary-write-button:focus,
+.diary-write-button:focus-visible,
+.diary-month-control button:focus,
+.diary-month-control button:focus-visible,
+.diary-current-month:focus,
+.diary-current-month:focus-visible,
+.diary-today-button:focus,
+.diary-today-button:focus-visible,
+.diary-day:focus,
+.diary-day:focus-visible,
+.diary-picker-row:focus,
+.diary-picker-row:focus-visible,
+.diary-modal-close:focus,
+.diary-modal-close:focus-visible,
+.write-diary-back-button:focus,
+.write-diary-back-button:focus-visible,
+.write-diary-save-button:focus,
+.write-diary-save-button:focus-visible,
+.diary-delete-cancel-button:focus,
+.diary-delete-cancel-button:focus-visible,
+.diary-delete-button:focus,
+.diary-delete-button:focus-visible {
+  outline: none;
+}
+
+.accent-dot.active,
+.accent-dot.active:focus,
+.accent-dot.active:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px var(--accent-ring);
+}
+
+.modal-form input:focus,
+.modal-form select:focus {
+  outline: none;
+  border-color: var(--accent-color, #7a65ff);
+}
+
+.diary-day:hover,
+.diary-day:focus,
+.diary-day:focus-visible,
+.diary-day:active {
+  appearance: none;
+  -webkit-appearance: none;
+  border-right: 1px solid rgba(130, 140, 170, 0.16);
+  border-bottom: 1px solid rgba(130, 140, 170, 0.16);
+  background: rgba(255, 255, 255, 0.22);
+  outline: none;
+  box-shadow: none;
+}
+
+.home-music-playlist-card:focus,
+.home-music-playlist-card:focus-visible,
+.home-music-arrow:focus,
+.home-music-arrow:focus-visible,
+.home-player-controls button:focus,
+.home-player-controls button:focus-visible,
+.home-player-volume button:focus,
+.home-player-volume button:focus-visible,
+.home-player-volume-track:focus,
+.home-player-volume-track:focus-visible,
+.home-player-progress:focus,
+.home-player-progress:focus-visible,
+.full-playlist-close:focus,
+.full-playlist-close:focus-visible,
+.full-playlist-search-input:focus,
+.full-playlist-search-input:focus-visible,
+.full-playlist-search-clear:focus,
+.full-playlist-search-clear:focus-visible,
+.playlist-search-clear:focus,
+.playlist-search-clear:focus-visible,
+.youtube-login-close:focus,
+.youtube-login-close:focus-visible,
+.youtube-google-button:focus,
+.youtube-google-button:focus-visible,
+.youtube-login-input:focus,
+.youtube-login-input:focus-visible,
+.youtube-login-button:focus,
+.youtube-login-button:focus-visible,
+.full-playlist-play-button:focus,
+.full-playlist-play-button:focus-visible,
+.full-playlist-track-row button:focus,
+.full-playlist-track-row button:focus-visible,
+.playlist-search:focus,
+.playlist-search:focus-visible,
+.playlist-search input:focus,
+.playlist-search input:focus-visible,
+.playlist-view-button:focus,
+.playlist-view-button:focus-visible,
+.playlist-refresh-button:focus,
+.playlist-refresh-button:focus-visible,
+.playlist-row:focus,
+.playlist-row:focus-visible,
+.playlist-row-play:focus,
+.playlist-row-play:focus-visible,
+.playlist-cover-edit-button:focus,
+.playlist-cover-edit-button:focus-visible,
+.playlist-row-drag:focus,
+.playlist-row-drag:focus-visible,
+.playlist-track-row:focus,
+.playlist-track-row:focus-visible,
+.playlist-track-header button:focus,
+.playlist-track-header button:focus-visible,
+.playlist-play-button:focus,
+.playlist-play-button:focus-visible,
+.playlist-player-card button:focus,
+.playlist-player-card button:focus-visible {
+  outline: none;
+}
+
