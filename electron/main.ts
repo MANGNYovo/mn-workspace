@@ -91,9 +91,10 @@ async function createPlaylistCoverDataUrl(filePath: string) {
 
 
 // ─── Production renderer server ──────────────────────────────────────────────
-// dev는 Vite dev server(http://localhost)라 YouTube iframe postMessage/audio가 정상인데,
-// 설치 빌드는 file:// 로 열리면 YouTube iframe API와 origin 처리가 불안정해질 수 있다.
-// 그래서 빌드된 dist를 127.0.0.1 임시 HTTP origin으로 서빙한다.
+// YouTube iframe은 origin/referrer 영향을 크게 받는다.
+// dev에서 정상 재생되던 환경과 최대한 동일하게 맞추기 위해
+// 설치 빌드에서도 dist를 http://localhost:5173 고정 origin으로 서빙한다.
+// 이 앱은 개인 사용 목적이므로 Vite dev server와 같은 origin을 우선 사용한다.
 let rendererStaticServer: Server | null = null
 let rendererStaticServerUrl = ''
 
@@ -116,7 +117,7 @@ const rendererMimeTypes: Record<string, string> = {
 }
 
 function createRendererFilePath(requestUrl: string) {
-  const url = new URL(requestUrl, 'http://127.0.0.1')
+  const url = new URL(requestUrl, 'http://localhost:5173')
   const decodedPathname = decodeURIComponent(url.pathname)
   const relativePathname = decodedPathname === '/' ? 'index.html' : decodedPathname.replace(/^\/+/, '')
   const requestedFilePath = path.join(RENDERER_DIST, relativePathname)
@@ -156,30 +157,57 @@ async function handleRendererRequest(request: IncomingMessage, response: ServerR
   }
 }
 
-function getRendererStaticServerUrl() {
+function listenRendererStaticServer(port: number, host: string) {
   return new Promise<string>((resolve, reject) => {
-    if (rendererStaticServerUrl) {
-      resolve(rendererStaticServerUrl)
-      return
-    }
-
     rendererStaticServer = createServer((request, response) => {
       void handleRendererRequest(request, response)
     })
 
     rendererStaticServer.once('error', reject)
-    rendererStaticServer.listen(0, '127.0.0.1', () => {
-      const address = rendererStaticServer?.address()
-
-      if (!address || typeof address === 'string') {
-        reject(new Error('Failed to start renderer static server.'))
-        return
-      }
-
-      rendererStaticServerUrl = `http://127.0.0.1:${address.port}/index.html`
+    rendererStaticServer.listen(port, host, () => {
+      rendererStaticServer?.off('error', reject)
+      rendererStaticServerUrl = `http://localhost:${port}/index.html`
       resolve(rendererStaticServerUrl)
     })
   })
+}
+
+async function getRendererStaticServerUrl() {
+  if (rendererStaticServerUrl) {
+    return rendererStaticServerUrl
+  }
+
+  try {
+    // Vite dev server 기본 origin과 동일하게 고정한다.
+    return await listenRendererStaticServer(5173, 'localhost')
+  } catch (error) {
+    console.error('Failed to bind renderer server to localhost:5173:', error)
+
+    rendererStaticServer?.close()
+    rendererStaticServer = null
+
+    // 혹시 5173 포트가 이미 사용 중이면 앱이 아예 안 켜지는 것보다는
+    // 이전 방식처럼 임시 포트로 열리게 한다. 단, 이 경우 YouTube 제한이 다시 생길 수 있다.
+    return await new Promise<string>((resolve, reject) => {
+      rendererStaticServer = createServer((request, response) => {
+        void handleRendererRequest(request, response)
+      })
+
+      rendererStaticServer.once('error', reject)
+      rendererStaticServer.listen(0, 'localhost', () => {
+        rendererStaticServer?.off('error', reject)
+        const address = rendererStaticServer?.address()
+
+        if (!address || typeof address === 'string') {
+          reject(new Error('Failed to start renderer static server.'))
+          return
+        }
+
+        rendererStaticServerUrl = `http://localhost:${address.port}/index.html`
+        resolve(rendererStaticServerUrl)
+      })
+    })
+  }
 }
 
 async function loadPlaylistCoverMap() {

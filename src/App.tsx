@@ -54,6 +54,48 @@ import {
 const YOUTUBE_TRACK_SWITCH_DELAY_MS = 700
 const LIKED_PLAYLIST_ID = 'mn-liked-tracks'
 
+type YoutubePlayer = {
+  playVideo?: () => void
+  pauseVideo?: () => void
+  stopVideo?: () => void
+  seekTo?: (seconds: number, allowSeekAhead?: boolean) => void
+  setVolume?: (volume: number) => void
+  unMute?: () => void
+  mute?: () => void
+  getCurrentTime?: () => number
+  getDuration?: () => number
+  loadVideoById?: (videoId: string | { videoId: string; startSeconds?: number }) => void
+  destroy?: () => void
+}
+
+type YoutubeApi = {
+  Player: new (element: HTMLElement | string, options: {
+    width: number
+    height: number
+    videoId?: string
+    playerVars?: Record<string, string | number>
+    events?: {
+      onReady?: (event: { target: YoutubePlayer }) => void
+      onStateChange?: (event: { data: number; target: YoutubePlayer }) => void
+      onError?: (event: { data: number; target: YoutubePlayer }) => void
+    }
+  }) => YoutubePlayer
+  PlayerState: {
+    ENDED: number
+    PLAYING: number
+    PAUSED: number
+    BUFFERING: number
+    CUED: number
+  }
+}
+
+declare global {
+  interface Window {
+    YT?: YoutubeApi
+    onYouTubeIframeAPIReady?: () => void
+  }
+}
+
 function App() {
   // ─── State ────────────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState<Page>('home')
@@ -75,7 +117,10 @@ function App() {
   const [currentVideoId, setCurrentVideoId] = useState<string | null>(null)
   const [playingPlaylistId, setPlayingPlaylistId] = useState<string | null>(null)
   const [currentTrack, setCurrentTrack] = useState<PlaylistTrack | null>(null)
-  const ytIframeRef = useRef<HTMLIFrameElement | null>(null)
+  const ytPlayerHostRef = useRef<HTMLDivElement | null>(null)
+  const ytPlayerRef = useRef<YoutubePlayer | null>(null)
+  const ytApiPromiseRef = useRef<Promise<YoutubeApi> | null>(null)
+  const youtubePlayerElementRef = useRef<HTMLElement | null>(null)
   const [playingFullPlaylistTrackId, setPlayingFullPlaylistTrackId] = useState<string | null>(null)
   const [selectedPlaylistTrackId, setSelectedPlaylistTrackId] = useState<string | null>(null)
   const allTracksRef = useRef<PlaylistTrack[]>([])
@@ -89,6 +134,11 @@ function App() {
   const isWaitingForFreshVideoTimeRef = useRef(false)
   const youtubeSwitchTimerRef = useRef<number | null>(null)
   const youtubeSwitchTokenRef = useRef(0)
+  const youtubePlayerReadyRef = useRef(false)
+  const youtubeCommandQueueRef = useRef<{ func: string; args: unknown[] }[]>([])
+  const youtubeDeferredTimerRef = useRef<number | null>(null)
+  const pendingYoutubeVideoIdRef = useRef<string | null>(null)
+  const lastYoutubeErrorRef = useRef<number | null>(null)
   const playNextTrackRef = useRef<() => void>(() => {})
   const [playlistViewMode, setPlaylistViewMode] = useState<PlaylistViewMode>(defaultSettings.playlistViewMode ?? 'list')
   const [playlistSearchQuery, setPlaylistSearchQuery] = useState('')
@@ -345,52 +395,234 @@ function App() {
     })
   }
 
-  const sendYtCommand = (func: string, args: unknown[] = []) => {
-    const iframeWindow = ytIframeRef.current?.contentWindow
-    if (!iframeWindow) return
+  const youtubePlayerOrigin = window.location.origin.startsWith('http')
+    ? window.location.origin
+    : 'http://127.0.0.1'
 
-    iframeWindow.postMessage(
-      JSON.stringify({ event: 'command', func, args }),
-      'https://www.youtube.com',
+  const isYoutubePlayerUsable = () => {
+    const player = ytPlayerRef.current
+    return Boolean(
+      youtubePlayerReadyRef.current &&
+      player &&
+      typeof player.playVideo === 'function' &&
+      typeof player.loadVideoById === 'function',
     )
+  }
+
+  const loadYoutubeIframeApi = () => {
+    if (window.YT?.Player) return Promise.resolve(window.YT)
+    if (ytApiPromiseRef.current) return ytApiPromiseRef.current
+
+    ytApiPromiseRef.current = new Promise<YoutubeApi>((resolve, reject) => {
+      const previousReady = window.onYouTubeIframeAPIReady
+      const timeout = window.setTimeout(() => {
+        reject(new Error('YouTube IFrame API initialization timed out.'))
+      }, 15000)
+
+      window.onYouTubeIframeAPIReady = () => {
+        previousReady?.()
+        window.clearTimeout(timeout)
+
+        if (window.YT?.Player) {
+          resolve(window.YT)
+          return
+        }
+
+        reject(new Error('YouTube IFrame API failed to initialize.'))
+      }
+
+      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+        const script = document.createElement('script')
+        script.src = 'https://www.youtube.com/iframe_api'
+        script.async = true
+        script.onerror = () => {
+          window.clearTimeout(timeout)
+          reject(new Error('Failed to load YouTube IFrame API.'))
+        }
+        document.head.appendChild(script)
+      }
+    })
+
+    return ytApiPromiseRef.current
+  }
+
+  const createYoutubeHostElement = () => {
+    const host = ytPlayerHostRef.current
+    if (!host) return null
+
+    host.innerHTML = ''
+    const element = document.createElement('div')
+    element.id = `mn-youtube-player-${Date.now()}`
+    host.appendChild(element)
+    youtubePlayerElementRef.current = element
+    return element
+  }
+
+  const runYtCommandNow = (func: string, args: unknown[] = []) => {
+    const player = ytPlayerRef.current
+    if (!player || !isYoutubePlayerUsable()) return false
+
+    try {
+      if (func === 'playVideo' && typeof player.playVideo === 'function') { player.playVideo(); return true }
+      if (func === 'pauseVideo' && typeof player.pauseVideo === 'function') { player.pauseVideo(); return true }
+      if (func === 'stopVideo' && typeof player.stopVideo === 'function') { player.stopVideo(); return true }
+      if (func === 'seekTo' && typeof player.seekTo === 'function') {
+        const seconds = typeof args[0] === 'number' ? args[0] : 0
+        const allowSeekAhead = typeof args[1] === 'boolean' ? args[1] : true
+        player.seekTo(seconds, allowSeekAhead)
+        return true
+      }
+      if (func === 'setVolume' && typeof player.setVolume === 'function') {
+        const volume = typeof args[0] === 'number' ? args[0] : homeMusicVolumeRef.current
+        player.setVolume(Math.max(0, Math.min(100, Math.round(volume))))
+        return true
+      }
+      if (func === 'unMute' && typeof player.unMute === 'function') { player.unMute(); return true }
+      if (func === 'mute' && typeof player.mute === 'function') { player.mute(); return true }
+      return false
+    } catch (error) {
+      console.warn('YouTube player command failed:', func, error)
+      return false
+    }
+  }
+
+  const flushYtCommandQueue = () => {
+    if (!isYoutubePlayerUsable()) return
+
+    const queued = youtubeCommandQueueRef.current.splice(0)
+    queued.forEach(({ func, args }) => runYtCommandNow(func, args))
+  }
+
+  const sendYtCommand = (func: string, args: unknown[] = []) => {
+    if (!isYoutubePlayerUsable()) {
+      if (func !== 'stopVideo') {
+        youtubeCommandQueueRef.current = [
+          ...youtubeCommandQueueRef.current.filter((command) => command.func !== func),
+          { func, args },
+        ].slice(-8)
+      }
+      return
+    }
+
+    runYtCommandNow(func, args)
   }
 
   const applyYtVolume = () => {
     const safeVolume = Math.max(0, Math.min(100, Math.round(homeMusicVolumeRef.current)))
     sendYtCommand('setVolume', [safeVolume])
     if (safeVolume > 0) sendYtCommand('unMute')
+    else sendYtCommand('mute')
   }
 
   const applyYtVolumeWithRetry = () => {
     applyYtVolume()
-    window.setTimeout(applyYtVolume, 160)
-    window.setTimeout(applyYtVolume, 420)
-    window.setTimeout(applyYtVolume, 900)
+    window.setTimeout(applyYtVolume, 180)
+    window.setTimeout(applyYtVolume, 520)
+    window.setTimeout(applyYtVolume, 1100)
+    window.setTimeout(applyYtVolume, 2200)
   }
 
-  const handleYoutubeIframeLoad = () => {
-    const loadedVideoId = currentVideoIdRef.current
-    if (!loadedVideoId) return
+  const loadCurrentVideoIntoYoutubePlayer = (videoId: string) => {
+    const player = ytPlayerRef.current
+    if (!player || !isYoutubePlayerUsable() || typeof player.loadVideoById !== 'function') return
+
+    pendingYoutubeVideoIdRef.current = videoId
+    lastYoutubeErrorRef.current = null
+    isPreparingNextVideoRef.current = true
+    isWaitingForFreshVideoTimeRef.current = true
+    pendingVideoChangeUntilRef.current = Date.now() + YOUTUBE_TRACK_SWITCH_DELAY_MS + 1600
+
+    try {
+      player.loadVideoById({ videoId, startSeconds: 0 })
+    } catch {
+      try { player.loadVideoById(videoId) } catch { /* 무시 */ }
+    }
+
+    setYtCurrentTime(0)
+    setHomeMusicProgress(0)
 
     window.setTimeout(() => {
-      if (currentVideoIdRef.current !== loadedVideoId) return
+      if (currentVideoIdRef.current !== videoId) return
+      sendYtCommand('seekTo', [0, true])
       sendYtCommand('playVideo')
-      applyYtVolume()
-    }, 160)
+      applyYtVolumeWithRetry()
+    }, 120)
+  }
 
-    window.setTimeout(() => {
-      if (currentVideoIdRef.current !== loadedVideoId) return
-      sendYtCommand('playVideo')
-      applyYtVolume()
-    }, 420)
+  const createYoutubePlayer = async (videoId: string) => {
+    const YT = await loadYoutubeIframeApi()
+    if (currentVideoIdRef.current !== videoId) return
 
-    window.setTimeout(() => {
-      if (currentVideoIdRef.current !== loadedVideoId) return
-      isPreparingNextVideoRef.current = false
-      isWaitingForFreshVideoTimeRef.current = false
-      pendingVideoChangeUntilRef.current = 0
-      applyYtVolume()
-    }, 900)
+    if (ytPlayerRef.current && isYoutubePlayerUsable()) {
+      loadCurrentVideoIntoYoutubePlayer(videoId)
+      return
+    }
+
+    const element = createYoutubeHostElement()
+    if (!element) return
+
+    youtubePlayerReadyRef.current = false
+    pendingYoutubeVideoIdRef.current = videoId
+
+    ytPlayerRef.current = new YT.Player(element, {
+      width: 200,
+      height: 200,
+      videoId,
+      playerVars: {
+        autoplay: 1,
+        playsinline: 1,
+        controls: 0,
+        rel: 0,
+        fs: 0,
+        origin: youtubePlayerOrigin,
+      },
+      events: {
+        onReady: (event) => {
+          ytPlayerRef.current = event.target
+          youtubePlayerReadyRef.current = true
+          const readyVideoId = pendingYoutubeVideoIdRef.current ?? currentVideoIdRef.current
+          if (!readyVideoId) return
+
+          flushYtCommandQueue()
+          if (readyVideoId !== videoId && typeof event.target.loadVideoById === 'function') {
+            loadCurrentVideoIntoYoutubePlayer(readyVideoId)
+            return
+          }
+
+          setYtCurrentTime(0)
+          setHomeMusicProgress(0)
+          sendYtCommand('seekTo', [0, true])
+          sendYtCommand('playVideo')
+          applyYtVolumeWithRetry()
+        },
+        onStateChange: (event) => {
+          ytPlayerRef.current = event.target
+          const playerState = window.YT?.PlayerState
+          if (!playerState) return
+
+          if (event.data === playerState.PLAYING) {
+            isPreparingNextVideoRef.current = false
+            isWaitingForFreshVideoTimeRef.current = false
+            pendingVideoChangeUntilRef.current = 0
+            setIsHomeMusicPlaying(true)
+            applyYtVolumeWithRetry()
+            return
+          }
+
+          if (event.data === playerState.ENDED) {
+            if (isPreparingNextVideoRef.current || isWaitingForFreshVideoTimeRef.current || Date.now() < pendingVideoChangeUntilRef.current) return
+            playNextTrackRef.current()
+          }
+        },
+        onError: (event) => {
+          lastYoutubeErrorRef.current = event.data
+          console.warn('YouTube player error:', event.data)
+          if (currentVideoIdRef.current === pendingYoutubeVideoIdRef.current) {
+            window.setTimeout(() => playNextTrackRef.current(), 600)
+          }
+        },
+      },
+    })
   }
 
   // ─── YouTube Player ───────────────────────────────────────────────────────
@@ -455,24 +687,31 @@ function App() {
       })
     }
 
-    if (isSameVideo && ytIframeRef.current) {
-      isPreparingNextVideoRef.current = false
-      isWaitingForFreshVideoTimeRef.current = false
-      pendingVideoChangeUntilRef.current = 0
-      sendYtCommand('seekTo', [0, true])
-      sendYtCommand('playVideo')
-      applyYtVolumeWithRetry()
+    pendingYoutubeVideoIdRef.current = videoId
+    youtubeCommandQueueRef.current = [
+      { func: 'playVideo', args: [] },
+      { func: 'setVolume', args: [Math.max(0, Math.min(100, Math.round(homeMusicVolumeRef.current)))] },
+    ]
+    if (homeMusicVolumeRef.current > 0) youtubeCommandQueueRef.current.push({ func: 'unMute', args: [] })
+
+    if (isSameVideo && ytPlayerRef.current) {
+      isPreparingNextVideoRef.current = true
+      isWaitingForFreshVideoTimeRef.current = true
+      pendingVideoChangeUntilRef.current = Date.now() + YOUTUBE_TRACK_SWITCH_DELAY_MS + 900
+      setCurrentVideoId(null)
+      youtubeSwitchTimerRef.current = window.setTimeout(() => {
+        if (youtubeSwitchTokenRef.current !== switchToken) return
+        isPreparingNextVideoRef.current = false
+        setYtCurrentTime(0)
+        setHomeMusicProgress(0)
+        setCurrentVideoId(videoId)
+      }, YOUTUBE_TRACK_SWITCH_DELAY_MS)
       return
     }
 
     isPreparingNextVideoRef.current = true
     isWaitingForFreshVideoTimeRef.current = true
     pendingVideoChangeUntilRef.current = Date.now() + YOUTUBE_TRACK_SWITCH_DELAY_MS + 900
-
-    if (ytIframeRef.current) {
-      sendYtCommand('stopVideo')
-      ytIframeRef.current.src = 'about:blank'
-    }
 
     setCurrentVideoId(null)
 
@@ -590,10 +829,7 @@ function App() {
     setCurrentTrack(null)
     setIsHomeMusicPlaying(false)
     setPlayingFullPlaylistTrackId(null)
-    ytIframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({ event: 'command', func: 'stopVideo', args: [] }),
-      '*',
-    )
+    sendYtCommand('stopVideo')
   }
 
   // ─── Playlist handlers ────────────────────────────────────────────────────
@@ -1218,83 +1454,62 @@ function App() {
   useEffect(() => { if (!isSettingsLoaded) return; updateSettings({ musicVolume: homeMusicVolume }) }, [homeMusicVolume, isSettingsLoaded])
 
   useEffect(() => {
-    const onMessage = (e: MessageEvent) => {
-      try {
-        const data = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
-        if (data?.event === 'infoDelivery' && data?.info) {
-          if (isPreparingNextVideoRef.current) return
-          const { currentTime, duration: recv } = data.info
-          const duringChange = Date.now() < pendingVideoChangeUntilRef.current
-          if (typeof currentTime === 'number' && !isSeekingRef.current) {
-            if (isWaitingForFreshVideoTimeRef.current) {
-              if (duringChange && currentTime > 2) return
-              isWaitingForFreshVideoTimeRef.current = false
-              pendingVideoChangeUntilRef.current = 0
-              setYtCurrentTime(0); setHomeMusicProgress(0)
-            }
-            if (duringChange && currentTime > 2) return
-            const fallback = typeof recv === 'number' && recv > 0 ? Math.round(recv) : 0
-            const dur = ytDurationRef.current > 0 ? ytDurationRef.current : fallback
-            const next = dur > 0 ? Math.min(Math.floor(currentTime), dur) : Math.max(0, Math.floor(currentTime))
-            setYtCurrentTime(next)
-            if (dur > 0) { setYtDuration(dur); ytDurationRef.current = dur; setHomeMusicProgress(Math.max(0, Math.min(100, (next / dur) * 100))) }
-          }
-        }
-        if (data?.event === 'onReady') {
-          const readyId = currentVideoIdRef.current
-          applyYtVolumeWithRetry()
-          if (isWaitingForFreshVideoTimeRef.current) {
-            setYtCurrentTime(0); setHomeMusicProgress(0)
-            sendYtCommand('seekTo', [0, true])
-            window.setTimeout(() => {
-              if (currentVideoIdRef.current !== readyId) return
-              setYtCurrentTime(0); setHomeMusicProgress(0)
-              sendYtCommand('playVideo')
-              applyYtVolume()
-            }, 160)
-            window.setTimeout(() => {
-              if (currentVideoIdRef.current !== readyId) return
-              isPreparingNextVideoRef.current = false
-              isWaitingForFreshVideoTimeRef.current = false
-              pendingVideoChangeUntilRef.current = 0
-              applyYtVolume()
-            }, 360)
-          }
-        }
-        if (data?.event === 'onStateChange' && data?.info === 1) {
-          isPreparingNextVideoRef.current = false
-          isWaitingForFreshVideoTimeRef.current = false
-          pendingVideoChangeUntilRef.current = 0
-          applyYtVolumeWithRetry()
-        }
-        if (data?.event === 'onStateChange' && data?.info === 0) {
-          if (isPreparingNextVideoRef.current || isWaitingForFreshVideoTimeRef.current || Date.now() < pendingVideoChangeUntilRef.current) return
-          playNextTrackRef.current()
-        }
-      } catch { /* 무시 */ }
+    if (!currentVideoId) {
+      if (isYoutubePlayerUsable()) runYtCommandNow('stopVideo')
+      return
     }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [])
+
+    pendingYoutubeVideoIdRef.current = currentVideoId
+    void createYoutubePlayer(currentVideoId).catch((error) => console.warn('Failed to create YouTube player:', error))
+  }, [currentVideoId, youtubePlayerOrigin])
 
   useEffect(() => {
     if (!currentVideoId || !isHomeMusicPlaying) return
     const id = window.setInterval(() => {
       if (isSeekingRef.current || isPreparingNextVideoRef.current) return
-      if (isWaitingForFreshVideoTimeRef.current) { if (Date.now() < pendingVideoChangeUntilRef.current) return; isWaitingForFreshVideoTimeRef.current = false; pendingVideoChangeUntilRef.current = 0 }
+      if (isWaitingForFreshVideoTimeRef.current) {
+        if (Date.now() < pendingVideoChangeUntilRef.current) return
+        isWaitingForFreshVideoTimeRef.current = false
+        pendingVideoChangeUntilRef.current = 0
+      }
       if (Date.now() < pendingVideoChangeUntilRef.current) return
-      const dur = ytDurationRef.current
-      setYtCurrentTime((prev) => {
-        if (dur > 0 && prev < dur) { const next = Math.min(prev + 1, dur); setHomeMusicProgress(Math.max(0, Math.min(100, (next / dur) * 100))); if (next >= dur) setTimeout(() => playNextTrackRef.current(), 800); return next }
-        return prev
-      })
-    }, 1000)
-    return () => window.clearInterval(id)
-  }, [currentVideoId, isHomeMusicPlaying])
+      if (!isYoutubePlayerUsable()) return
 
-  const youtubePlayerOrigin = window.location.origin.startsWith('http')
-    ? window.location.origin
-    : 'http://127.0.0.1'
+      const player = ytPlayerRef.current
+      if (!player) return
+
+      try {
+        const current = typeof player.getCurrentTime === 'function' ? Math.max(0, Math.floor(player.getCurrentTime() || 0)) : ytCurrentTime
+        const receivedDuration = typeof player.getDuration === 'function' ? Math.max(0, Math.round(player.getDuration() || 0)) : 0
+        const dur = receivedDuration > 0 ? receivedDuration : ytDurationRef.current
+
+        if (dur > 0) {
+          const next = Math.min(current, dur)
+          setYtDuration(dur)
+          ytDurationRef.current = dur
+          setYtCurrentTime(next)
+          setHomeMusicProgress(Math.max(0, Math.min(100, (next / dur) * 100)))
+          if (next >= dur) window.setTimeout(() => playNextTrackRef.current(), 800)
+          return
+        }
+
+        setYtCurrentTime(current)
+      } catch (error) {
+        console.warn('Failed to read YouTube player time:', error)
+      }
+    }, 500)
+    return () => window.clearInterval(id)
+  }, [currentVideoId, isHomeMusicPlaying, ytCurrentTime])
+
+  useEffect(() => {
+    return () => {
+      if (youtubeDeferredTimerRef.current) window.clearTimeout(youtubeDeferredTimerRef.current)
+      if (youtubeSwitchTimerRef.current) window.clearTimeout(youtubeSwitchTimerRef.current)
+      try { ytPlayerRef.current?.destroy?.() } catch { /* 무시 */ }
+      ytPlayerRef.current = null
+      youtubePlayerReadyRef.current = false
+    }
+  }, [])
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -1645,25 +1860,21 @@ function App() {
       )}
 
       {/* 숨겨진 YouTube 플레이어 */}
-      {currentVideoId && (
-        <iframe
-          ref={ytIframeRef}
-          src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&enablejsapi=1&playsinline=1&controls=0&rel=0&origin=${encodeURIComponent(youtubePlayerOrigin)}`}
-          style={{
-            position: 'fixed',
-            width: 200,
-            height: 200,
-            opacity: 0,
-            pointerEvents: 'none',
-            bottom: 0,
-            right: 0,
-            border: 0,
-          }}
-          allow="autoplay; encrypted-media; picture-in-picture"
-          title="yt-player"
-          onLoad={handleYoutubeIframeLoad}
-        />
-      )}
+      <div
+        ref={ytPlayerHostRef}
+        style={{
+          position: 'fixed',
+          width: 200,
+          height: 200,
+          opacity: 0,
+          pointerEvents: 'none',
+          bottom: 0,
+          right: 0,
+          border: 0,
+          overflow: 'hidden',
+        }}
+        aria-hidden="true"
+      />
     </div>
   )
 }
