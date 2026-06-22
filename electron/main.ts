@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { execFile } from 'node:child_process'
+import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs/promises'
@@ -11,9 +12,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 process.env.APP_ROOT = path.join(__dirname, '..')
 
-dotenv.config({
-  path: path.join(process.env.APP_ROOT, '.env'),
-})
+// 개발: 프로젝트 루트, 빌드: exe 옆(.env가 extraFiles로 포함됨)
+const envPaths = [
+  path.join(process.env.APP_ROOT, '.env'),              // 개발환경 (프로젝트 루트)
+  path.join(path.dirname(app.getPath('exe')), '.env'),  // 빌드된 앱 (exe 옆)
+]
+
+for (const envPath of envPaths) {
+  const result = dotenv.config({ path: envPath })
+  if (!result.error) break
+}
 
 export const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron')
@@ -31,12 +39,19 @@ let startedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin
 
 autoUpdater.autoDownload = false
 
+// YouTube embed autoplay/audio가 설치 빌드에서도 사용자 제스처 없이 동작하도록 고정
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
+
 // ─── YouTube Data API v3 ────────────────────────────────────────────────────
 
 const YOUTUBE_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID?.trim() ?? ''
 const YOUTUBE_CLIENT_SECRET = process.env.YOUTUBE_CLIENT_SECRET?.trim() ?? ''
 const YOUTUBE_REDIRECT_URI = 'urn:ietf:wg:oauth:2.0:oob'
-const YOUTUBE_SCOPES = ['https://www.googleapis.com/auth/youtube.readonly']
+const YOUTUBE_SCOPES = [
+  'https://www.googleapis.com/auth/youtube.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+]
 
 function getYoutubeTokenPath() {
   return path.join(app.getPath('userData'), 'youtube-token.json')
@@ -72,6 +87,99 @@ async function createPlaylistCoverDataUrl(filePath: string) {
   const mimeType = getPlaylistCoverMimeType(filePath)
 
   return `data:${mimeType};base64,${data.toString('base64')}`
+}
+
+
+// ─── Production renderer server ──────────────────────────────────────────────
+// dev는 Vite dev server(http://localhost)라 YouTube iframe postMessage/audio가 정상인데,
+// 설치 빌드는 file:// 로 열리면 YouTube iframe API와 origin 처리가 불안정해질 수 있다.
+// 그래서 빌드된 dist를 127.0.0.1 임시 HTTP origin으로 서빙한다.
+let rendererStaticServer: Server | null = null
+let rendererStaticServerUrl = ''
+
+const rendererMimeTypes: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.ttf': 'font/ttf',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+}
+
+function createRendererFilePath(requestUrl: string) {
+  const url = new URL(requestUrl, 'http://127.0.0.1')
+  const decodedPathname = decodeURIComponent(url.pathname)
+  const relativePathname = decodedPathname === '/' ? 'index.html' : decodedPathname.replace(/^\/+/, '')
+  const requestedFilePath = path.join(RENDERER_DIST, relativePathname)
+  const relativeToRendererDist = path.relative(RENDERER_DIST, requestedFilePath)
+
+  if (relativeToRendererDist.startsWith('..') || path.isAbsolute(relativeToRendererDist)) {
+    return path.join(RENDERER_DIST, 'index.html')
+  }
+
+  return requestedFilePath
+}
+
+function sendRendererFile(response: ServerResponse, filePath: string, data: Buffer) {
+  const mimeType = rendererMimeTypes[path.extname(filePath).toLowerCase()] ?? 'application/octet-stream'
+  response.writeHead(200, {
+    'Content-Type': mimeType,
+    'Cache-Control': 'no-cache',
+  })
+  response.end(data)
+}
+
+async function handleRendererRequest(request: IncomingMessage, response: ServerResponse) {
+  let filePath = createRendererFilePath(request.url ?? '/')
+
+  try {
+    const data = await fs.readFile(filePath)
+    sendRendererFile(response, filePath, data)
+  } catch {
+    try {
+      filePath = path.join(RENDERER_DIST, 'index.html')
+      const data = await fs.readFile(filePath)
+      sendRendererFile(response, filePath, data)
+    } catch {
+      response.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
+      response.end('Not found')
+    }
+  }
+}
+
+function getRendererStaticServerUrl() {
+  return new Promise<string>((resolve, reject) => {
+    if (rendererStaticServerUrl) {
+      resolve(rendererStaticServerUrl)
+      return
+    }
+
+    rendererStaticServer = createServer((request, response) => {
+      void handleRendererRequest(request, response)
+    })
+
+    rendererStaticServer.once('error', reject)
+    rendererStaticServer.listen(0, '127.0.0.1', () => {
+      const address = rendererStaticServer?.address()
+
+      if (!address || typeof address === 'string') {
+        reject(new Error('Failed to start renderer static server.'))
+        return
+      }
+
+      rendererStaticServerUrl = `http://127.0.0.1:${address.port}/index.html`
+      resolve(rendererStaticServerUrl)
+    })
+  })
 }
 
 async function loadPlaylistCoverMap() {
@@ -489,6 +597,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      autoplayPolicy: 'no-user-gesture-required',
     },
   })
 
@@ -507,6 +616,8 @@ function createWindow() {
 
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString())
+    // 빌드된 앱에서 오디오가 뮤트되는 문제 방지
+    if (win) win.webContents.audioMuted = false
   })
 
   win.on('close', (event) => {
@@ -522,7 +633,12 @@ function createWindow() {
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    void getRendererStaticServerUrl()
+      .then((url) => win?.loadURL(url))
+      .catch((error) => {
+        console.error('Failed to load renderer through local server:', error)
+        win?.loadFile(path.join(RENDERER_DIST, 'index.html'))
+      })
   }
 }
 
@@ -688,6 +804,7 @@ ipcMain.handle('youtube-music:login', async () => {
 
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
+      prompt: 'consent',
       scope: YOUTUBE_SCOPES,
     })
 
@@ -750,13 +867,63 @@ ipcMain.handle('youtube-music:login', async () => {
   }
 })
 
+// 현재 로그인 계정 정보
+ipcMain.handle('youtube-music:get-account', async () => {
+  try {
+    const auth = await getAuthenticatedClient()
+    if (!auth) return null
+
+    try {
+      const oauth2 = google.oauth2({ version: 'v2', auth })
+      const response = await oauth2.userinfo.get()
+      const user = response.data
+
+      return {
+        signedIn: true,
+        email: user.email ?? null,
+        name: user.name ?? null,
+        picture: user.picture ?? null,
+        channelTitle: null,
+      }
+    } catch (error) {
+      console.warn('Failed to get Google account profile. Falling back to YouTube channel info:', error)
+    }
+
+    try {
+      const youtube = google.youtube({ version: 'v3', auth })
+      const response = await youtube.channels.list({
+        part: ['snippet'],
+        mine: true,
+        maxResults: 1,
+      })
+      const channel = response.data.items?.[0]
+
+      return {
+        signedIn: true,
+        email: null,
+        name: channel?.snippet?.title ?? null,
+        picture: channel?.snippet?.thumbnails?.default?.url ?? null,
+        channelTitle: channel?.snippet?.title ?? null,
+      }
+    } catch (error) {
+      console.warn('Failed to get YouTube channel info:', error)
+    }
+
+    return { signedIn: true, email: null, name: null, picture: null, channelTitle: null }
+  } catch (error) {
+    console.error('Failed to get YouTube account:', error)
+    return null
+  }
+})
+
 // 로그아웃
 ipcMain.handle('youtube-music:logout', async () => {
   try {
-    await fs.unlink(getYoutubeTokenPath())
+    try { await fs.unlink(getYoutubeTokenPath()) } catch (error: any) { if (error?.code !== 'ENOENT') throw error }
     try { await fs.unlink(getPlaylistCachePath()) } catch {}
     return true
-  } catch {
+  } catch (error) {
+    console.error('Failed to logout:', error)
     return false
   }
 })
@@ -1195,6 +1362,12 @@ autoUpdater.on('update-downloaded', (info) => {
   win?.webContents.send('updater:update-downloaded', {
     version: info.version,
   })
+})
+
+app.on('before-quit', () => {
+  rendererStaticServer?.close()
+  rendererStaticServer = null
+  rendererStaticServerUrl = ''
 })
 
 app.on('window-all-closed', () => {

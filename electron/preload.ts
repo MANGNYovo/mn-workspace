@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('mnAPI', {
   isYoutubeMusicAuthenticated: () => ipcRenderer.invoke('youtube-music:is-authenticated'),
   loginYoutubeMusic: () => ipcRenderer.invoke('youtube-music:login'),
   logoutYoutubeMusic: () => ipcRenderer.invoke('youtube-music:logout'),
+  getYoutubeMusicAccount: () => ipcRenderer.invoke('youtube-music:get-account'),
   getYoutubeMusicPlaylists: () => ipcRenderer.invoke('youtube-music:get-playlists'),
   getYoutubeMusicLikedSongs: () => ipcRenderer.invoke('youtube-music:get-liked-songs'),
   getYoutubeMusicPlaylistTracks: (playlistId: string) =>

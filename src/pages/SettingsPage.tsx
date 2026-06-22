@@ -1,5 +1,5 @@
 import { useRef, type ChangeEvent } from 'react'
-import type { AppSettings, AccentColor, LaunchDelay, LaunchBehavior, ResolvedTheme } from '../types'
+import type { AppSettings, AccentColor, LaunchDelay, LaunchBehavior, ResolvedTheme, YoutubeMusicAccount } from '../types'
 import { iconMap } from '../constants'
 
 type Props = {
@@ -8,18 +8,35 @@ type Props = {
   isCheckingUpdates: boolean
   isPlaylistRefreshing: boolean
   activeTheme: ResolvedTheme
+  isYtAuthenticated: boolean
+  youtubeMusicAccount: YoutubeMusicAccount | null
+  isYoutubeAccountLoading: boolean
   onUpdateSettings: (partial: Partial<AppSettings>) => void
   onToggleStartWithWindows: () => void
   onCheckForUpdates: () => void
   onReloadYoutubeMusicData: () => void
+  onLoginYoutubeMusic: () => void
+  onLogoutYoutubeMusic: () => void
   getThemeIcon: (name: keyof typeof iconMap, isActive?: boolean) => string
 }
 
 export function SettingsPage({
   settings, appVersion, isCheckingUpdates, isPlaylistRefreshing, activeTheme,
+  isYtAuthenticated, youtubeMusicAccount, isYoutubeAccountLoading,
   onUpdateSettings, onToggleStartWithWindows, onCheckForUpdates, onReloadYoutubeMusicData,
+  onLoginYoutubeMusic, onLogoutYoutubeMusic,
 }: Props) {
   const wallpaperInputRef = useRef<HTMLInputElement | null>(null)
+  const youtubeAccountLabel = isYoutubeAccountLoading
+    ? 'Checking account...'
+    : isYtAuthenticated
+      ? youtubeMusicAccount?.email
+        ? `Signed in as ${youtubeMusicAccount.email}`
+        : youtubeMusicAccount?.name || youtubeMusicAccount?.channelTitle
+          ? `Signed in as ${youtubeMusicAccount.name || youtubeMusicAccount.channelTitle}`
+          : 'Signed in'
+      : 'Not signed in'
+
 
   const handleWallpaperChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -104,15 +121,41 @@ export function SettingsPage({
 
       <div className="settings-card">
         <h3>YouTube Music</h3>
+
+        <div className="setting-row youtube-account-row">
+          <div className="youtube-account-info">
+            <strong>Account</strong>
+            <p>{youtubeAccountLabel}</p>
+          </div>
+          {isYtAuthenticated ? (
+            <button
+              type="button"
+              className="setting-action setting-youtube-account-action danger"
+              onClick={onLogoutYoutubeMusic}
+              disabled={isYoutubeAccountLoading}
+            >
+              Logout
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="setting-action setting-youtube-account-action"
+              onClick={onLoginYoutubeMusic}
+            >
+              Login
+            </button>
+          )}
+        </div>
+
         <div className="setting-row">
           <div>
             <strong>Reload playlist data</strong>
-            <p>Reload all playlists, cover images, and cached tracks.</p>
+            <p>{isYtAuthenticated ? 'Reload all playlists, cover images, and cached tracks.' : 'Sign in to reload your YouTube Music playlists.'}</p>
           </div>
           <button
             className="setting-action setting-reload-action"
             onClick={onReloadYoutubeMusicData}
-            disabled={isPlaylistRefreshing}
+            disabled={isPlaylistRefreshing || !isYtAuthenticated}
           >
             {isPlaylistRefreshing ? 'Reloading...' : 'Reload'}
           </button>

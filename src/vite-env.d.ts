@@ -15,6 +15,14 @@ type YoutubeMusicTrack = {
   thumbnail: string
 }
 
+type YoutubeMusicAccount = {
+  signedIn: boolean
+  email?: string | null
+  name?: string | null
+  picture?: string | null
+  channelTitle?: string | null
+}
+
 interface Window {
   mnAPI: {
     selectProgram: () => Promise<string | null>
@@ -42,6 +50,7 @@ interface Window {
     isYoutubeMusicAuthenticated: () => Promise<boolean>
     loginYoutubeMusic: () => Promise<boolean>
     logoutYoutubeMusic: () => Promise<boolean>
+    getYoutubeMusicAccount: () => Promise<YoutubeMusicAccount | null>
     getYoutubeMusicPlaylists: () => Promise<YoutubeMusicPlaylist[] | null>
     getYoutubeMusicLikedSongs: () => Promise<YoutubeMusicTrack[] | null>
     getYoutubeMusicPlaylistTracks: (playlistId: string) => Promise<YoutubeMusicTrack[] | null>

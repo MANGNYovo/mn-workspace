@@ -11,6 +11,14 @@ export type FloatingPlayerPosition = {
   x: number
   y: number
 }
+
+export type YoutubeMusicAccount = {
+  signedIn: boolean
+  email?: string | null
+  name?: string | null
+  picture?: string | null
+  channelTitle?: string | null
+}
 export type LaunchStatus = 'waiting' | 'launching' | 'completed' | 'failed' | 'cancelled'
 export type AudioDevice = 'speaker' | 'headphone'
 export type MonitorOrientation = 'horizontal' | 'vertical'

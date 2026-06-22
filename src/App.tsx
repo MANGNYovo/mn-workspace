@@ -21,6 +21,7 @@ import './styles/media.css'
 import type {
   Page, AudioDevice, MonitorOrientation, HomeMusicPlaylist, PlaylistTrack,
   ProgramItem, AppSettings, DiaryEntry, LaunchStatus, ResolvedTheme, PlaylistViewMode,
+  YoutubeMusicAccount,
 } from './types'
 
 // constants & helpers
@@ -65,6 +66,8 @@ function App() {
   const [isFullPlaylistModalOpen, setIsFullPlaylistModalOpen] = useState(false)
   const [isYoutubeLoginModalOpen, setIsYoutubeLoginModalOpen] = useState(false)
   const [isYtAuthenticated, setIsYtAuthenticated] = useState(false)
+  const [youtubeMusicAccount, setYoutubeMusicAccount] = useState<YoutubeMusicAccount | null>(null)
+  const [isYoutubeAccountLoading, setIsYoutubeAccountLoading] = useState(false)
   const [ytPlaylistTracks, setYtPlaylistTracks] = useState<PlaylistTrack[]>([])
   const [likedTrackIds, setLikedTrackIds] = useState<string[]>([])
   const [isLikedTracksLoaded, setIsLikedTracksLoaded] = useState(false)
@@ -343,20 +346,51 @@ function App() {
   }
 
   const sendYtCommand = (func: string, args: unknown[] = []) => {
-    ytIframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({ event: 'command', func, args }), '*',
+    const iframeWindow = ytIframeRef.current?.contentWindow
+    if (!iframeWindow) return
+
+    iframeWindow.postMessage(
+      JSON.stringify({ event: 'command', func, args }),
+      'https://www.youtube.com',
     )
   }
 
   const applyYtVolume = () => {
     const safeVolume = Math.max(0, Math.min(100, Math.round(homeMusicVolumeRef.current)))
     sendYtCommand('setVolume', [safeVolume])
+    if (safeVolume > 0) sendYtCommand('unMute')
   }
 
   const applyYtVolumeWithRetry = () => {
     applyYtVolume()
     window.setTimeout(applyYtVolume, 160)
     window.setTimeout(applyYtVolume, 420)
+    window.setTimeout(applyYtVolume, 900)
+  }
+
+  const handleYoutubeIframeLoad = () => {
+    const loadedVideoId = currentVideoIdRef.current
+    if (!loadedVideoId) return
+
+    window.setTimeout(() => {
+      if (currentVideoIdRef.current !== loadedVideoId) return
+      sendYtCommand('playVideo')
+      applyYtVolume()
+    }, 160)
+
+    window.setTimeout(() => {
+      if (currentVideoIdRef.current !== loadedVideoId) return
+      sendYtCommand('playVideo')
+      applyYtVolume()
+    }, 420)
+
+    window.setTimeout(() => {
+      if (currentVideoIdRef.current !== loadedVideoId) return
+      isPreparingNextVideoRef.current = false
+      isWaitingForFreshVideoTimeRef.current = false
+      pendingVideoChangeUntilRef.current = 0
+      applyYtVolume()
+    }, 900)
   }
 
   // ─── YouTube Player ───────────────────────────────────────────────────────
@@ -512,6 +546,56 @@ function App() {
     sendYtCommand(next ? 'playVideo' : 'pauseVideo')
   }
 
+  const loadYoutubeMusicAccount = async () => {
+    setIsYoutubeAccountLoading(true)
+    try {
+      const account = await window.mnAPI.getYoutubeMusicAccount()
+      setYoutubeMusicAccount(account?.signedIn ? account : null)
+      return account?.signedIn ? account : null
+    } catch (error) {
+      console.error(error)
+      setYoutubeMusicAccount(null)
+      return null
+    } finally {
+      setIsYoutubeAccountLoading(false)
+    }
+  }
+
+  const resetYoutubeMusicLoginState = (openLogin = false) => {
+    setIsYtAuthenticated(false)
+    setYoutubeMusicAccount(null)
+    setIsYoutubeAccountLoading(false)
+    setYtPlaylistTracks([])
+    setPlaylistTrackMap({})
+    playingPlaylistTracksRef.current = []
+    playingPlaylistIdRef.current = null
+    setPlayingPlaylistId(null)
+    setSelectedPlaylistTrackId(null)
+    if (openLogin) setIsYoutubeLoginModalOpen(true)
+  }
+
+  const handleLoginYoutubeMusicFromSettings = () => {
+    setIsYoutubeLoginModalOpen(true)
+  }
+
+  const handleLogoutYoutubeMusic = async () => {
+    const success = await window.mnAPI.logoutYoutubeMusic()
+    if (!success) return
+
+    resetYoutubeMusicLoginState(false)
+    setIsYoutubeLoginModalOpen(false)
+    setHomeMusicPlaylists(fallbackHomeMusicPlaylists)
+    setSelectedHomeMusicPlaylistId(fallbackHomeMusicPlaylists[0]?.id ?? LIKED_PLAYLIST_ID)
+    setCurrentVideoId(null)
+    setCurrentTrack(null)
+    setIsHomeMusicPlaying(false)
+    setPlayingFullPlaylistTrackId(null)
+    ytIframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: 'command', func: 'stopVideo', args: [] }),
+      '*',
+    )
+  }
+
   // ─── Playlist handlers ────────────────────────────────────────────────────
   const handlePlaylistPlay = async (playlistId: string) => {
     if (playlistId === LIKED_PLAYLIST_ID) {
@@ -530,39 +614,56 @@ function App() {
 
     try {
       const tracks = await window.mnAPI.getYoutubeMusicPlaylistTracks(playlistId)
-      if (Array.isArray(tracks) && tracks.length > 0) {
-        const pl = tracks as PlaylistTrack[]
-        playingPlaylistTracksRef.current = pl
-        playingPlaylistIdRef.current = playlistId
-        setYtPlaylistTracks(pl)
-        setPlaylistTrackMap((prev) => {
-          const next = { ...prev, [playlistId]: pl }
-          window.mnAPI.saveYoutubeMusicTrackCache(next)
-          return next
-        })
-        playVideo(pl[0].id, playlistId, pl[0])
+      if (!Array.isArray(tracks)) {
+        resetYoutubeMusicLoginState(true)
+        return
       }
-    } catch (e) { console.error(e) }
+      if (tracks.length === 0) {
+        setYtPlaylistTracks([])
+        setSelectedPlaylistTrackId(null)
+        return
+      }
+      const pl = tracks as PlaylistTrack[]
+      playingPlaylistTracksRef.current = pl
+      playingPlaylistIdRef.current = playlistId
+      setYtPlaylistTracks(pl)
+      setPlaylistTrackMap((prev) => {
+        const next = { ...prev, [playlistId]: pl }
+        window.mnAPI.saveYoutubeMusicTrackCache(next)
+        return next
+      })
+      playVideo(pl[0].id, playlistId, pl[0])
+    } catch (e) {
+      console.error(e)
+      resetYoutubeMusicLoginState(true)
+    }
   }
 
   const handleRefreshPlaylists = async () => {
-    if (!isYtAuthenticated || isPlaylistRefreshing) return
+    if (!isYtAuthenticated) { setIsYoutubeLoginModalOpen(true); return }
+    if (isPlaylistRefreshing) return
     setIsPlaylistRefreshing(true)
     try {
       const loaded = await window.mnAPI.getYoutubeMusicPlaylists()
-      if (isHomeMusicPlaylistList(loaded)) {
-        const visible = filterHiddenHomeMusicPlaylists(loaded)
-        const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
-        setHomeMusicPlaylists((prev) => {
-          const map = new Map(refreshed.map((p) => [p.id, p]))
-          const reordered = prev.filter((p) => map.has(p.id)).map((p) => map.get(p.id)!)
-          const added = refreshed.filter((p) => !new Set(prev.map((x) => x.id)).has(p.id))
-          return [...reordered, ...added]
-        })
+      if (!isHomeMusicPlaylistList(loaded) || loaded.length === 0) {
+        resetYoutubeMusicLoginState(true)
+        return
       }
+      const visible = filterHiddenHomeMusicPlaylists(loaded)
+      const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
+      setHomeMusicPlaylists((prev) => {
+        const map = new Map(refreshed.map((p) => [p.id, p]))
+        const reordered = prev.filter((p) => map.has(p.id)).map((p) => map.get(p.id)!)
+        const added = refreshed.filter((p) => !new Set(prev.map((x) => x.id)).has(p.id))
+        return [...reordered, ...added]
+      })
       if (selectedHomeMusicPlaylistId && selectedHomeMusicPlaylistId !== 'focus' && selectedHomeMusicPlaylistId !== LIKED_PLAYLIST_ID) {
         const tracks = await window.mnAPI.getYoutubeMusicPlaylistTracks(selectedHomeMusicPlaylistId)
-        if (Array.isArray(tracks) && tracks.length > 0) {
+        if (!Array.isArray(tracks)) {
+          resetYoutubeMusicLoginState(true)
+          return
+        }
+        if (tracks.length > 0) {
           setYtPlaylistTracks(tracks as PlaylistTrack[])
           setPlaylistTrackMap((prev) => {
             const next = { ...prev, [selectedHomeMusicPlaylistId]: tracks as PlaylistTrack[] }
@@ -571,7 +672,10 @@ function App() {
           })
         }
       }
-    } catch (e) { console.error(e) }
+    } catch (e) {
+      console.error(e)
+      resetYoutubeMusicLoginState(true)
+    }
     finally { setIsPlaylistRefreshing(false) }
   }
 
@@ -581,7 +685,10 @@ function App() {
     setIsPlaylistRefreshing(true)
     try {
       const loaded = await window.mnAPI.getYoutubeMusicPlaylists()
-      if (!isHomeMusicPlaylistList(loaded)) return
+      if (!isHomeMusicPlaylistList(loaded) || loaded.length === 0) {
+        resetYoutubeMusicLoginState(true)
+        return
+      }
       const visible = filterHiddenHomeMusicPlaylists(loaded)
       const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
       const ordered = applyHomeMusicPlaylistOrder(refreshed, settings.musicPlaylistOrder)
@@ -818,21 +925,29 @@ function App() {
         const auth = await window.mnAPI.isYoutubeMusicAuthenticated()
         setIsYtAuthenticated(auth)
         if (!auth) return
-        const [loaded, cache, covers] = await Promise.all([
+        const [loaded, cache, covers, account] = await Promise.all([
           window.mnAPI.getYoutubeMusicPlaylists(),
           window.mnAPI.loadYoutubeMusicTrackCache(),
           window.mnAPI.loadYoutubeMusicPlaylistCovers(),
+          window.mnAPI.getYoutubeMusicAccount(),
         ])
-        if (cache && typeof cache === 'object') setPlaylistTrackMap(cache as Record<string, PlaylistTrack[]>)
+        setYoutubeMusicAccount(account?.signedIn ? account : null)
         const loadedCovers = covers && typeof covers === 'object' ? covers as Record<string, string> : {}
         setPlaylistCoverOverrides(loadedCovers)
-        if (!isHomeMusicPlaylistList(loaded)) return
+        if (!isHomeMusicPlaylistList(loaded) || loaded.length === 0) {
+          resetYoutubeMusicLoginState(false)
+          return
+        }
+        if (cache && typeof cache === 'object') setPlaylistTrackMap(cache as Record<string, PlaylistTrack[]>)
         const visible = filterHiddenHomeMusicPlaylists(loaded)
         const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), loadedCovers)
         setHomeMusicPlaylists(refreshed)
         const refreshedWithLiked = applyHomeMusicPlaylistOrder([likedPlaylist, ...refreshed], settings.musicPlaylistOrder)
         if (!refreshedWithLiked.some((p) => p.id === selectedHomeMusicPlaylistId)) setSelectedHomeMusicPlaylistId(refreshedWithLiked[0]?.id ?? LIKED_PLAYLIST_ID)
-      } catch (e) { console.error(e) }
+      } catch (e) {
+        console.error(e)
+        resetYoutubeMusicLoginState(false)
+      }
     }
     init()
   }, [])
@@ -897,12 +1012,19 @@ function App() {
     const load = async () => {
       try {
         const tracks = await window.mnAPI.getYoutubeMusicPlaylistTracks(selectedHomeMusicPlaylistId)
-        if (Array.isArray(tracks) && tracks.length > 0) {
+        if (!Array.isArray(tracks)) {
+          resetYoutubeMusicLoginState(false)
+          return
+        }
+        if (tracks.length > 0) {
           setYtPlaylistTracks(tracks as PlaylistTrack[])
           setPlaylistTrackMap((prev) => { const next = { ...prev, [selectedHomeMusicPlaylistId]: tracks as PlaylistTrack[] }; window.mnAPI.saveYoutubeMusicTrackCache(next); return next })
           if (selectedHomeMusicPlaylistId !== playingPlaylistId) setSelectedPlaylistTrackId(tracks[0].id)
         }
-      } catch (e) { console.error(e) }
+      } catch (e) {
+        console.error(e)
+        resetYoutubeMusicLoginState(false)
+      }
     }
     load()
   }, [selectedHomeMusicPlaylistId, isYtAuthenticated, likedTrackIds])
@@ -1120,7 +1242,6 @@ function App() {
         }
         if (data?.event === 'onReady') {
           const readyId = currentVideoIdRef.current
-          ytIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*')
           applyYtVolumeWithRetry()
           if (isWaitingForFreshVideoTimeRef.current) {
             setYtCurrentTime(0); setHomeMusicProgress(0)
@@ -1158,7 +1279,6 @@ function App() {
 
   useEffect(() => {
     if (!currentVideoId || !isHomeMusicPlaying) return
-    ytIframeRef.current?.contentWindow?.postMessage(JSON.stringify({ event: 'listening' }), '*')
     const id = window.setInterval(() => {
       if (isSeekingRef.current || isPreparingNextVideoRef.current) return
       if (isWaitingForFreshVideoTimeRef.current) { if (Date.now() < pendingVideoChangeUntilRef.current) return; isWaitingForFreshVideoTimeRef.current = false; pendingVideoChangeUntilRef.current = 0 }
@@ -1171,6 +1291,10 @@ function App() {
     }, 1000)
     return () => window.clearInterval(id)
   }, [currentVideoId, isHomeMusicPlaying])
+
+  const youtubePlayerOrigin = window.location.origin.startsWith('http')
+    ? window.location.origin
+    : 'http://127.0.0.1'
 
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
@@ -1373,8 +1497,12 @@ function App() {
           <SettingsPage
             settings={settings} appVersion={appVersion} isCheckingUpdates={isCheckingUpdates}
             isPlaylistRefreshing={isPlaylistRefreshing} activeTheme={activeTheme}
+            isYtAuthenticated={isYtAuthenticated} youtubeMusicAccount={youtubeMusicAccount}
+            isYoutubeAccountLoading={isYoutubeAccountLoading}
             onUpdateSettings={updateSettings} onToggleStartWithWindows={handleToggleStartWithWindows}
             onCheckForUpdates={handleCheckForUpdates} onReloadYoutubeMusicData={handleReloadYoutubeMusicData}
+            onLoginYoutubeMusic={handleLoginYoutubeMusicFromSettings}
+            onLogoutYoutubeMusic={handleLogoutYoutubeMusic}
             getThemeIcon={getThemeIcon}
           />
         )}
@@ -1421,10 +1549,13 @@ function App() {
           <YoutubeLoginModal
             onClose={() => setIsYoutubeLoginModalOpen(false)}
             onLoginSuccess={(playlists) => {
+              const visible = filterHiddenHomeMusicPlaylists(playlists)
+              const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
               setIsYtAuthenticated(true)
               setIsYoutubeLoginModalOpen(false)
-              setHomeMusicPlaylists(playlists)
-              setSelectedHomeMusicPlaylistId(playlists[0]?.id ?? 'focus')
+              setHomeMusicPlaylists(refreshed)
+              setSelectedHomeMusicPlaylistId(refreshed[0]?.id ?? LIKED_PLAYLIST_ID)
+              loadYoutubeMusicAccount()
             }}
           />
         )}
@@ -1517,10 +1648,20 @@ function App() {
       {currentVideoId && (
         <iframe
           ref={ytIframeRef}
-          src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&enablejsapi=1`}
-          style={{ position: 'fixed', width: 1, height: 1, opacity: 0, pointerEvents: 'none', bottom: 0, right: 0 }}
-          allow="autoplay"
+          src={`https://www.youtube.com/embed/${currentVideoId}?autoplay=1&enablejsapi=1&playsinline=1&controls=0&rel=0&origin=${encodeURIComponent(youtubePlayerOrigin)}`}
+          style={{
+            position: 'fixed',
+            width: 200,
+            height: 200,
+            opacity: 0,
+            pointerEvents: 'none',
+            bottom: 0,
+            right: 0,
+            border: 0,
+          }}
+          allow="autoplay; encrypted-media; picture-in-picture"
           title="yt-player"
+          onLoad={handleYoutubeIframeLoad}
         />
       )}
     </div>

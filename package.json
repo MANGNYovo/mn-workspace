@@ -48,6 +48,13 @@
       "dist/**",
       "dist-electron/**"
     ],
+    "afterPack": "./afterPack.cjs",
+    "extraFiles": [
+      {
+        "from": ".env",
+        "to": ".env"
+      }
+    ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
