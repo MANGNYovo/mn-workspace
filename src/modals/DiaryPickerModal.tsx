@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import type { RefObject } from 'react'
 import { monthNames } from '../constants'
 
 type Props = {
@@ -6,8 +6,8 @@ type Props = {
   diaryPickerYear: number
   diaryPickerMinYear: number
   diaryPickerMaxYear: number
-  diaryMonthWheelRef: React.RefObject<HTMLDivElement>
-  diaryYearWheelRef: React.RefObject<HTMLDivElement>
+  diaryMonthWheelRef: RefObject<HTMLDivElement>
+  diaryYearWheelRef: RefObject<HTMLDivElement>
   onClose: () => void
   onMonthScroll: () => void
   onYearScroll: () => void

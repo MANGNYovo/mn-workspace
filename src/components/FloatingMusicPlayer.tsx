@@ -10,7 +10,6 @@ type Props = {
   isPlaying: boolean
   isShuffleEnabled: boolean
   isLiked: boolean
-  likeIcon: string
   getLikeIcon: (isLiked: boolean, isHovered?: boolean) => string
   accentColor: AccentColor
   progress: number
@@ -141,7 +140,6 @@ export function FloatingMusicPlayer({
   isPlaying,
   isShuffleEnabled,
   isLiked,
-  likeIcon,
   getLikeIcon,
   accentColor,
   progress,

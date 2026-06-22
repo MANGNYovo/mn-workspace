@@ -1303,7 +1303,7 @@ function App() {
             playlistViewMode={playlistViewMode} playlistSearchQuery={playlistSearchQuery}
             isPlaylistRefreshing={isPlaylistRefreshing} isYtAuthenticated={isYtAuthenticated}
             ytPlaylistTracks={selectedPlaylistTracks} fallbackPlaylistTracks={fallbackPlaylistTracks}
-            currentTrack={currentTrack} playingFullPlaylistTrackId={playingFullPlaylistTrackId}
+            currentTrack={currentTrack}
             homeMusicProgress={homeMusicProgress} homeMusicCurrentSeconds={homeMusicCurrentSeconds}
             homeMusicDurationSeconds={homeMusicDurationSeconds} homeMusicVolume={homeMusicVolume}
             isShuffleEnabled={isShuffleEnabled}
@@ -1470,7 +1470,6 @@ function App() {
           isPlaying={isHomeMusicPlaying}
           isShuffleEnabled={isShuffleEnabled}
           isLiked={isTrackLiked(currentTrack.id)}
-          likeIcon={getLikeIcon(isTrackLiked(currentTrack.id))}
           getLikeIcon={getLikeIcon}
           accentColor={settings.accentColor}
           progress={homeMusicProgress}

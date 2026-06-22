@@ -15,7 +15,6 @@ import rocketGreen from '../assets/rocket-green.png'
 import rocketOrange from '../assets/rocket-orange.png'
 import rocketRed from '../assets/rocket-red.png'
 import rocketGray from '../assets/rocket-gray.png'
-import rocketActive from '../assets/rocket-active.png'
 
 import dashboardPurple from '../assets/dashboard-purple.png'
 import dashboardBlue from '../assets/dashboard-blue.png'

@@ -29,7 +29,6 @@ type Props = {
   ytPlaylistTracks: PlaylistTrack[]
   fallbackPlaylistTracks: PlaylistTrack[]
   currentTrack: PlaylistTrack | null
-  playingFullPlaylistTrackId: string | null
   // player
   homeMusicProgress: number
   homeMusicCurrentSeconds: number
@@ -70,7 +69,7 @@ export function PlaylistPage({
   homeMusicPlaylists, filteredHomeMusicPlaylists, selectedHomeMusicPlaylistId,
   selectedHomeMusicPlaylist, playingPlaylistId, isHomeMusicPlaying,
   accentColor, playlistViewMode, playlistSearchQuery, isPlaylistRefreshing, isYtAuthenticated,
-  ytPlaylistTracks, fallbackPlaylistTracks, currentTrack, playingFullPlaylistTrackId,
+  ytPlaylistTracks, fallbackPlaylistTracks, currentTrack,
   homeMusicProgress, homeMusicCurrentSeconds, homeMusicDurationSeconds, homeMusicVolume,
   isShuffleEnabled, isTrackLiked, onToggleTrackLike,
   onSetSelectedHomeMusicPlaylistId, onSetHomeMusicPlaylists, onUpdateSettings,
@@ -177,7 +176,6 @@ export function PlaylistPage({
                   key={playlist.id}
                   playlist={playlist}
                   isSelected={selectedHomeMusicPlaylistId === playlist.id}
-                  isPlaying={playingPlaylistId === playlist.id && isHomeMusicPlaying}
                   playingPlaylistId={playingPlaylistId}
                   isHomeMusicPlaying={isHomeMusicPlaying}
                   viewMode={playlistViewMode}

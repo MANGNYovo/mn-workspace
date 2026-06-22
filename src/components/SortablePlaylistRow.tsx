@@ -7,7 +7,6 @@ import writeIcon from '../assets/write.png'
 type Props = {
   playlist: HomeMusicPlaylist
   isSelected: boolean
-  isPlaying: boolean
   playingPlaylistId: string | null
   isHomeMusicPlaying: boolean
   viewMode: 'list' | 'grid'
@@ -20,7 +19,6 @@ type Props = {
 export function SortablePlaylistRow({
   playlist,
   isSelected,
-  isPlaying,
   playingPlaylistId,
   isHomeMusicPlaying,
   viewMode,
