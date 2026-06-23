@@ -79,6 +79,8 @@ select {
 .sidebar-theme-toggle:focus-visible,
 .sidebar-accent-dot:focus,
 .sidebar-accent-dot:focus-visible,
+.sidebar-collapse-button:focus,
+.sidebar-collapse-button:focus-visible,
 .modal-close-button:focus,
 .modal-close-button:focus-visible,
 .modal-add-button:focus,

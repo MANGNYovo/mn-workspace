@@ -306,3 +306,142 @@
   transform: translate(-50%, -50%);
 }
 
+
+/* ========================= */
+/* 접히는 사이드바 */
+/* ========================= */
+
+.sidebar,
+.content,
+.brand,
+.brand-logo,
+.menu-item,
+.menu-label,
+.menu-icon,
+.sidebar-accent-picker {
+  transition:
+    width 0.22s ease,
+    min-width 0.22s ease,
+    max-width 0.22s ease,
+    padding 0.22s ease,
+    margin 0.22s ease,
+    transform 0.22s ease,
+    opacity 0.18s ease,
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.sidebar.collapsed {
+  width: 76px;
+  min-width: 76px;
+  max-width: 76px;
+  padding-left: 10px;
+  padding-right: 10px;
+  align-items: center;
+}
+
+.sidebar.collapsed .brand {
+  width: 48px;
+  height: 48px;
+  margin-bottom: clamp(28px, 4vh, 42px);
+  border-radius: 16px;
+}
+
+.sidebar.collapsed .brand-logo {
+  width: 42px;
+  height: 42px;
+}
+
+.sidebar.collapsed .menu {
+  width: 100%;
+  align-items: center;
+}
+
+.sidebar.collapsed .menu-item {
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  justify-content: center;
+  gap: 0;
+  border-radius: 16px;
+  text-align: center;
+}
+
+.sidebar.collapsed .menu-item:hover {
+  transform: none;
+}
+
+.sidebar.collapsed .menu-label {
+  width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.sidebar.collapsed .menu-icon {
+  width: 23px;
+  height: 23px;
+  transform: none;
+}
+
+.sidebar-collapse-button {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #8e96ad;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-app-region: no-drag;
+  transition: transform 0.16s ease, color 0.16s ease;
+}
+
+.sidebar-collapse-button:hover {
+  color: var(--accent-color, #705bff);
+  background: transparent;
+  box-shadow: none;
+  transform: scale(1.08);
+}
+
+.sidebar.collapsed .sidebar-accent-picker {
+  left: 50%;
+  gap: 0;
+}
+
+.sidebar.collapsed .sidebar-collapse-button {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/* 사이드바 접기 버튼 위치 조정: 우측 가장자리 가까이 */
+.sidebar:not(.collapsed) .sidebar-accent-picker {
+  left: 14px;
+  right: 8px;
+  transform: none;
+  justify-content: flex-start;
+}
+
+.sidebar:not(.collapsed) .sidebar-collapse-button {
+  margin-left: auto;
+}
+
+.sidebar.collapsed .sidebar-accent-picker {
+  left: auto;
+  right: 7px;
+  transform: none;
+  justify-content: flex-end;
+}

@@ -341,6 +341,7 @@ export const defaultSettings: AppSettings = {
   floatingPlayerMode: 'expanded',
   floatingPlayerHidden: false,
   floatingPlayerPosition: null,
+  sidebarCollapsed: false,
   lastTrack: null,
 }
 

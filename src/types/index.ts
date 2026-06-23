@@ -90,6 +90,7 @@ export type AppSettings = {
   floatingPlayerMode?: FloatingPlayerMode
   floatingPlayerHidden?: boolean
   floatingPlayerPosition?: FloatingPlayerPosition | null
+  sidebarCollapsed?: boolean
   lastTrack?: {
     videoId: string
     title: string

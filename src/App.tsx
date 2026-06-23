@@ -163,6 +163,8 @@ function App() {
   const [programs, setPrograms] = useState<ProgramItem[]>(initialPrograms)
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [isSidebarThemeToggleHovered, setIsSidebarThemeToggleHovered] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [hoveredCollapsedSidebarPage, setHoveredCollapsedSidebarPage] = useState<Page | null>(null)
   const [launchStatuses, setLaunchStatuses] = useState<Record<string, LaunchStatus>>({})
   const [isLaunching, setIsLaunching] = useState(false)
   const cancelLaunchRef = useRef(false)
@@ -385,6 +387,17 @@ function App() {
     return isActive ? musicControlIconMap[iconName][settings.accentColor] : musicControlIconMap[iconName].gray
   }
 
+  const getCollapsedSidebarIcon = (iconName: keyof typeof iconMap, isActive: boolean, isHovered: boolean) => {
+    if (isSidebarCollapsed && isHovered) return iconMap[iconName][settings.accentColor]
+    return getThemeIcon(iconName, isActive)
+  }
+
+  const getCollapsedSidebarMusicIcon = (iconName: keyof typeof musicControlIconMap, isActive: boolean, isHovered: boolean) => {
+    if (isSidebarCollapsed && isHovered) return musicControlIconMap[iconName][settings.accentColor]
+    if (activeTheme === 'dark') return isActive ? musicControlIconMap[iconName][settings.accentColor] : musicControlIconMap[iconName].white
+    return getMusicControlIcon(iconName, isActive)
+  }
+
   const getLikeIcon = (isLiked: boolean, isHovered = false) => {
     if (isLiked) return likedIconMap[settings.accentColor]
     // 좋아요가 안 눌린 상태에서 hover 시 빈 하트 accent 아이콘으로
@@ -405,6 +418,12 @@ function App() {
 
   const updateSettings = (partial: Partial<AppSettings>) =>
     setSettings((prev) => ({ ...prev, ...partial }))
+
+  const updateSidebarCollapsed = (collapsed: boolean) => {
+    setIsSidebarCollapsed(collapsed)
+    setHoveredCollapsedSidebarPage(null)
+    updateSettings({ sidebarCollapsed: collapsed })
+  }
 
   const toggleSidebarTheme = () => {
     if (isCustomWallpaperMode) {
@@ -1367,6 +1386,7 @@ function App() {
           if (loadedSettings.playlistViewMode === 'list' || loadedSettings.playlistViewMode === 'grid') {
             setPlaylistViewMode(loadedSettings.playlistViewMode)
           }
+          setIsSidebarCollapsed(Boolean(loadedSettings.sidebarCollapsed))
           if (loadedSettings.lastTrack) {
             const t = loadedSettings.lastTrack
             setCurrentTrack({ id: t.videoId, title: t.title, artist: t.artist, thumbnail: t.thumbnail, duration: '' })
@@ -1472,30 +1492,25 @@ function App() {
     }
 
     const onMusicKeyboardShortcut = (event: KeyboardEvent) => {
-      const isSpaceKey = event.code === 'Space' || event.key === ' '
-      const isVolumeUpKey = event.key === 'ArrowUp'
-      const isVolumeDownKey = event.key === 'ArrowDown'
-
-      if (!isSpaceKey && !isVolumeUpKey && !isVolumeDownKey) return
+      if (event.repeat) return
       if (shouldIgnoreMusicShortcut(event.target)) return
 
-      if (isSpaceKey) {
-        if (event.repeat) return
-
+      if (event.code === 'Space' || event.key === ' ') {
         event.preventDefault()
         togglePlayPause()
         return
       }
 
-      event.preventDefault()
+      if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+        event.preventDefault()
 
-      const nextVolume = Math.max(
-        0,
-        Math.min(100, homeMusicVolumeRef.current + (isVolumeUpKey ? 5 : -5)),
-      )
-
-      homeMusicVolumeRef.current = nextVolume
-      setHomeMusicVolume(nextVolume)
+        const volumeDelta = event.key === 'ArrowUp' ? 5 : -5
+        setHomeMusicVolume((prev) => {
+          const nextVolume = Math.max(0, Math.min(100, Math.round(prev + volumeDelta)))
+          homeMusicVolumeRef.current = nextVolume
+          return nextVolume
+        })
+      }
     }
 
     window.addEventListener('keydown', onMusicKeyboardShortcut)
@@ -1593,6 +1608,7 @@ function App() {
       className="app"
       data-theme={activeTheme}
       data-accent={settings.accentColor}
+      data-sidebar-collapsed={isSidebarCollapsed ? 'true' : undefined}
       data-wallpaper={isCustomWallpaperMode && settings.customWallpaper ? 'true' : undefined}
       data-wallpaper-animated={isCustomWallpaperMode && settings.customWallpaper && isAnimatedCustomWallpaper ? 'true' : undefined}
       style={appStyle}
@@ -1606,8 +1622,14 @@ function App() {
       </div>
 
       {/* 사이드바 */}
-      <aside className="sidebar">
-        <button type="button" className={`brand ${activePage === 'home' ? 'active' : ''}`} onClick={() => setActivePage('home')}>
+      <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+        <button
+          type="button"
+          className={`brand ${activePage === 'home' ? 'active' : ''}`}
+          aria-label="Home"
+          title="Home"
+          onClick={() => setActivePage('home')}
+        >
           <img src={logoMap[settings.accentColor]} alt="MN Logo" className="brand-logo" />
         </button>
         <nav className="menu">
@@ -1615,62 +1637,124 @@ function App() {
             { page: 'dashboard', icon: 'dashboard', label: 'Dashboard' },
             { page: 'programs',  icon: 'programs',  label: 'Programs'  },
           ] as const).map(({ page, icon, label }) => (
-            <button key={page} className={`menu-item ${activePage === page ? 'active' : ''}`} onClick={() => setActivePage(page)}>
-              <img src={getThemeIcon(icon, activePage === page)} alt="" className="menu-icon" />
-              {label}
+            <button
+              key={page}
+              className={`menu-item ${activePage === page ? 'active' : ''}`}
+              aria-label={label}
+              title={isSidebarCollapsed ? label : undefined}
+              onMouseEnter={() => setHoveredCollapsedSidebarPage(page)}
+              onMouseLeave={() => setHoveredCollapsedSidebarPage(null)}
+              onClick={() => setActivePage(page)}
+            >
+              <img
+                src={getCollapsedSidebarIcon(icon, activePage === page, hoveredCollapsedSidebarPage === page)}
+                alt=""
+                className="menu-icon"
+              />
+              <span className="menu-label">{label}</span>
             </button>
           ))}
-          <button className={`menu-item ${activePage === 'diary' || activePage === 'writeDiary' ? 'active' : ''}`} onClick={() => setActivePage('diary')}>
-            <img src={getThemeIcon('date', activePage === 'diary' || activePage === 'writeDiary')} alt="" className="menu-icon" />
-            Diary
-          </button>
-          <button className={`menu-item ${activePage === 'playlist' ? 'active' : ''}`} onClick={() => setActivePage('playlist')}>
+          <button
+            className={`menu-item ${activePage === 'diary' || activePage === 'writeDiary' ? 'active' : ''}`}
+            aria-label="Diary"
+            title={isSidebarCollapsed ? 'Diary' : undefined}
+            onMouseEnter={() => setHoveredCollapsedSidebarPage('diary')}
+            onMouseLeave={() => setHoveredCollapsedSidebarPage(null)}
+            onClick={() => setActivePage('diary')}
+          >
             <img
-              src={
-                activeTheme === 'dark'
-                  ? musicControlIconMap.playlist.white
-                  : getMusicControlIcon('playlist', activePage === 'playlist')
-              }
+              src={getCollapsedSidebarIcon('date', activePage === 'diary' || activePage === 'writeDiary', hoveredCollapsedSidebarPage === 'diary')}
               alt=""
               className="menu-icon"
             />
-            Playlist
+            <span className="menu-label">Diary</span>
           </button>
-          <button className={`menu-item ${activePage === 'settings' ? 'active' : ''}`} onClick={() => setActivePage('settings')}>
-            <img src={getThemeIcon('settings', activePage === 'settings')} alt="" className="menu-icon" />
-            Settings
+          <button
+            className={`menu-item ${activePage === 'playlist' ? 'active' : ''}`}
+            aria-label="Playlist"
+            title={isSidebarCollapsed ? 'Playlist' : undefined}
+            onMouseEnter={() => setHoveredCollapsedSidebarPage('playlist')}
+            onMouseLeave={() => setHoveredCollapsedSidebarPage(null)}
+            onClick={() => setActivePage('playlist')}
+          >
+            <img
+              src={getCollapsedSidebarMusicIcon('playlist', activePage === 'playlist', hoveredCollapsedSidebarPage === 'playlist')}
+              alt=""
+              className="menu-icon"
+            />
+            <span className="menu-label">Playlist</span>
+          </button>
+          <button
+            className={`menu-item ${activePage === 'settings' ? 'active' : ''}`}
+            aria-label="Settings"
+            title={isSidebarCollapsed ? 'Settings' : undefined}
+            onMouseEnter={() => setHoveredCollapsedSidebarPage('settings')}
+            onMouseLeave={() => setHoveredCollapsedSidebarPage(null)}
+            onClick={() => setActivePage('settings')}
+          >
+            <img
+              src={getCollapsedSidebarIcon('settings', activePage === 'settings', hoveredCollapsedSidebarPage === 'settings')}
+              alt=""
+              className="menu-icon"
+            />
+            <span className="menu-label">Settings</span>
           </button>
         </nav>
         <div className="sidebar-accent-picker" aria-label="Quick appearance controls">
-          <button
-            type="button"
-            className="sidebar-theme-toggle"
-            aria-label={sidebarThemeToggleLabel}
-            title={sidebarThemeToggleTitle}
-            onMouseEnter={() => setIsSidebarThemeToggleHovered(true)}
-            onMouseLeave={() => setIsSidebarThemeToggleHovered(false)}
-            onClick={toggleSidebarTheme}
-          >
-            <img
-              src={themeIconMap[activeTheme][isSidebarThemeToggleHovered ? settings.accentColor : 'gray']}
-              alt=""
-              className="sidebar-theme-icon"
-            />
-          </button>
-          {(['purple', 'blue', 'green', 'orange', 'red', 'gray'] as const).map((color) => (
+          {isSidebarCollapsed ? (
             <button
-              key={color}
               type="button"
-              className={`sidebar-accent-dot ${settings.accentColor === color ? 'active' : ''}`}
-              style={{
-                '--sidebar-dot-color': accentColorMap[color],
-                '--sidebar-dot-ring': accentRingMap[color],
-              } as CSSProperties}
-              aria-label={`Set accent color to ${color}`}
-              title={color}
-              onClick={() => updateSettings({ accentColor: color })}
-            />
-          ))}
+              className="sidebar-collapse-button"
+              aria-label="Expand sidebar"
+              title="Expand sidebar"
+              aria-expanded={false}
+              onClick={() => updateSidebarCollapsed(false)}
+            >
+              &gt;
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                className="sidebar-theme-toggle"
+                aria-label={sidebarThemeToggleLabel}
+                title={sidebarThemeToggleTitle}
+                onMouseEnter={() => setIsSidebarThemeToggleHovered(true)}
+                onMouseLeave={() => setIsSidebarThemeToggleHovered(false)}
+                onClick={toggleSidebarTheme}
+              >
+                <img
+                  src={themeIconMap[activeTheme][isSidebarThemeToggleHovered ? settings.accentColor : 'gray']}
+                  alt=""
+                  className="sidebar-theme-icon"
+                />
+              </button>
+              {(['purple', 'blue', 'green', 'orange', 'red', 'gray'] as const).map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  className={`sidebar-accent-dot ${settings.accentColor === color ? 'active' : ''}`}
+                  style={{
+                    '--sidebar-dot-color': accentColorMap[color],
+                    '--sidebar-dot-ring': accentRingMap[color],
+                  } as CSSProperties}
+                  aria-label={`Set accent color to ${color}`}
+                  title={color}
+                  onClick={() => updateSettings({ accentColor: color })}
+                />
+              ))}
+              <button
+                type="button"
+                className="sidebar-collapse-button"
+                aria-label="Collapse sidebar"
+                title="Collapse sidebar"
+                aria-expanded={true}
+                onClick={() => updateSidebarCollapsed(true)}
+              >
+                &lt;
+              </button>
+            </>
+          )}
         </div>
       </aside>
 
