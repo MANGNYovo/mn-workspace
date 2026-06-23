@@ -325,6 +325,8 @@ export const defaultSettings: AppSettings = {
   theme: 'Light',
   customWallpaper: null,
   customWallpaperName: null,
+  customWallpaperTheme: 'dark',
+  customWallpaperHistory: [],
   accentColor: 'purple',
   musicVolume: 58,
   musicPlaylistOrder: [],
@@ -443,6 +445,12 @@ export function isSettings(value: unknown): value is AppSettings {
     typeof s.theme === 'string' &&
     (s.customWallpaper === undefined || s.customWallpaper === null || typeof s.customWallpaper === 'string') &&
     (s.customWallpaperName === undefined || s.customWallpaperName === null || typeof s.customWallpaperName === 'string') &&
+    (s.customWallpaperTheme === undefined || s.customWallpaperTheme === 'light' || s.customWallpaperTheme === 'dark') &&
+    (s.customWallpaperHistory === undefined || (Array.isArray(s.customWallpaperHistory) && s.customWallpaperHistory.every((item) => {
+      if (!item || typeof item !== 'object') return false
+      const w = item as { image?: unknown; name?: unknown; savedAt?: unknown }
+      return typeof w.image === 'string' && typeof w.name === 'string' && typeof w.savedAt === 'string'
+    }))) &&
     typeof s.accentColor === 'string'
 }
 

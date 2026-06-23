@@ -259,6 +259,62 @@
   flex-shrink: 0;
 }
 
+.wallpaper-history-row {
+  align-items: center;
+}
+
+.wallpaper-history-list {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wallpaper-history-button {
+  width: 52px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid rgba(130, 140, 170, 0.28);
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.wallpaper-history-button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.18));
+  pointer-events: none;
+}
+
+.wallpaper-history-button span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.wallpaper-history-button:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 42%, rgba(130, 140, 170, 0.28));
+}
+
+.wallpaper-history-button.active {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 70%, rgba(130, 140, 170, 0.28));
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent-color, #705bff) 20%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
 .setting-wallpaper-action,
 .setting-wallpaper-clear {
   min-width: 76px;
@@ -276,6 +332,18 @@
 .app[data-theme='dark'] .wallpaper-preview {
   border-color: rgba(255, 255, 255, 0.12);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .wallpaper-history-button {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .wallpaper-history-button.active {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 62%, rgba(255, 255, 255, 0.12));
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10);
 }
 
 .app[data-theme='dark'] .setting-wallpaper-action,
@@ -331,4 +399,57 @@
 .app[data-theme='dark'] .setting-youtube-account-action.danger:hover:not(:disabled) {
   background: rgba(255, 81, 81, 0.10);
   border-color: rgba(255, 81, 81, 0.30);
+}
+
+.wallpaper-theme-row {
+  align-items: center;
+}
+
+.wallpaper-theme-switch {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wallpaper-theme-button {
+  min-width: 70px;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(130, 140, 170, 0.28);
+  background: rgba(255, 255, 255, 0.76);
+  color: #65708d;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 12px;
+}
+
+.wallpaper-theme-button:hover {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 10%, white);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 24%, rgba(130, 140, 170, 0.28));
+}
+
+.wallpaper-theme-button.active {
+  color: var(--accent-color, #705bff);
+  background: color-mix(in srgb, var(--accent-color, #705bff) 11%, white);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 42%, rgba(130, 140, 170, 0.28));
+}
+
+.app[data-theme='dark'] .wallpaper-theme-button {
+  background: #333333;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #b8bfd2;
+}
+
+.app[data-theme='dark'] .wallpaper-theme-button:hover {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 14%, #333333);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 28%, rgba(255, 255, 255, 0.12));
+}
+
+.app[data-theme='dark'] .wallpaper-theme-button.active {
+  color: var(--accent-color, #705bff);
+  background: color-mix(in srgb, var(--accent-color, #705bff) 16%, #333333);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 42%, rgba(255, 255, 255, 0.12));
 }

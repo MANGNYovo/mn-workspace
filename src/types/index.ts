@@ -4,6 +4,16 @@ export type LaunchDelay = '1 second' | '2 seconds' | '3 seconds' | '5 seconds'
 export type LaunchBehavior = 'Launch in order' | 'Launch all at once'
 export type Theme = 'Light' | 'Dark' | 'System' | 'Custom Wallpaper'
 export type ResolvedTheme = 'light' | 'dark'
+export type CustomWallpaperTheme = 'light' | 'dark'
+export type WallpaperHistoryItem = {
+  image: string
+  name: string
+  savedAt: string
+}
+export type WallpaperSelectResult = WallpaperHistoryItem | {
+  error: 'unsupported-file-type'
+  name: string
+}
 export type AccentColor = 'purple' | 'blue' | 'green' | 'orange' | 'red' | 'gray'
 export type PlaylistViewMode = 'list' | 'grid'
 export type FloatingPlayerMode = 'expanded' | 'minimized'
@@ -64,6 +74,8 @@ export type AppSettings = {
   theme: Theme
   customWallpaper?: string | null
   customWallpaperName?: string | null
+  customWallpaperTheme?: CustomWallpaperTheme
+  customWallpaperHistory?: WallpaperHistoryItem[]
   accentColor: AccentColor
   musicVolume?: number
   musicPlaylistOrder?: string[]

@@ -201,12 +201,28 @@ function App() {
   const enabledProgramCount = enabledPrograms.length
 
   const isCustomWallpaperMode = settings.theme === 'Custom Wallpaper'
+  const customWallpaperTheme = settings.customWallpaperTheme ?? defaultSettings.customWallpaperTheme ?? 'dark'
 
   const activeTheme: ResolvedTheme = isCustomWallpaperMode
-    ? 'dark'
+    ? customWallpaperTheme
     : settings.theme === 'System'
       ? systemTheme
       : settings.theme.toLowerCase() as ResolvedTheme
+
+  const sidebarThemeToggleLabel = isCustomWallpaperMode
+    ? activeTheme === 'dark' ? 'Switch to custom light mode' : 'Switch to custom dark mode'
+    : activeTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'
+
+  const sidebarThemeToggleTitle = isCustomWallpaperMode
+    ? activeTheme === 'dark' ? 'Custom light mode' : 'Custom dark mode'
+    : activeTheme === 'dark' ? 'Light mode' : 'Dark mode'
+
+  const isAnimatedCustomWallpaper = Boolean(
+    settings.customWallpaper && (
+      /\.(gif|mp4|webm)(?:$|[?#])/i.test(settings.customWallpaper) ||
+      /\.(gif|mp4|webm)$/i.test(settings.customWallpaperName ?? '')
+    )
+  )
 
   const appStyle = {
     '--accent-color': accentColorMap[settings.accentColor],
@@ -362,8 +378,9 @@ function App() {
     return isActive ? iconMap[iconName][settings.accentColor] : iconMap[iconName].gray
   }
 
-  const getMusicControlIcon = (iconName: keyof typeof musicControlIconMap, isActive = true) =>
-    isActive ? musicControlIconMap[iconName][settings.accentColor] : musicControlIconMap[iconName].gray
+  const getMusicControlIcon = (iconName: keyof typeof musicControlIconMap, isActive = true) => {
+    return isActive ? musicControlIconMap[iconName][settings.accentColor] : musicControlIconMap[iconName].gray
+  }
 
   const getLikeIcon = (isLiked: boolean, isHovered = false) => {
     if (isLiked) return likedIconMap[settings.accentColor]
@@ -383,6 +400,15 @@ function App() {
 
   const updateSettings = (partial: Partial<AppSettings>) =>
     setSettings((prev) => ({ ...prev, ...partial }))
+
+  const toggleSidebarTheme = () => {
+    if (isCustomWallpaperMode) {
+      updateSettings({ customWallpaperTheme: activeTheme === 'dark' ? 'light' : 'dark' })
+      return
+    }
+
+    updateSettings({ theme: activeTheme === 'dark' ? 'Light' : 'Dark' })
+  }
 
   const isTrackLiked = (trackId?: string | null) => Boolean(trackId && likedTrackIdSet.has(trackId))
 
@@ -1518,6 +1544,7 @@ function App() {
       data-theme={activeTheme}
       data-accent={settings.accentColor}
       data-wallpaper={isCustomWallpaperMode && settings.customWallpaper ? 'true' : undefined}
+      data-wallpaper-animated={isCustomWallpaperMode && settings.customWallpaper && isAnimatedCustomWallpaper ? 'true' : undefined}
       style={appStyle}
     >
       {/* 타이틀바 */}
@@ -1568,11 +1595,11 @@ function App() {
           <button
             type="button"
             className="sidebar-theme-toggle"
-            aria-label={activeTheme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            title={activeTheme === 'dark' ? 'Light mode' : 'Dark mode'}
+            aria-label={sidebarThemeToggleLabel}
+            title={sidebarThemeToggleTitle}
             onMouseEnter={() => setIsSidebarThemeToggleHovered(true)}
             onMouseLeave={() => setIsSidebarThemeToggleHovered(false)}
-            onClick={() => updateSettings({ theme: activeTheme === 'dark' ? 'Light' : 'Dark' })}
+            onClick={toggleSidebarTheme}
           >
             <img
               src={themeIconMap[activeTheme][isSidebarThemeToggleHovered ? settings.accentColor : 'gray']}

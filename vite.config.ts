@@ -3,6 +3,15 @@ import path from 'node:path'
 import electron from 'vite-plugin-electron/simple'
 import react from '@vitejs/plugin-react'
 
+// Keep the largest runtime dependency out of dist-electron/main.js.
+// googleapis is intentionally externalized so main.js does not balloon.
+// electron-updater is left bundled because it is CommonJS and named ESM imports can fail when externalized.
+const mainExternal = [
+  'electron',
+  'dotenv',
+  'googleapis',
+]
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -11,11 +20,29 @@ export default defineConfig({
       main: {
         // Shortcut of `build.lib.entry`.
         entry: 'electron/main.ts',
+        vite: {
+          build: {
+            sourcemap: false,
+            minify: true,
+            rollupOptions: {
+              external: mainExternal,
+            },
+          },
+        },
       },
       preload: {
         // Shortcut of `build.rollupOptions.input`.
         // Preload scripts may contain Web assets, so use the `build.rollupOptions.input` instead `build.lib.entry`.
         input: path.join(__dirname, 'electron/preload.ts'),
+        vite: {
+          build: {
+            sourcemap: false,
+            minify: true,
+            rollupOptions: {
+              external: ['electron'],
+            },
+          },
+        },
       },
       // Ployfill the Electron and Node.js API for Renderer process.
       // If you want use Node.js in Renderer process, the `nodeIntegration` needs to be enabled in the Main process.

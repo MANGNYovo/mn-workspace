@@ -1,5 +1,5 @@
-import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol } from 'electron'
+import { createRequire } from 'node:module'
 import { execFile } from 'node:child_process'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
@@ -9,6 +9,25 @@ import dotenv from 'dotenv'
 import { google } from 'googleapis'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+const require = createRequire(import.meta.url)
+const { autoUpdater } = require('electron-updater') as typeof import('electron-updater')
+
+
+const CUSTOM_WALLPAPER_PROTOCOL = 'mn-wallpaper'
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: CUSTOM_WALLPAPER_PROTOCOL,
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+    },
+  },
+])
+
 
 process.env.APP_ROOT = path.join(__dirname, '..')
 
@@ -42,6 +61,14 @@ autoUpdater.autoDownload = false
 // YouTube embed autoplay/audio가 설치 빌드에서도 사용자 제스처 없이 동작하도록 고정
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required')
 
+// GIF wallpaper가 다른 창 뒤에 있을 때 Chromium이 렌더링을 낮추며 버벅이는 문제 완화
+// CSS background-image 방식은 유지하고, Electron의 background throttling만 꺼둔다.
+// 반드시 app.whenReady() 이전에 적용되어야 한다.
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+
 // ─── YouTube Data API v3 ────────────────────────────────────────────────────
 
 const YOUTUBE_CLIENT_ID = process.env.YOUTUBE_CLIENT_ID?.trim() ?? ''
@@ -68,6 +95,46 @@ function getPlaylistCoverMapPath() {
 function getPlaylistCoverDirPath() {
   return path.join(app.getPath('userData'), 'playlist-covers')
 }
+
+function getCustomWallpaperDirPath() {
+  return path.join(app.getPath('userData'), 'custom-wallpapers')
+}
+
+function sanitizeCustomWallpaperFileName(filePath: string) {
+  const extension = path.extname(filePath).toLowerCase()
+  const baseName = path.basename(filePath, extension)
+    .replace(/[^a-zA-Z0-9가-힣._-]/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 80) || 'wallpaper'
+
+  return `${Date.now()}-${baseName}${extension}`
+}
+
+function createCustomWallpaperUrl(fileName: string) {
+  return `${CUSTOM_WALLPAPER_PROTOCOL}://local/${encodeURIComponent(fileName)}`
+}
+
+function getCustomWallpaperFilePathFromUrl(requestUrl: string) {
+  const url = new URL(requestUrl)
+  const fileName = decodeURIComponent(url.pathname.replace(/^\/+/, ''))
+  const wallpaperDir = getCustomWallpaperDirPath()
+  const wallpaperPath = path.join(wallpaperDir, fileName)
+  const relativeToWallpaperDir = path.relative(wallpaperDir, wallpaperPath)
+
+  if (!fileName || relativeToWallpaperDir.startsWith('..') || path.isAbsolute(relativeToWallpaperDir)) {
+    return null
+  }
+
+  return wallpaperPath
+}
+
+function isSupportedWallpaperFile(filePath: string) {
+  return [
+    '.jpg', '.jpeg', '.jfif', '.png', '.webp', '.gif', '.bmp', '.avif', '.apng', '.svg',
+    '.mp4', '.webm',
+  ].includes(path.extname(filePath).toLowerCase())
+}
+
 
 function sanitizePlaylistCoverFileName(playlistId: string) {
   return playlistId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120) || 'playlist-cover'
@@ -610,6 +677,25 @@ function createTray() {
   })
 }
 
+
+function registerCustomWallpaperProtocol() {
+  protocol.registerFileProtocol(CUSTOM_WALLPAPER_PROTOCOL, (request, callback) => {
+    try {
+      const wallpaperPath = getCustomWallpaperFilePathFromUrl(request.url)
+
+      if (!wallpaperPath) {
+        callback({ error: -6 })
+        return
+      }
+
+      callback({ path: wallpaperPath })
+    } catch (error) {
+      console.error('Failed to resolve custom wallpaper protocol:', error)
+      callback({ error: -2 })
+    }
+  })
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1500,
@@ -626,6 +712,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       autoplayPolicy: 'no-user-gesture-required',
+      backgroundThrottling: false,
     },
   })
 
@@ -712,6 +799,57 @@ ipcMain.handle('dialog:select-folder', async () => {
   }
 
   return result.filePaths[0]
+})
+
+
+ipcMain.handle('dialog:select-wallpaper', async () => {
+  if (!win) return null
+
+  const result = await dialog.showOpenDialog(win, {
+    title: 'Select Custom Wallpaper',
+    properties: ['openFile'],
+    filters: [
+      {
+        name: 'Images, GIFs, and Videos',
+        extensions: ['jpg', 'jpeg', 'jfif', 'png', 'webp', 'gif', 'bmp', 'avif', 'apng', 'svg', 'mp4', 'webm'],
+      },
+      {
+        name: 'All Files',
+        extensions: ['*'],
+      },
+    ],
+  })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  const selectedPath = result.filePaths[0]
+
+  if (!isSupportedWallpaperFile(selectedPath)) {
+    return {
+      error: 'unsupported-file-type',
+      name: path.basename(selectedPath),
+    }
+  }
+
+  try {
+    const wallpaperDir = getCustomWallpaperDirPath()
+    await fs.mkdir(wallpaperDir, { recursive: true })
+
+    const fileName = sanitizeCustomWallpaperFileName(selectedPath)
+    const destinationPath = path.join(wallpaperDir, fileName)
+    await fs.copyFile(selectedPath, destinationPath)
+
+    return {
+      image: createCustomWallpaperUrl(fileName),
+      name: path.basename(selectedPath),
+      savedAt: new Date().toISOString(),
+    }
+  } catch (error) {
+    console.error('Failed to save custom wallpaper:', error)
+    return null
+  }
 })
 
 ipcMain.handle('file:get-icon', async (_event, filePath: string) => {
@@ -1411,4 +1549,7 @@ app.on('activate', () => {
   }
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(() => {
+  registerCustomWallpaperProtocol()
+  createWindow()
+})

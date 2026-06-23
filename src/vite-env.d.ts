@@ -27,6 +27,7 @@ interface Window {
   mnAPI: {
     selectProgram: () => Promise<string | null>
     selectFolder: () => Promise<string | null>
+    selectWallpaper: () => Promise<{ image: string; name: string; savedAt: string } | null>
     getFileIcon: (filePath: string) => Promise<string | null>
     getAppVersion: () => Promise<string>
 

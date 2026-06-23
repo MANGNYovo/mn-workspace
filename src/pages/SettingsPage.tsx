@@ -1,5 +1,7 @@
-import { useRef, type ChangeEvent } from 'react'
-import type { AppSettings, AccentColor, LaunchDelay, LaunchBehavior, ResolvedTheme, YoutubeMusicAccount } from '../types'
+import type {
+  AppSettings, AccentColor, LaunchDelay, LaunchBehavior, ResolvedTheme,
+  YoutubeMusicAccount, CustomWallpaperTheme, WallpaperHistoryItem, WallpaperSelectResult,
+} from '../types'
 import { iconMap } from '../constants'
 
 type Props = {
@@ -26,7 +28,6 @@ export function SettingsPage({
   onUpdateSettings, onToggleStartWithWindows, onCheckForUpdates, onReloadYoutubeMusicData,
   onLoginYoutubeMusic, onLogoutYoutubeMusic,
 }: Props) {
-  const wallpaperInputRef = useRef<HTMLInputElement | null>(null)
   const youtubeAccountLabel = isYoutubeAccountLoading
     ? 'Checking account...'
     : isYtAuthenticated
@@ -37,24 +38,53 @@ export function SettingsPage({
           : 'Signed in'
       : 'Not signed in'
 
+  const customWallpaperTheme = settings.customWallpaperTheme ?? 'dark'
+  const recentWallpapers = (settings.customWallpaperHistory ?? []).slice(0, 3)
 
-  const handleWallpaperChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    event.target.value = ''
+  const createWallpaperHistory = (wallpaper: WallpaperHistoryItem) => [
+    wallpaper,
+    ...recentWallpapers.filter((item) => item.image !== wallpaper.image),
+  ].slice(0, 3)
 
-    if (!file || !file.type.startsWith('image/')) return
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return
-
-      onUpdateSettings({
-        theme: 'Custom Wallpaper',
-        customWallpaper: reader.result,
-        customWallpaperName: file.name,
-      })
+  const handleThemeChange = (theme: AppSettings['theme']) => {
+    if (theme === 'Custom Wallpaper') {
+      onUpdateSettings({ theme, customWallpaperTheme: activeTheme })
+      return
     }
-    reader.readAsDataURL(file)
+
+    onUpdateSettings({ theme })
+  }
+
+  const handleCustomWallpaperThemeChange = (customWallpaperTheme: CustomWallpaperTheme) => {
+    onUpdateSettings({ customWallpaperTheme })
+  }
+
+  const handleWallpaperChange = async () => {
+    const wallpaper = await window.mnAPI.selectWallpaper() as WallpaperSelectResult | null
+
+    if (!wallpaper) return
+
+    if ('error' in wallpaper) {
+      window.alert(`${wallpaper.name} is not a supported wallpaper file. Please choose JPG, PNG, WEBP, GIF, BMP, AVIF, SVG, MP4, or WEBM.`)
+      return
+    }
+
+    onUpdateSettings({
+      theme: 'Custom Wallpaper',
+      customWallpaper: wallpaper.image,
+      customWallpaperName: wallpaper.name,
+      customWallpaperTheme: activeTheme,
+      customWallpaperHistory: createWallpaperHistory(wallpaper),
+    })
+  }
+
+  const handleSelectRecentWallpaper = (wallpaper: WallpaperHistoryItem) => {
+    onUpdateSettings({
+      theme: 'Custom Wallpaper',
+      customWallpaper: wallpaper.image,
+      customWallpaperName: wallpaper.name,
+      customWallpaperHistory: createWallpaperHistory(wallpaper),
+    })
   }
 
   return (
@@ -222,7 +252,7 @@ export function SettingsPage({
           <select
             className="setting-select"
             value={settings.theme}
-            onChange={(e) => onUpdateSettings({ theme: e.target.value as AppSettings['theme'] })}
+            onChange={(e) => handleThemeChange(e.target.value as AppSettings['theme'])}
           >
             <option>Light</option>
             <option>Dark</option>
@@ -232,44 +262,82 @@ export function SettingsPage({
         </div>
 
         {settings.theme === 'Custom Wallpaper' && (
-          <div className="setting-row wallpaper-setting-row">
-            <div>
-              <strong>Custom wallpaper</strong>
-              <p>{settings.customWallpaperName || 'Choose an image to use as the application background.'}</p>
-            </div>
-            <div className="wallpaper-actions">
-              {settings.customWallpaper && (
-                <span
-                  className="wallpaper-preview"
-                  style={{ backgroundImage: `url("${settings.customWallpaper}")` }}
-                  aria-hidden="true"
-                />
-              )}
-              <input
-                ref={wallpaperInputRef}
-                className="wallpaper-input"
-                type="file"
-                accept="image/*"
-                onChange={handleWallpaperChange}
-              />
-              <button
-                type="button"
-                className="setting-action setting-wallpaper-action"
-                onClick={() => wallpaperInputRef.current?.click()}
-              >
-                {settings.customWallpaper ? 'Change' : 'Choose'}
-              </button>
-              {settings.customWallpaper && (
+          <>
+            <div className="setting-row wallpaper-setting-row">
+              <div>
+                <strong>Custom wallpaper</strong>
+                <p>{settings.customWallpaperName || 'Choose an image, GIF, or video to use as the application background.'}</p>
+              </div>
+              <div className="wallpaper-actions">
+                {settings.customWallpaper && (
+                  <span
+                    className="wallpaper-preview"
+                    style={{ backgroundImage: `url("${settings.customWallpaper}")` }}
+                    aria-hidden="true"
+                  />
+                )}
                 <button
                   type="button"
-                  className="setting-action setting-wallpaper-clear"
-                  onClick={() => onUpdateSettings({ customWallpaper: null, customWallpaperName: null })}
+                  className="setting-action setting-wallpaper-action"
+                  onClick={handleWallpaperChange}
                 >
-                  Remove
+                  {settings.customWallpaper ? 'Change' : 'Choose'}
                 </button>
-              )}
+                {settings.customWallpaper && (
+                  <button
+                    type="button"
+                    className="setting-action setting-wallpaper-clear"
+                    onClick={() => onUpdateSettings({ customWallpaper: null, customWallpaperName: null })}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+
+            {recentWallpapers.length > 0 && (
+              <div className="setting-row wallpaper-history-row">
+                <div>
+                  <strong>Recent wallpapers</strong>
+                  <p>Quickly switch between the last 3 saved backgrounds, including GIFs and videos.</p>
+                </div>
+                <div className="wallpaper-history-list">
+                  {recentWallpapers.map((wallpaper) => (
+                    <button
+                      key={`${wallpaper.name}-${wallpaper.savedAt}`}
+                      type="button"
+                      className={`wallpaper-history-button ${settings.customWallpaper === wallpaper.image ? 'active' : ''}`}
+                      style={{ backgroundImage: `url("${wallpaper.image}")` }}
+                      title={wallpaper.name}
+                      aria-label={`Use ${wallpaper.name} wallpaper`}
+                      onClick={() => handleSelectRecentWallpaper(wallpaper)}
+                    >
+                      <span>{wallpaper.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="setting-row wallpaper-theme-row">
+              <div>
+                <strong>Wallpaper tone</strong>
+                <p>Use the sidebar theme button to switch between custom light and custom dark.</p>
+              </div>
+              <div className="wallpaper-theme-switch">
+                {(['light', 'dark'] as CustomWallpaperTheme[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`wallpaper-theme-button ${customWallpaperTheme === mode ? 'active' : ''}`}
+                    onClick={() => handleCustomWallpaperThemeChange(mode)}
+                  >
+                    {mode === 'light' ? 'Light' : 'Dark'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
         )}
 
         <div className="setting-row">

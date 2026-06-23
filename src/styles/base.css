@@ -120,7 +120,9 @@ select {
 .diary-delete-cancel-button:focus,
 .diary-delete-cancel-button:focus-visible,
 .diary-delete-button:focus,
-.diary-delete-button:focus-visible {
+.diary-delete-button:focus-visible,
+.wallpaper-history-button:focus,
+.wallpaper-history-button:focus-visible {
   outline: none;
 }
 
