@@ -1143,3 +1143,39 @@
   object-fit: contain;
   pointer-events: none;
 }
+
+
+/* Keep home player shuffle/like/list buttons aligned on the same visual centerline */
+.home-player-volume .home-like-button,
+.home-player-volume .home-player-icon-button {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+  line-height: 0;
+}
+
+.home-player-volume .home-like-button .like-icon,
+.home-player-volume .home-player-action-icon,
+.home-player-volume .home-player-list-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  object-fit: contain;
+}
+
+.home-player-volume .home-player-extra-actions {
+  display: flex;
+  align-items: center;
+  height: 24px;
+}
+
+.home-player-volume .home-player-list-button {
+  margin-left: 0;
+}

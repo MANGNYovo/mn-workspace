@@ -79,6 +79,7 @@ export function HomePage({
   renderMarqueeTitle, isMarqueeTitleOverflowing, marqueeTitleWrapRefs,
 }: Props) {
   const [isListButtonHovered, setIsListButtonHovered] = useState(false)
+  const [isShuffleButtonHovered, setIsShuffleButtonHovered] = useState(false)
   const [isLikeButtonHovered, setIsLikeButtonHovered] = useState(false)
   const [isLikeButtonBursting, setIsLikeButtonBursting] = useState(false)
 
@@ -295,11 +296,13 @@ export function HomePage({
             </button>
             <div className="home-player-extra-actions">
               <button
-                className={`home-player-icon-button ${isShuffleEnabled ? 'active' : ''}`}
+                className={`home-player-icon-button home-player-shuffle-button ${isShuffleEnabled ? 'active' : ''}`}
                 onClick={() => onSetIsShuffleEnabled((prev) => !prev)}
+                onMouseEnter={() => setIsShuffleButtonHovered(true)}
+                onMouseLeave={() => setIsShuffleButtonHovered(false)}
                 title="Shuffle"
               >
-                <img src={getMusicControlIcon('shuffle', isShuffleEnabled)} alt="" className="home-player-action-icon" />
+                <img src={getMusicControlIcon('shuffle', isShuffleEnabled || isShuffleButtonHovered)} alt="" className="home-player-action-icon" />
               </button>
               <button
                 className="home-player-icon-button home-player-list-button"

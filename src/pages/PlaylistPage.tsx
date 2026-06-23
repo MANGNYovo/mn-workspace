@@ -7,7 +7,7 @@ import {
 } from '@dnd-kit/sortable'
 import { restrictToParentElement } from '@dnd-kit/modifiers'
 import type {
-  HomeMusicPlaylist, PlaylistTrack, AppSettings, AccentColor,
+  HomeMusicPlaylist, PlaylistTrack, AppSettings, AccentColor, ResolvedTheme,
 } from '../types'
 import { iconMap, playbackIconMap } from '../constants'
 import { SortablePlaylistRow } from '../components'
@@ -44,12 +44,15 @@ type Props = {
   onPlaylistPlay: (id: string) => void
   onPlayVideo: (id: string, fromPlaylistId?: string, trackInfo?: PlaylistTrack) => void
   onTogglePlayPause: () => void
+  onPlayPrevTrack: () => void
+  onPlayNextTrack: () => void
   onSetPlaylistViewMode: (mode: 'list' | 'grid') => void
   onSetPlaylistSearchQuery: (q: string) => void
   onRefreshPlaylists: () => void
   onOpenYoutubeLogin: () => void
   onOpenFullPlaylist: () => void
   onChangeCover: (id: string) => void
+  playlistCoverTheme: ResolvedTheme
   onSetIsShuffleEnabled: (v: boolean | ((prev: boolean) => boolean)) => void
   onVolumePointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void
   onVolumePointerMove: (e: React.PointerEvent<HTMLButtonElement>) => void
@@ -73,9 +76,9 @@ export function PlaylistPage({
   homeMusicProgress, homeMusicCurrentSeconds, homeMusicDurationSeconds, homeMusicVolume,
   isShuffleEnabled, isTrackLiked, onToggleTrackLike,
   onSetSelectedHomeMusicPlaylistId, onSetHomeMusicPlaylists, onUpdateSettings,
-  onPlaylistPlay, onPlayVideo, onTogglePlayPause,
+  onPlaylistPlay, onPlayVideo, onTogglePlayPause, onPlayPrevTrack, onPlayNextTrack,
   onSetPlaylistViewMode, onSetPlaylistSearchQuery, onRefreshPlaylists,
-  onOpenYoutubeLogin, onOpenFullPlaylist, onChangeCover, onSetIsShuffleEnabled,
+  onOpenYoutubeLogin, onOpenFullPlaylist, onChangeCover, playlistCoverTheme, onSetIsShuffleEnabled,
   onVolumePointerDown, onVolumePointerMove,
   onProgressPointerDown, onProgressPointerMove, onProgressPointerUp,
   formatHomeMusicTime, getThemeIcon, getMusicControlIcon, getLikeIcon,
@@ -87,6 +90,7 @@ export function PlaylistPage({
   const [isLikeButtonHovered, setIsLikeButtonHovered] = useState(false)
   const [isLikeButtonBursting, setIsLikeButtonBursting] = useState(false)
   const [isRefreshButtonHovered, setIsRefreshButtonHovered] = useState(false)
+  const [isShuffleButtonHovered, setIsShuffleButtonHovered] = useState(false)
 
   const playLikeBurst = () => {
     setIsLikeButtonBursting(false)
@@ -183,6 +187,7 @@ export function PlaylistPage({
                   onPlay={onPlaylistPlay}
                   onChangeCover={onChangeCover}
                   accentColor={accentColor}
+                  playlistCoverTheme={playlistCoverTheme}
                 />
               ))}
             </div>
@@ -264,20 +269,30 @@ export function PlaylistPage({
               </small>
             </div>
 
-            <button
-              className={`playlist-player-shuffle-button ${isShuffleEnabled ? 'active' : ''}`}
-              onClick={() => onSetIsShuffleEnabled((prev) => !prev)}
-              title="Shuffle"
-            >
-              <img src={getMusicControlIcon('shuffle', isShuffleEnabled)} alt="" className="playlist-player-shuffle-icon" />
-            </button>
+            <div className="playlist-player-controls">
+              <button
+                className="playlist-player-skip-button"
+                onClick={onPlayPrevTrack}
+                title="Previous track"
+              >
+                ‹
+              </button>
 
-            <button className="playlist-player-main-button" onClick={onTogglePlayPause}>
-              {isHomeMusicPlaying
-                ? <img src={playbackIconMap.pause[accentColor]} alt="" className="playlist-player-main-icon" />
-                : <img src={playbackIconMap.start[accentColor]} alt="" className="playlist-player-main-icon" />
-              }
-            </button>
+              <button className="playlist-player-main-button" onClick={onTogglePlayPause}>
+                {isHomeMusicPlaying
+                  ? <img src={playbackIconMap.pause[accentColor]} alt="" className="playlist-player-main-icon" />
+                  : <img src={playbackIconMap.start[accentColor]} alt="" className="playlist-player-main-icon" />
+                }
+              </button>
+
+              <button
+                className="playlist-player-skip-button"
+                onClick={onPlayNextTrack}
+                title="Next track"
+              >
+                ›
+              </button>
+            </div>
           </div>
 
           <button
@@ -300,6 +315,16 @@ export function PlaylistPage({
               <i style={{ width: `${homeMusicVolume}%` }}></i>
             </button>
           </div>
+
+          <button
+            className={`playlist-player-shuffle-button ${isShuffleEnabled ? 'active' : ''}`}
+            onClick={() => onSetIsShuffleEnabled((prev) => !prev)}
+            onMouseEnter={() => setIsShuffleButtonHovered(true)}
+            onMouseLeave={() => setIsShuffleButtonHovered(false)}
+            title="Shuffle"
+          >
+            <img src={getMusicControlIcon('shuffle', isShuffleEnabled || isShuffleButtonHovered)} alt="" className="playlist-player-shuffle-icon" />
+          </button>
 
           <button
             type="button"

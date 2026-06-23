@@ -78,6 +78,23 @@ const YOUTUBE_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.profile',
 ]
 
+type PlaylistCoverTheme = 'light' | 'dark'
+type PlaylistCoverEntry = string | Partial<Record<PlaylistCoverTheme, string>>
+type PlaylistCoverPathMap = Record<string, PlaylistCoverEntry>
+
+function normalizePlaylistCoverTheme(theme: unknown): PlaylistCoverTheme {
+  return theme === 'light' ? 'light' : 'dark'
+}
+
+function normalizePlaylistCoverEntry(entry: PlaylistCoverEntry | undefined) {
+  if (!entry) return {} as Partial<Record<PlaylistCoverTheme, string>>
+  if (typeof entry === 'string') {
+    return { light: entry, dark: entry }
+  }
+
+  return { ...entry }
+}
+
 function getYoutubeTokenPath() {
   return path.join(app.getPath('userData'), 'youtube-token.json')
 }
@@ -275,7 +292,7 @@ async function getRendererStaticServerUrl() {
   }
 }
 
-async function loadPlaylistCoverMap() {
+async function loadPlaylistCoverMap(): Promise<PlaylistCoverPathMap> {
   try {
     const data = await fs.readFile(getPlaylistCoverMapPath(), 'utf-8')
     const parsed = JSON.parse(data)
@@ -284,13 +301,13 @@ async function loadPlaylistCoverMap() {
       return {}
     }
 
-    return parsed as Record<string, string>
+    return parsed as PlaylistCoverPathMap
   } catch {
     return {}
   }
 }
 
-async function savePlaylistCoverMap(coverMap: Record<string, string>) {
+async function savePlaylistCoverMap(coverMap: PlaylistCoverPathMap) {
   await fs.writeFile(
     getPlaylistCoverMapPath(),
     JSON.stringify(coverMap, null, 2),
@@ -300,14 +317,26 @@ async function savePlaylistCoverMap(coverMap: Record<string, string>) {
 
 async function createPlaylistCoverDataUrlMap() {
   const coverMap = await loadPlaylistCoverMap()
-  const result: Record<string, string> = {}
+  const result: Record<string, Partial<Record<PlaylistCoverTheme, string>>> = {}
 
-  for (const [playlistId, filePath] of Object.entries(coverMap)) {
-    try {
-      await fs.access(filePath)
-      result[playlistId] = await createPlaylistCoverDataUrl(filePath)
-    } catch {
-      // 파일이 사라진 경우 무시
+  for (const [playlistId, coverEntry] of Object.entries(coverMap)) {
+    const normalizedCoverEntry = normalizePlaylistCoverEntry(coverEntry)
+    const resultEntry: Partial<Record<PlaylistCoverTheme, string>> = {}
+
+    for (const theme of ['light', 'dark'] as PlaylistCoverTheme[]) {
+      const filePath = normalizedCoverEntry[theme]
+      if (!filePath) continue
+
+      try {
+        await fs.access(filePath)
+        resultEntry[theme] = await createPlaylistCoverDataUrl(filePath)
+      } catch {
+        // 파일이 사라진 경우 무시
+      }
+    }
+
+    if (resultEntry.light || resultEntry.dark) {
+      result[playlistId] = resultEntry
     }
   }
 
@@ -1114,13 +1143,14 @@ ipcMain.handle('youtube-music:load-playlist-covers', async () => {
   return await createPlaylistCoverDataUrlMap()
 })
 
-ipcMain.handle('youtube-music:change-playlist-cover', async (_event, playlistId: string) => {
+ipcMain.handle('youtube-music:change-playlist-cover', async (_event, playlistId: string, theme: unknown = 'dark') => {
   try {
     if (!playlistId) return null
 
+    const coverTheme = normalizePlaylistCoverTheme(theme)
     const result = win
       ? await dialog.showOpenDialog(win, {
-          title: 'Select Playlist Cover',
+          title: `Select ${coverTheme === 'dark' ? 'Dark' : 'Light'} Playlist Cover`,
           properties: ['openFile'],
           filters: [
             {
@@ -1130,7 +1160,7 @@ ipcMain.handle('youtube-music:change-playlist-cover', async (_event, playlistId:
           ],
         })
       : await dialog.showOpenDialog({
-          title: 'Select Playlist Cover',
+          title: `Select ${coverTheme === 'dark' ? 'Dark' : 'Light'} Playlist Cover`,
           properties: ['openFile'],
           filters: [
             {
@@ -1151,7 +1181,7 @@ ipcMain.handle('youtube-music:change-playlist-cover', async (_event, playlistId:
       : '.png'
     const safeFileName = sanitizePlaylistCoverFileName(playlistId)
     const coverDirPath = getPlaylistCoverDirPath()
-    const targetPath = path.join(coverDirPath, `${safeFileName}${extension}`)
+    const targetPath = path.join(coverDirPath, `${safeFileName}-${coverTheme}${extension}`)
 
     await fs.mkdir(coverDirPath, { recursive: true })
 
@@ -1160,20 +1190,29 @@ ipcMain.handle('youtube-music:change-playlist-cover', async (_event, playlistId:
     }
 
     const coverMap = await loadPlaylistCoverMap()
-    const previousPath = coverMap[playlistId]
+    const previousCoverEntry = normalizePlaylistCoverEntry(coverMap[playlistId])
+    const previousPathForTheme = previousCoverEntry[coverTheme]
+    const otherTheme: PlaylistCoverTheme = coverTheme === 'dark' ? 'light' : 'dark'
+    const otherThemePath = previousCoverEntry[otherTheme]
 
-    if (previousPath && previousPath !== targetPath) {
+    if (previousPathForTheme && previousPathForTheme !== targetPath && previousPathForTheme !== otherThemePath) {
       try {
-        await fs.unlink(previousPath)
+        await fs.unlink(previousPathForTheme)
       } catch {
         // 이전 커버 파일 삭제 실패는 무시
       }
     }
 
-    coverMap[playlistId] = targetPath
+    coverMap[playlistId] = {
+      ...previousCoverEntry,
+      [coverTheme]: targetPath,
+    }
     await savePlaylistCoverMap(coverMap)
 
-    return await createPlaylistCoverDataUrl(targetPath)
+    return {
+      theme: coverTheme,
+      coverUrl: await createPlaylistCoverDataUrl(targetPath),
+    }
   } catch (error) {
     console.error('Failed to change playlist cover:', error)
     return null

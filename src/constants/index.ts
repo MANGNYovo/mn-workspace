@@ -1,4 +1,7 @@
-import type { AccentColor, ProgramItem, ProgramType, HomeMusicPlaylist, PlaylistTrack, DiaryEntry, AppSettings } from '../types'
+import type {
+  AccentColor, ProgramItem, ProgramType, HomeMusicPlaylist, PlaylistTrack, DiaryEntry, AppSettings,
+  PlaylistCoverOverrideMap, ResolvedTheme,
+} from '../types'
 
 // ─── 이미지 imports ───────────────────────────────────────────────────────────
 
@@ -110,6 +113,7 @@ import searchGreen from '../assets/search-green.png'
 import searchOrange from '../assets/search-orange.png'
 import searchRed from '../assets/search-red.png'
 import searchGray from '../assets/search-gray.png'
+import searchWhite from '../assets/search-white.png'
 
 import listPurple from '../assets/list-purple.png'
 import listBlue from '../assets/list-blue.png'
@@ -117,6 +121,7 @@ import listGreen from '../assets/list-green.png'
 import listOrange from '../assets/list-orange.png'
 import listRed from '../assets/list-red.png'
 import listGray from '../assets/list-gray.png'
+import listWhite from '../assets/list-white.png'
 
 import gridPurple from '../assets/grid-purple.png'
 import gridBlue from '../assets/grid-blue.png'
@@ -124,6 +129,7 @@ import gridGreen from '../assets/grid-green.png'
 import gridOrange from '../assets/grid-orange.png'
 import gridRed from '../assets/grid-red.png'
 import gridGray from '../assets/grid-gray.png'
+import gridWhite from '../assets/grid-white.png'
 
 import playlistPurple from '../assets/playlist-purple.png'
 import playlistBlue from '../assets/playlist-blue.png'
@@ -139,6 +145,7 @@ import shuffleGreen from '../assets/shuffle-green.png'
 import shuffleOrange from '../assets/shuffle-orange.png'
 import shuffleRed from '../assets/shuffle-red.png'
 import shuffleGray from '../assets/shuffle-gray.png'
+import shuffleWhite from '../assets/shuffle-white.png'
 
 import likedPurple from '../assets/liked-purple.png'
 import likedBlue from '../assets/liked-blue.png'
@@ -256,11 +263,11 @@ export const iconMap = {
 } as const
 
 export const musicControlIconMap = {
-  search:   { purple: searchPurple,   blue: searchBlue,   green: searchGreen,   orange: searchOrange,   red: searchRed,   gray: searchGray   },
-  list:     { purple: listPurple,     blue: listBlue,     green: listGreen,     orange: listOrange,     red: listRed,     gray: listGray     },
-  grid:     { purple: gridPurple,     blue: gridBlue,     green: gridGreen,     orange: gridOrange,     red: gridRed,     gray: gridGray     },
+  search:   { purple: searchPurple,   blue: searchBlue,   green: searchGreen,   orange: searchOrange,   red: searchRed,   gray: searchGray,   white: searchWhite   },
+  list:     { purple: listPurple,     blue: listBlue,     green: listGreen,     orange: listOrange,     red: listRed,     gray: listGray,     white: listWhite     },
+  grid:     { purple: gridPurple,     blue: gridBlue,     green: gridGreen,     orange: gridOrange,     red: gridRed,     gray: gridGray,     white: gridWhite     },
   playlist: { purple: playlistPurple, blue: playlistBlue, green: playlistGreen, orange: playlistOrange, red: playlistRed, gray: playlistGray, white: playlistWhite },
-  shuffle:  { purple: shufflePurple,  blue: shuffleBlue,  green: shuffleGreen,  orange: shuffleOrange,  red: shuffleRed,  gray: shuffleGray  },
+  shuffle:  { purple: shufflePurple,  blue: shuffleBlue,  green: shuffleGreen,  orange: shuffleOrange,  red: shuffleRed,  gray: shuffleGray,  white: shuffleWhite  },
 } as const
 
 export const likedIconMap = {
@@ -516,12 +523,26 @@ export function filterHiddenHomeMusicPlaylists(playlists: HomeMusicPlaylist[]) {
   )
 }
 
+export function getPlaylistCoverForTheme(
+  coverOverrides: PlaylistCoverOverrideMap,
+  playlistId: string,
+  theme: ResolvedTheme,
+) {
+  const coverOverride = coverOverrides[playlistId]
+
+  if (!coverOverride) return undefined
+  if (typeof coverOverride === 'string') return coverOverride
+
+  return coverOverride[theme] ?? coverOverride.light ?? coverOverride.dark
+}
+
 export function applyHomeMusicPlaylistCoverOverrides(
   playlists: HomeMusicPlaylist[],
-  coverOverrides: Record<string, string>,
+  coverOverrides: PlaylistCoverOverrideMap,
+  theme: ResolvedTheme,
 ) {
   return playlists.map((p) => ({
     ...p,
-    customThumbnail: coverOverrides[p.id],
+    customThumbnail: getPlaylistCoverForTheme(coverOverrides, p.id, theme),
   }))
 }

@@ -712,9 +712,9 @@
 .playlist-player-top {
   height: 46px;
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) 28px 40px;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   overflow: hidden;
 }
 
@@ -798,33 +798,78 @@
   line-height: 1;
 }
 
-.playlist-player-shuffle-button {
-  width: 28px !important;
+.playlist-player-controls {
+  width: 82px;
+  min-width: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  margin-left: 0;
+  transform: translateX(-2px);
+}
+
+.playlist-player-skip-button {
+  width: 23px !important;
   height: 28px !important;
-  opacity: 0.72;
-  transform: translateX(2px);
+  color: var(--accent-color, #705bff);
+  font-size: 20px !important;
+  font-weight: 800;
+  opacity: 0.78;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    color 0.16s ease;
+}
+
+.playlist-player-skip-button:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+.playlist-player-skip-button:active {
+  transform: scale(0.9);
+}
+
+.playlist-player-shuffle-button {
+  position: absolute;
+  right: 45px;
+  bottom: 10px;
+  width: 24px !important;
+  height: 24px !important;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  opacity: 0.78;
+  cursor: pointer;
   transition:
     opacity 0.16s ease,
     transform 0.16s ease;
 }
 
+.playlist-player-shuffle-button:hover,
 .playlist-player-shuffle-button.active {
   opacity: 1;
 }
 
 .playlist-player-shuffle-button:active {
-  transform: translateX(2px) scale(0.9);
+  transform: scale(0.9);
 }
 
 .playlist-player-shuffle-icon {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
   pointer-events: none;
+  display: block;
 }
 
 .playlist-player-main-button {
-  transform: translateX(3px);
+  width: 34px !important;
+  height: 34px !important;
+  transform: translateX(0);
 }
 
 .playlist-player-like-button {
@@ -927,8 +972,30 @@
 }
 
 .playlist-player-main-icon {
-  width: 16px;
+  width: 15px;
   height: 16px;
   object-fit: contain;
   pointer-events: none;
+}
+
+
+/* Keep playlist mini player shuffle and like buttons on the same baseline */
+.playlist-player-shuffle-button,
+.playlist-player-like-button {
+  bottom: 10px !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 0;
+}
+
+.playlist-player-shuffle-icon,
+.playlist-player-like-button .like-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  object-fit: contain;
 }

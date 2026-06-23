@@ -23,6 +23,13 @@ type YoutubeMusicAccount = {
   channelTitle?: string | null
 }
 
+type PlaylistCoverTheme = 'light' | 'dark'
+type PlaylistCoverOverride = Partial<Record<PlaylistCoverTheme, string>>
+type PlaylistCoverChangeResult = {
+  theme: PlaylistCoverTheme
+  coverUrl: string
+}
+
 interface Window {
   mnAPI: {
     selectProgram: () => Promise<string | null>
@@ -57,8 +64,8 @@ interface Window {
     getYoutubeMusicPlaylistTracks: (playlistId: string) => Promise<YoutubeMusicTrack[] | null>
     loadYoutubeMusicTrackCache: () => Promise<Record<string, YoutubeMusicTrack[]> | null>
     saveYoutubeMusicTrackCache: (cache: unknown) => Promise<boolean>
-    loadYoutubeMusicPlaylistCovers: () => Promise<Record<string, string> | null>
-    changeYoutubeMusicPlaylistCover: (playlistId: string) => Promise<string | null>
+    loadYoutubeMusicPlaylistCovers: () => Promise<Record<string, string | PlaylistCoverOverride> | null>
+    changeYoutubeMusicPlaylistCover: (playlistId: string, theme: PlaylistCoverTheme) => Promise<PlaylistCoverChangeResult | null>
 
     setStartWithWindows: (enabled: boolean) => Promise<boolean>
 

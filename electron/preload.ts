@@ -56,8 +56,8 @@ contextBridge.exposeInMainWorld('mnAPI', {
     ipcRenderer.invoke('youtube-music:save-track-cache', cache),
   loadYoutubeMusicPlaylistCovers: () =>
     ipcRenderer.invoke('youtube-music:load-playlist-covers'),
-  changeYoutubeMusicPlaylistCover: (playlistId: string) =>
-    ipcRenderer.invoke('youtube-music:change-playlist-cover', playlistId),
+  changeYoutubeMusicPlaylistCover: (playlistId: string, theme: 'light' | 'dark') =>
+    ipcRenderer.invoke('youtube-music:change-playlist-cover', playlistId, theme),
 
   setStartWithWindows: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-start-with-windows', enabled),

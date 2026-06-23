@@ -879,6 +879,94 @@
   background: rgba(255, 255, 255, 0.14);
 }
 
+
+/* 커스텀 배경 라이트 모드에서는 배경 이미지 위 회색 텍스트가 흐려 보이지 않도록
+   inactive/secondary 텍스트를 화이트 글래스 톤으로 정리한다. */
+.app[data-theme='light'][data-wallpaper='true'] .sidebar-theme-toggle,
+.app[data-theme='light'][data-wallpaper='true'] .menu-item:not(.active),
+.app[data-theme='light'][data-wallpaper='true'] .custom-titlebar,
+.app[data-theme='light'][data-wallpaper='true'] .custom-titlebar-controls button,
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-preset-dot,
+.app[data-theme='light'][data-wallpaper='true'] .program p,
+.app[data-theme='light'][data-wallpaper='true'] .program-list-header,
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-section-title,
+.app[data-theme='light'][data-wallpaper='true'] .page-header p,
+.app[data-theme='light'][data-wallpaper='true'] .placeholder-page p,
+.app[data-theme='light'][data-wallpaper='true'] .settings-header p,
+.app[data-theme='light'][data-wallpaper='true'] .setting-row p,
+.app[data-theme='light'][data-wallpaper='true'] .settings-footer,
+.app[data-theme='light'][data-wallpaper='true'] .wallpaper-theme-button,
+.app[data-theme='light'][data-wallpaper='true'] .youtube-login-close,
+.app[data-theme='light'][data-wallpaper='true'] .youtube-login-policy,
+.app[data-theme='light'][data-wallpaper='true'] .youtube-login-secure-text,
+.app[data-theme='light'][data-wallpaper='true'] .full-playlist-header p,
+.app[data-theme='light'][data-wallpaper='true'] .full-playlist-search-clear,
+.app[data-theme='light'][data-wallpaper='true'] .full-playlist-track-row small,
+.app[data-theme='light'][data-wallpaper='true'] .modal-header p,
+.app[data-theme='light'][data-wallpaper='true'] .modal-toggle-row p,
+.app[data-theme='light'][data-wallpaper='true'] .update-modal p,
+.app[data-theme='light'][data-wallpaper='true'] .update-modal-version,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-header p,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-search-clear,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-row small,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-stats small,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-track-row em,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-track-row small,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-top small,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-header p,
+.app[data-theme='light'][data-wallpaper='true'] .diary-month-control > button:not(.diary-current-month),
+.app[data-theme='light'][data-wallpaper='true'] .diary-current-month span,
+.app[data-theme='light'][data-wallpaper='true'] .diary-today-button,
+.app[data-theme='light'][data-wallpaper='true'] .diary-weekdays,
+.app[data-theme='light'][data-wallpaper='true'] .diary-day.muted span,
+.app[data-theme='light'][data-wallpaper='true'] .diary-wheel-item,
+.app[data-theme='light'][data-wallpaper='true'] .diary-modal-close,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-date h2 em,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-date p,
+.app[data-theme='light'][data-wallpaper='true'] .diary-view-footer span,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-bottom,
+.app[data-theme='light'][data-wallpaper='true'] .diary-delete-confirm-modal p,
+.app[data-theme='light'][data-wallpaper='true'] .diary-delete-cancel-button,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-window-button,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-artist,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-controls button,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-times,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-artist,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-time,
+.app[data-theme='light'][data-wallpaper='true'] .home-preset-dot,
+.app[data-theme='light'][data-wallpaper='true'] .home-device-title,
+.app[data-theme='light'][data-wallpaper='true'] .home-device-button,
+.app[data-theme='light'][data-wallpaper='true'] .home-device-button.active,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-title h2,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-title p,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-label,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-header span,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-arrow,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-playlist-card small,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-playlist-button small,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-track p,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-volume button,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-times,
+.app[data-theme='light'][data-wallpaper='true'] .drag-handle {
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] input::placeholder,
+.app[data-theme='light'][data-wallpaper='true'] textarea::placeholder,
+.app[data-theme='light'][data-wallpaper='true'] .full-playlist-search-input::placeholder,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .menu-item:not(.active):hover,
+.app[data-theme='light'][data-wallpaper='true'] .custom-titlebar-controls button:hover,
+.app[data-theme='light'][data-wallpaper='true'] .diary-delete-cancel-button:hover,
+.app[data-theme='light'][data-wallpaper='true'] .home-device-button:hover,
+.app[data-theme='light'][data-wallpaper='true'] .wallpaper-theme-button:hover {
+  color: #ffffff;
+}
+
 /* 커스텀 월페이퍼 모드에서 타이틀바 블러 레이어가
    좌측 상단 빠른 설정 버튼을 덮지 않도록 보정 */
 .app[data-wallpaper='true'] .sidebar {
@@ -1659,4 +1747,520 @@
 
 .app[data-theme='dark']:not([data-wallpaper='true']) .diary-day:has(i):hover {
   background: color-mix(in srgb, var(--accent-color, #705bff) 11%, rgba(255, 255, 255, 0.020));
+}
+
+/* ========================= */
+/* 커스텀 월페이퍼 라이트 모드 화이트 텍스트 최종 보정 */
+/* ========================= */
+
+.app[data-theme='light'][data-wallpaper='true'] {
+  --wallpaper-light-readable-text: rgba(255, 255, 255, 0.98);
+  --wallpaper-light-readable-soft: rgba(255, 255, 255, 0.92);
+  --wallpaper-light-readable-muted: rgba(255, 255, 255, 0.78);
+  --wallpaper-light-readable-border: rgba(255, 255, 255, 0.62);
+}
+
+/* 사이드바: 활성화되지 않은 메뉴 아이콘/글씨도 흰색으로 통일 */
+.app[data-theme='light'][data-wallpaper='true'] .menu-item:not(.active) {
+  color: var(--wallpaper-light-readable-text) !important;
+  opacity: 1;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.32);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .menu-item:not(.active) .menu-icon,
+.app[data-theme='light'][data-wallpaper='true'] .sidebar-theme-icon {
+  opacity: 1;
+  filter:
+    brightness(0)
+    invert(1)
+    drop-shadow(0 1px 7px rgba(0, 0, 0, 0.25));
+}
+
+/* 대시보드/홈: 시간, 날짜, 섹션 제목, 프리셋 텍스트 */
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-time h1,
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-time h1 em,
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-time span,
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-section-title,
+.app[data-theme='light'][data-wallpaper='true'] .top-card p,
+.app[data-theme='light'][data-wallpaper='true'] .top-card h1,
+.app[data-theme='light'][data-wallpaper='true'] .top-card h1 em,
+.app[data-theme='light'][data-wallpaper='true'] .top-card span,
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-preset-dot:not(.active),
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-preset-dot:not(.active) b,
+.app[data-theme='light'][data-wallpaper='true'] .home-preset-dot:not(.active),
+.app[data-theme='light'][data-wallpaper='true'] .home-preset-dot:not(.active) b,
+.app[data-theme='light'][data-wallpaper='true'] .home-device-title,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-title h2,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-title p,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-label,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-header span,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-playlist-card strong,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-playlist-card small,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-track strong,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-track p,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-times {
+  color: var(--wallpaper-light-readable-text) !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-title-icon,
+.app[data-theme='light'][data-wallpaper='true'] .home-device-title-icon,
+.app[data-theme='light'][data-wallpaper='true'] .home-device-button:not(.active) .home-device-icon,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-volume-icon,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-icon-button:not(.active):not(:hover) img,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-list-icon,
+.app[data-theme='light'][data-wallpaper='true'] .home-music-arrow {
+  opacity: 1;
+  filter:
+    brightness(0)
+    invert(1)
+    drop-shadow(0 1px 7px rgba(0, 0, 0, 0.25));
+}
+
+/* 홈/대시보드 로켓 버튼: 투명 유지 + 흰색 외곽선 */
+.app[data-theme='light'][data-wallpaper='true'] .launch-button,
+.app[data-theme='light'][data-wallpaper='true'] .home-launch-button {
+  border: 1px solid var(--wallpaper-light-readable-border) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .launch-button:hover,
+.app[data-theme='light'][data-wallpaper='true'] .home-launch-button:hover {
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* 홈/대시보드 프리셋 원형: 비활성 점은 흰색 링, 안쪽은 투명 */
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-preset-track::before,
+.app[data-theme='light'][data-wallpaper='true'] .home-preset-track::before {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-preset-dot span,
+.app[data-theme='light'][data-wallpaper='true'] .home-preset-dot span {
+  background: transparent !important;
+  border-color: var(--wallpaper-light-readable-border) !important;
+  box-shadow: none !important;
+}
+
+/* 대시보드 프로그램 왼쪽 상태 원형: 대기 상태는 흰색 링 + 투명 내부 */
+.app[data-theme='light'][data-wallpaper='true'] .program.waiting .program-status-button,
+.app[data-theme='light'][data-wallpaper='true'] .program:not(.done):not(.running):not(.cancelled):not(.failed) .program-status-button {
+  background: transparent !important;
+  border-color: var(--wallpaper-light-readable-border) !important;
+  box-shadow: none !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .program.running .program-status-button::after {
+  background: transparent !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .program h3,
+.app[data-theme='light'][data-wallpaper='true'] .program p {
+  color: var(--wallpaper-light-readable-text) !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+/* 플레이리스트 페이지: 검은/회색 텍스트와 비활성 버튼 아이콘 흰색 */
+.app[data-theme='light'][data-wallpaper='true'] .playlist-header h1,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-header p,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-search input,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-search-clear,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-row strong,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-row small,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-row-drag,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-detail-card h2,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-detail-card > p,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-youtube-badge,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-stats strong,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-stats small,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-track-header strong,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-track-row span,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-track-row em,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-track-row strong,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-track-row small,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-top strong,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-top small,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-info strong,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-info p,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-info small,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-times,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-volume button {
+  color: var(--wallpaper-light-readable-text) !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .playlist-search input::placeholder {
+  color: var(--wallpaper-light-readable-muted) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .playlist-search-icon,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-refresh-button:not(:hover) .playlist-refresh-icon,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-view-button:not(.active) .playlist-view-icon,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-shuffle-button:not(.active):not(:hover) .playlist-player-shuffle-icon,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-row-drag,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-volume img,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-volume-icon {
+  opacity: 1;
+  filter:
+    brightness(0)
+    invert(1)
+    drop-shadow(0 1px 7px rgba(0, 0, 0, 0.25));
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .playlist-view-button:not(.active),
+.app[data-theme='light'][data-wallpaper='true'] .playlist-refresh-button,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-row-play {
+  color: var(--wallpaper-light-readable-text) !important;
+  border-color: var(--wallpaper-light-readable-border) !important;
+}
+
+/* 다이어리 페이지: 검은/회색 글씨 흰색 */
+.app[data-theme='light'][data-wallpaper='true'] .diary-header h1,
+.app[data-theme='light'][data-wallpaper='true'] .diary-header p,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-header h1,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-header p,
+.app[data-theme='light'][data-wallpaper='true'] .diary-current-month,
+.app[data-theme='light'][data-wallpaper='true'] .diary-current-month strong,
+.app[data-theme='light'][data-wallpaper='true'] .diary-current-month span,
+.app[data-theme='light'][data-wallpaper='true'] .diary-weekdays,
+.app[data-theme='light'][data-wallpaper='true'] .diary-day,
+.app[data-theme='light'][data-wallpaper='true'] .diary-day span,
+.app[data-theme='light'][data-wallpaper='true'] .diary-day.muted span,
+.app[data-theme='light'][data-wallpaper='true'] .diary-today-button,
+.app[data-theme='light'][data-wallpaper='true'] .diary-month-control > button:not(.diary-current-month),
+.app[data-theme='light'][data-wallpaper='true'] .diary-view-header h2,
+.app[data-theme='light'][data-wallpaper='true'] .diary-view-header h2 em,
+.app[data-theme='light'][data-wallpaper='true'] .diary-view-header p,
+.app[data-theme='light'][data-wallpaper='true'] .diary-view-content,
+.app[data-theme='light'][data-wallpaper='true'] .diary-view-footer span,
+.app[data-theme='light'][data-wallpaper='true'] .diary-modal-close,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-date h2,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-date h2 em,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-date p,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-bottom,
+.app[data-theme='light'][data-wallpaper='true'] .diary-wheel-item,
+.app[data-theme='light'][data-wallpaper='true'] .diary-delete-confirm-modal h2,
+.app[data-theme='light'][data-wallpaper='true'] .diary-delete-confirm-modal p,
+.app[data-theme='light'][data-wallpaper='true'] .diary-delete-cancel-button {
+  color: var(--wallpaper-light-readable-text) !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .diary-current-month span,
+.app[data-theme='light'][data-wallpaper='true'] .diary-day.muted span,
+.app[data-theme='light'][data-wallpaper='true'] .diary-wheel-item:not(.active) {
+  color: var(--wallpaper-light-readable-soft) !important;
+}
+
+/* 프로그램 페이지: 회색/검은 글씨, 드래그, ... 버튼 흰색 */
+.app[data-theme='light'][data-wallpaper='true'] .page-header h1,
+.app[data-theme='light'][data-wallpaper='true'] .page-header p,
+.app[data-theme='light'][data-wallpaper='true'] .preset-title,
+.app[data-theme='light'][data-wallpaper='true'] .preset-tab:not(.active),
+.app[data-theme='light'][data-wallpaper='true'] .program-list-header,
+.app[data-theme='light'][data-wallpaper='true'] .program-list-meta strong,
+.app[data-theme='light'][data-wallpaper='true'] .program-list-meta span,
+.app[data-theme='light'][data-wallpaper='true'] .program-info h3,
+.app[data-theme='light'][data-wallpaper='true'] .program-info p,
+.app[data-theme='light'][data-wallpaper='true'] .save-note,
+.app[data-theme='light'][data-wallpaper='true'] .drag-handle,
+.app[data-theme='light'][data-wallpaper='true'] .more-button {
+  color: var(--wallpaper-light-readable-text) !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .preset-tab-divider,
+.app[data-theme='light'][data-wallpaper='true'] .dashboard-time span i {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* 입력창/텍스트 영역도 커스텀 배경 위에서 흰 글씨로 */
+.app[data-theme='light'][data-wallpaper='true'] input,
+.app[data-theme='light'][data-wallpaper='true'] textarea,
+.app[data-theme='light'][data-wallpaper='true'] select,
+.app[data-theme='light'][data-wallpaper='true'] .write-diary-textarea,
+.app[data-theme='light'][data-wallpaper='true'] .full-playlist-search-input {
+  color: var(--wallpaper-light-readable-text) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] input::placeholder,
+.app[data-theme='light'][data-wallpaper='true'] textarea::placeholder {
+  color: var(--wallpaper-light-readable-muted) !important;
+}
+
+
+/* ========================= */
+/* 커스텀 월페이퍼 라이트 모드 최종 화이트 UI 보정 */
+/* ========================= */
+
+.app[data-theme='light'][data-wallpaper='true'] {
+  --wallpaper-light-readable-bar: rgba(255, 255, 255, 0.42);
+  --wallpaper-light-readable-bar-strong: rgba(255, 255, 255, 0.55);
+}
+
+/* 홈: 프리셋과 오디오/모니터 사이 구분선, 프리셋 라인을 흰색으로 */
+.app[data-theme='light'][data-wallpaper='true'] .home-divider,
+.app[data-theme='light'][data-wallpaper='true'] .home-device-split {
+  background: rgba(255, 255, 255, 0.34) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-player {
+  border-top-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* 홈/대시보드 로켓: 기본은 흰색 아이콘, hover 때 원래 accent 아이콘 표시 */
+.app[data-theme='light'][data-wallpaper='true'] .home-launch-button:not(:hover):not(.launching) .home-launch-icon,
+.app[data-theme='light'][data-wallpaper='true'] .launch-button:not(:hover):not(.launching) .launch-icon {
+  filter:
+    brightness(0)
+    invert(1)
+    drop-shadow(0 1px 7px rgba(0, 0, 0, 0.25)) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-launch-button:hover .home-launch-icon,
+.app[data-theme='light'][data-wallpaper='true'] .launch-button:hover .launch-icon,
+.app[data-theme='light'][data-wallpaper='true'] .home-launch-button.launching .home-launch-icon,
+.app[data-theme='light'][data-wallpaper='true'] .launch-button.launching .launch-icon {
+  filter: none !important;
+}
+
+/* 홈 플레이어: 이전/다음 버튼, 비활성 아이콘, 빈 하트 */
+.app[data-theme='light'][data-wallpaper='true'] .home-player-controls .home-player-side-button,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-volume button,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-top button,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-volume button {
+  color: #ffffff !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.28);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-player-controls .home-player-side-button:hover,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-top button:hover,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-volume button:hover {
+  color: var(--accent-color, #705bff) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-like-button:not(.active) .like-icon,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-like-button:not(.active) .like-icon,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-like-button:not(.active) .like-icon,
+.app[data-theme='light'][data-wallpaper='true'] .full-playlist-like-button:not(.active) .like-icon {
+  opacity: 1 !important;
+  filter: drop-shadow(0 1px 7px rgba(0, 0, 0, 0.24));
+}
+
+/* 홈/플레이리스트/플로팅 플레이어의 재생바·음량바 빈 게이지를 흰색으로 */
+.app[data-theme='light'][data-wallpaper='true'] .home-player-progress,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-volume-track,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-card .home-player-progress,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-volume .home-player-volume-track,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-progress,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-progress,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-volume-track {
+  background: var(--wallpaper-light-readable-bar) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-player-progress:hover,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-volume-track:hover,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-progress:hover,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-progress:hover,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-volume-track:hover {
+  background: var(--wallpaper-light-readable-bar-strong) !important;
+}
+
+/* 플로팅창: 검정/회색 텍스트 전체 흰색 */
+.app[data-theme='light'][data-wallpaper='true'] .floating-player,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-title,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-artist,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-times,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-title,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-artist,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-time {
+  color: #ffffff !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+/* 플로팅창: 비활성 버튼은 흰색, hover는 accent */
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-controls button:not(.floating-player-play),
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-controls button:not(.floating-player-mini-play),
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-window-button,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-icon-button,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-like-button {
+  color: #ffffff !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.28);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-controls button:not(.floating-player-play):hover,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-controls button:not(.floating-player-mini-play):hover,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-window-button:not(.close):hover,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-icon-button:hover {
+  color: var(--accent-color, #705bff) !important;
+  background: transparent !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-window-button.close:hover {
+  color: #ff5d5d !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-volume img,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-mini-volume img,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-icon-button:not(.active):not(:hover) img,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-window-button.expand:not(:hover) img,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-restore:not(:hover) img {
+  opacity: 1 !important;
+  filter:
+    brightness(0)
+    invert(1)
+    drop-shadow(0 1px 7px rgba(0, 0, 0, 0.25)) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-icon-button:hover img,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-icon-button.active img,
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-window-button.expand:hover img {
+  filter: none !important;
+}
+
+/* ========================= */
+/* 커스텀 월페이퍼 라이트 모드 세부 마감 보정 */
+/* ========================= */
+
+/* 일반 다크모드에서도 좌측 상단 빠른 설정 버튼이 타이틀바 drag 영역에 먹히지 않도록 보정 */
+.sidebar,
+.sidebar *,
+.sidebar-accent-picker,
+.sidebar-accent-picker *,
+.sidebar-theme-toggle,
+.sidebar-accent-dot {
+  -webkit-app-region: no-drag !important;
+}
+
+.sidebar {
+  z-index: 10002;
+}
+
+.sidebar-accent-picker {
+  z-index: 10006 !important;
+  pointer-events: auto !important;
+}
+
+/* 플로팅창 최소화 후 닫았을 때 보이는 복구 버튼: 내부 투명, 외곽선/아이콘 흰색 */
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-restore {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-restore img {
+  opacity: 1 !important;
+  filter:
+    brightness(0)
+    invert(1)
+    drop-shadow(0 1px 7px rgba(0, 0, 0, 0.24)) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-restore:hover {
+  background: transparent !important;
+  border-color: var(--accent-color, #705bff) !important;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent-color, #705bff) 22%, transparent) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .floating-player-restore:hover img {
+  filter: none !important;
+}
+
+/* Settings 페이지: 커스텀 배경 라이트에서는 화면에 보이는 검정/회색 텍스트를 흰색으로 통일 */
+.app[data-theme='light'][data-wallpaper='true'] .settings-page,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page h1,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page h2,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page h3,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page strong,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page p,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page span,
+.app[data-theme='light'][data-wallpaper='true'] .settings-footer,
+.app[data-theme='light'][data-wallpaper='true'] .youtube-account-info,
+.app[data-theme='light'][data-wallpaper='true'] .wallpaper-history-button span {
+  color: #ffffff !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .settings-page .setting-action,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page .setting-reload-action,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page .setting-wallpaper-action,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page .setting-wallpaper-clear,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page .setting-icon-action,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page .wallpaper-theme-button,
+.app[data-theme='light'][data-wallpaper='true'] .settings-page .setting-select {
+  color: #ffffff !important;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
+}
+
+/* select를 눌렀을 때 뜨는 시스템 드롭다운 목록은 읽기 쉽게 검은 글씨로 유지 */
+.app[data-theme='light'][data-wallpaper='true'] .settings-page .setting-select option {
+  color: #111111 !important;
+  background: #ffffff !important;
+  text-shadow: none !important;
+}
+
+/* 커스텀 배경 라이트: 프로그램 실행 중 로딩 애니메이션은 기존처럼 가운데 흰 원이 보이게 복구 */
+.app[data-theme='light'][data-wallpaper='true'] .program.running .program-status-button {
+  position: relative;
+  border: 0 !important;
+  background:
+    conic-gradient(
+      from 0deg,
+      var(--accent-color, #705bff) 0deg,
+      var(--accent-color, #705bff) 42deg,
+      color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent) 43deg,
+      color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent) 360deg
+    ) !important;
+  animation: spinningLoader 0.95s linear infinite !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .program.running .program-status-button::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: #ffffff !important;
+}
+
+/* 대기 상태만 흰 링 + 투명 내부 유지 */
+.app[data-theme='light'][data-wallpaper='true'] .program.waiting .program-status-button,
+.app[data-theme='light'][data-wallpaper='true'] .program:not(.done):not(.running):not(.cancelled):not(.failed) .program-status-button {
+  background: transparent !important;
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  box-shadow: none !important;
+}
+
+
+/* Custom wallpaper light: playlist player controls final polish */
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-skip-button {
+  color: var(--wallpaper-light-readable-text) !important;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.28);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-skip-button:hover {
+  color: var(--accent-color, #705bff) !important;
+  text-shadow: 0 0 14px var(--accent-glow, rgba(112, 91, 255, 0.42));
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-shuffle-button:not(.active):not(:hover) .playlist-player-shuffle-icon,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-icon-button:not(.active):not(:hover) .home-player-action-icon {
+  opacity: 1;
+  filter:
+    brightness(0)
+    invert(1)
+    drop-shadow(0 1px 7px rgba(0, 0, 0, 0.25));
+}
+
+
+.app[data-theme='light'][data-wallpaper='true'] .home-player-shuffle-button.active .home-player-action-icon,
+.app[data-theme='light'][data-wallpaper='true'] .home-player-shuffle-button:hover .home-player-action-icon,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-shuffle-button.active .playlist-player-shuffle-icon,
+.app[data-theme='light'][data-wallpaper='true'] .playlist-player-shuffle-button:hover .playlist-player-shuffle-icon {
+  filter: drop-shadow(0 1px 8px rgba(0, 0, 0, 0.22)) !important;
+  opacity: 1;
 }

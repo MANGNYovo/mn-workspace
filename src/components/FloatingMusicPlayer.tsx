@@ -18,6 +18,7 @@ type Props = {
   durationSeconds: number
   speakerIcon: string
   shuffleIcon: string
+  shuffleActiveIcon: string
   playlistIcon: string
   listIcon: string
   listActiveIcon: string
@@ -148,6 +149,7 @@ export function FloatingMusicPlayer({
   durationSeconds,
   speakerIcon,
   shuffleIcon,
+  shuffleActiveIcon,
   playlistIcon,
   listIcon,
   listActiveIcon,
@@ -177,6 +179,7 @@ export function FloatingMusicPlayer({
   const [dragPosition, setDragPosition] = useState<FloatingPlayerPosition | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isListButtonHovered, setIsListButtonHovered] = useState(false)
+  const [isShuffleButtonHovered, setIsShuffleButtonHovered] = useState(false)
   const [isLikeButtonHovered, setIsLikeButtonHovered] = useState(false)
   const [isLikeButtonBursting, setIsLikeButtonBursting] = useState(false)
   const [isExpandButtonHovered, setIsExpandButtonHovered] = useState(false)
@@ -459,9 +462,11 @@ export function FloatingMusicPlayer({
                 type="button"
                 className={`floating-player-icon-button ${isShuffleEnabled ? 'active' : ''}`}
                 onClick={onToggleShuffle}
+                onMouseEnter={() => setIsShuffleButtonHovered(true)}
+                onMouseLeave={() => setIsShuffleButtonHovered(false)}
                 title="Shuffle"
               >
-                <img src={shuffleIcon} alt="" />
+                <img src={isShuffleEnabled || isShuffleButtonHovered ? shuffleActiveIcon : shuffleIcon} alt="" />
               </button>
               <button
                 type="button"
@@ -549,10 +554,12 @@ export function FloatingMusicPlayer({
             type="button"
             className={`floating-player-icon-button ${isShuffleEnabled ? 'active' : ''}`}
             onClick={onToggleShuffle}
+            onMouseEnter={() => setIsShuffleButtonHovered(true)}
+            onMouseLeave={() => setIsShuffleButtonHovered(false)}
             title="Shuffle"
             data-no-drag="true"
           >
-            <img src={shuffleIcon} alt="" />
+            <img src={isShuffleEnabled || isShuffleButtonHovered ? shuffleActiveIcon : shuffleIcon} alt="" />
           </button>
 
           <button

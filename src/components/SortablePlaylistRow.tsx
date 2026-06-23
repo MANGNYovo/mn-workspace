@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { AccentColor, HomeMusicPlaylist } from '../types'
+import type { AccentColor, HomeMusicPlaylist, ResolvedTheme } from '../types'
 import { playbackIconMap } from '../constants'
 import writeIcon from '../assets/write.png'
 
@@ -14,6 +14,7 @@ type Props = {
   onPlay: (id: string) => void
   onChangeCover: (id: string) => void
   accentColor: AccentColor
+  playlistCoverTheme: ResolvedTheme
 }
 
 export function SortablePlaylistRow({
@@ -26,6 +27,7 @@ export function SortablePlaylistRow({
   onPlay,
   onChangeCover,
   accentColor,
+  playlistCoverTheme,
 }: Props) {
   const {
     attributes,
@@ -50,6 +52,7 @@ export function SortablePlaylistRow({
   }
 
   const playlistCover = playlist.customThumbnail ?? playlist.thumbnail
+  const playlistCoverThemeLabel = playlistCoverTheme === 'dark' ? 'Dark' : 'Light'
 
   return (
     <div
@@ -70,8 +73,8 @@ export function SortablePlaylistRow({
             event.stopPropagation()
             onChangeCover(playlist.id)
           }}
-          title="Change cover"
-          aria-label="Change playlist cover"
+          title={`Change ${playlistCoverThemeLabel} cover`}
+          aria-label={`Change ${playlistCoverThemeLabel} playlist cover`}
         >
           <img src={writeIcon} alt="" />
         </button>

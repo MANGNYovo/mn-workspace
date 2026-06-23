@@ -21,7 +21,7 @@ import './styles/media.css'
 import type {
   Page, AudioDevice, MonitorOrientation, HomeMusicPlaylist, PlaylistTrack,
   ProgramItem, AppSettings, DiaryEntry, LaunchStatus, ResolvedTheme, PlaylistViewMode,
-  YoutubeMusicAccount,
+  YoutubeMusicAccount, PlaylistCoverOverrideMap, PlaylistCoverChangeResult,
 } from './types'
 
 // constants & helpers
@@ -33,7 +33,7 @@ import {
   getProgramIcon, getNameFromPath, createId, getProgramPresets,
   isProgramList, isSettings, isDiaryEntries, isHomeMusicPlaylistList,
   applyHomeMusicPlaylistOrder, refreshHomeMusicPlaylistThumbnails,
-  filterHiddenHomeMusicPlaylists, applyHomeMusicPlaylistCoverOverrides,
+  filterHiddenHomeMusicPlaylists, applyHomeMusicPlaylistCoverOverrides, getPlaylistCoverForTheme,
 } from './constants'
 
 // pages
@@ -144,7 +144,7 @@ function App() {
   const [playlistSearchQuery, setPlaylistSearchQuery] = useState('')
   const [fullPlaylistSearchQuery, setFullPlaylistSearchQuery] = useState('')
   const [playlistTrackMap, setPlaylistTrackMap] = useState<Record<string, PlaylistTrack[]>>({})
-  const [playlistCoverOverrides, setPlaylistCoverOverrides] = useState<Record<string, string>>({})
+  const [playlistCoverOverrides, setPlaylistCoverOverrides] = useState<PlaylistCoverOverrideMap>({})
   const [homeMusicProgress, setHomeMusicProgress] = useState(0)
   const [homeMusicVolume, setHomeMusicVolume] = useState(58)
   const homeMusicVolumeRef = useRef(58)
@@ -208,6 +208,7 @@ function App() {
     : settings.theme === 'System'
       ? systemTheme
       : settings.theme.toLowerCase() as ResolvedTheme
+  const isCustomLightWallpaper = isCustomWallpaperMode && activeTheme === 'light'
 
   const sidebarThemeToggleLabel = isCustomWallpaperMode
     ? activeTheme === 'dark' ? 'Switch to custom light mode' : 'Switch to custom dark mode'
@@ -267,7 +268,7 @@ function App() {
     id: LIKED_PLAYLIST_ID,
     name: 'Liked',
     tracks: likedTrackIds.length,
-    customThumbnail: playlistCoverOverrides[LIKED_PLAYLIST_ID],
+    customThumbnail: getPlaylistCoverForTheme(playlistCoverOverrides, LIKED_PLAYLIST_ID, activeTheme),
   }
 
   const homeMusicPlaylistsWithLiked = applyHomeMusicPlaylistOrder(
@@ -375,10 +376,12 @@ function App() {
 
   const getThemeIcon = (iconName: keyof typeof iconMap, isActive = true) => {
     if (activeTheme === 'dark') return iconMap[iconName].white
+    if (isCustomLightWallpaper && !isActive) return iconMap[iconName].white
     return isActive ? iconMap[iconName][settings.accentColor] : iconMap[iconName].gray
   }
 
   const getMusicControlIcon = (iconName: keyof typeof musicControlIconMap, isActive = true) => {
+    if (isCustomLightWallpaper && !isActive) return musicControlIconMap[iconName].white
     return isActive ? musicControlIconMap[iconName][settings.accentColor] : musicControlIconMap[iconName].gray
   }
 
@@ -386,7 +389,9 @@ function App() {
     if (isLiked) return likedIconMap[settings.accentColor]
     // 좋아요가 안 눌린 상태에서 hover 시 빈 하트 accent 아이콘으로
     if (isHovered) return prelikedIconMap[settings.accentColor]
-    // 좋아요가 안 눌린 기본 상태는 라이트/다크모드 모두 gray 빈 하트로 고정
+    // 커스텀 배경 라이트모드에서는 기본 빈 하트를 흰색으로 표시
+    if (isCustomLightWallpaper) return prelikedIconMap.white
+    // 좋아요가 안 눌린 기본 상태는 일반 라이트/다크모드 모두 gray 빈 하트로 고정
     return prelikedIconMap.gray
   }
 
@@ -912,7 +917,7 @@ function App() {
         return
       }
       const visible = filterHiddenHomeMusicPlaylists(loaded)
-      const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
+      const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides, activeTheme)
       setHomeMusicPlaylists((prev) => {
         const map = new Map(refreshed.map((p) => [p.id, p]))
         const reordered = prev.filter((p) => map.has(p.id)).map((p) => map.get(p.id)!)
@@ -952,7 +957,7 @@ function App() {
         return
       }
       const visible = filterHiddenHomeMusicPlaylists(loaded)
-      const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
+      const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides, activeTheme)
       const ordered = applyHomeMusicPlaylistOrder(refreshed, settings.musicPlaylistOrder)
       const orderedWithLiked = applyHomeMusicPlaylistOrder([likedPlaylist, ...ordered], settings.musicPlaylistOrder)
       const nextId = orderedWithLiked.some((p) => p.id === selectedHomeMusicPlaylistId) ? selectedHomeMusicPlaylistId : orderedWithLiked[0]?.id ?? LIKED_PLAYLIST_ID
@@ -985,10 +990,25 @@ function App() {
 
   const handleChangePlaylistCover = async (playlistId: string) => {
     try {
-      const coverUrl = await window.mnAPI.changeYoutubeMusicPlaylistCover(playlistId)
-      if (!coverUrl) return
-      setPlaylistCoverOverrides((prev) => ({ ...prev, [playlistId]: coverUrl }))
-      setHomeMusicPlaylists((prev) => prev.map((p) => p.id === playlistId ? { ...p, customThumbnail: coverUrl } : p))
+      const coverResult = await window.mnAPI.changeYoutubeMusicPlaylistCover(playlistId, activeTheme) as PlaylistCoverChangeResult | null
+      if (!coverResult?.coverUrl) return
+
+      setPlaylistCoverOverrides((prev) => {
+        const previousCover = prev[playlistId]
+        const normalizedPreviousCover = typeof previousCover === 'string'
+          ? { light: previousCover, dark: previousCover }
+          : previousCover ?? {}
+
+        return {
+          ...prev,
+          [playlistId]: {
+            ...normalizedPreviousCover,
+            [coverResult.theme]: coverResult.coverUrl,
+          },
+        }
+      })
+
+      setHomeMusicPlaylists((prev) => prev.map((p) => p.id === playlistId ? { ...p, customThumbnail: coverResult.coverUrl } : p))
     } catch (e) { console.error(e) }
   }
 
@@ -1182,6 +1202,10 @@ function App() {
 
   // ─── useEffects ───────────────────────────────────────────────────────────
   useEffect(() => {
+    setHomeMusicPlaylists((prev) => applyHomeMusicPlaylistCoverOverrides(prev, playlistCoverOverrides, activeTheme))
+  }, [activeTheme, playlistCoverOverrides])
+
+  useEffect(() => {
     const init = async () => {
       try {
         const auth = await window.mnAPI.isYoutubeMusicAuthenticated()
@@ -1194,7 +1218,7 @@ function App() {
           window.mnAPI.getYoutubeMusicAccount(),
         ])
         setYoutubeMusicAccount(account?.signedIn ? account : null)
-        const loadedCovers = covers && typeof covers === 'object' ? covers as Record<string, string> : {}
+        const loadedCovers = covers && typeof covers === 'object' ? covers as PlaylistCoverOverrideMap : {}
         setPlaylistCoverOverrides(loadedCovers)
         if (!isHomeMusicPlaylistList(loaded) || loaded.length === 0) {
           resetYoutubeMusicLoginState(false)
@@ -1202,7 +1226,7 @@ function App() {
         }
         if (cache && typeof cache === 'object') setPlaylistTrackMap(cache as Record<string, PlaylistTrack[]>)
         const visible = filterHiddenHomeMusicPlaylists(loaded)
-        const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), loadedCovers)
+        const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), loadedCovers, activeTheme)
         setHomeMusicPlaylists(refreshed)
         const refreshedWithLiked = applyHomeMusicPlaylistOrder([likedPlaylist, ...refreshed], settings.musicPlaylistOrder)
         if (!refreshedWithLiked.some((p) => p.id === selectedHomeMusicPlaylistId)) setSelectedHomeMusicPlaylistId(refreshedWithLiked[0]?.id ?? LIKED_PLAYLIST_ID)
@@ -1429,7 +1453,12 @@ function App() {
 
   useEffect(() => {
     const isMusicShortcutPage = activePage === 'home' || activePage === 'playlist'
-    if (!isMusicShortcutPage) return
+    const isFloatingMusicShortcutEnabled =
+      shouldShowFloatingMusicPlayer &&
+      !isFloatingPlayerHidden &&
+      (floatingPlayerMode === 'expanded' || floatingPlayerMode === 'minimized')
+
+    if (!isMusicShortcutPage && !isFloatingMusicShortcutEnabled) return
     if (!currentVideoId) return
 
     const hasModal = isDiaryPickerOpen || Boolean(selectedDiaryDate) || isDeleteDiaryConfirmOpen || isFullPlaylistModalOpen || isYoutubeLoginModalOpen || Boolean(updateModalType) || isAddModalOpen
@@ -1442,25 +1471,46 @@ function App() {
       event.preventDefault()
     }
 
-    const onSpaceTogglePlayback = (event: KeyboardEvent) => {
-      if (event.repeat) return
-      if (event.code !== 'Space' && event.key !== ' ') return
+    const onMusicKeyboardShortcut = (event: KeyboardEvent) => {
+      const isSpaceKey = event.code === 'Space' || event.key === ' '
+      const isVolumeUpKey = event.key === 'ArrowUp'
+      const isVolumeDownKey = event.key === 'ArrowDown'
+
+      if (!isSpaceKey && !isVolumeUpKey && !isVolumeDownKey) return
       if (shouldIgnoreMusicShortcut(event.target)) return
 
+      if (isSpaceKey) {
+        if (event.repeat) return
+
+        event.preventDefault()
+        togglePlayPause()
+        return
+      }
+
       event.preventDefault()
-      togglePlayPause()
+
+      const nextVolume = Math.max(
+        0,
+        Math.min(100, homeMusicVolumeRef.current + (isVolumeUpKey ? 5 : -5)),
+      )
+
+      homeMusicVolumeRef.current = nextVolume
+      setHomeMusicVolume(nextVolume)
     }
 
-    window.addEventListener('keydown', onSpaceTogglePlayback)
+    window.addEventListener('keydown', onMusicKeyboardShortcut)
     window.addEventListener('keyup', preventFocusedButtonSpaceClick)
 
     return () => {
-      window.removeEventListener('keydown', onSpaceTogglePlayback)
+      window.removeEventListener('keydown', onMusicKeyboardShortcut)
       window.removeEventListener('keyup', preventFocusedButtonSpaceClick)
     }
   }, [
     activePage,
     currentVideoId,
+    shouldShowFloatingMusicPlayer,
+    isFloatingPlayerHidden,
+    floatingPlayerMode,
     isDiaryPickerOpen,
     selectedDiaryDate,
     isDeleteDiaryConfirmOpen,
@@ -1677,6 +1727,7 @@ function App() {
             onSetSelectedHomeMusicPlaylistId={setSelectedHomeMusicPlaylistId}
             onSetHomeMusicPlaylists={(playlists) => setHomeMusicPlaylists(playlists.filter((playlist) => playlist.id !== LIKED_PLAYLIST_ID))} onUpdateSettings={updateSettings}
             onPlaylistPlay={handlePlaylistPlay} onPlayVideo={playVideo} onTogglePlayPause={togglePlayPause}
+            onPlayPrevTrack={playPrevTrack} onPlayNextTrack={playNextTrack}
             onSetPlaylistViewMode={(mode) => {
               setPlaylistViewMode(mode)
               updateSettings({ playlistViewMode: mode })
@@ -1684,7 +1735,7 @@ function App() {
             onRefreshPlaylists={handleRefreshPlaylists}
             onOpenYoutubeLogin={() => setIsYoutubeLoginModalOpen(true)}
             onOpenFullPlaylist={() => setIsFullPlaylistModalOpen(true)}
-            onChangeCover={handleChangePlaylistCover} onSetIsShuffleEnabled={setIsShuffleEnabled}
+            onChangeCover={handleChangePlaylistCover} playlistCoverTheme={activeTheme} onSetIsShuffleEnabled={setIsShuffleEnabled}
             onVolumePointerDown={handleHomeMusicVolumePointerDown} onVolumePointerMove={handleHomeMusicVolumePointerMove}
             onProgressPointerDown={handleHomeMusicProgressPointerDown} onProgressPointerMove={handleHomeMusicProgressPointerMove}
             onProgressPointerUp={handleHomeMusicProgressPointerUp}
@@ -1792,7 +1843,7 @@ function App() {
             onClose={() => setIsYoutubeLoginModalOpen(false)}
             onLoginSuccess={(playlists) => {
               const visible = filterHiddenHomeMusicPlaylists(playlists)
-              const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides)
+              const refreshed = applyHomeMusicPlaylistCoverOverrides(refreshHomeMusicPlaylistThumbnails(visible), playlistCoverOverrides, activeTheme)
               setIsYtAuthenticated(true)
               setIsYoutubeLoginModalOpen(false)
               setHomeMusicPlaylists(refreshed)
@@ -1849,14 +1900,25 @@ function App() {
           volume={homeMusicVolume}
           currentSeconds={homeMusicCurrentSeconds}
           durationSeconds={homeMusicDurationSeconds}
-          speakerIcon={getThemeIcon('speaker')}
-          shuffleIcon={getMusicControlIcon('shuffle', isShuffleEnabled)}
-          playlistIcon={
-            activeTheme === 'dark'
-              ? musicControlIconMap.playlist.white
-              : getMusicControlIcon('playlist')
+          speakerIcon={isCustomLightWallpaper ? getThemeIcon('speaker', false) : getThemeIcon('speaker')}
+          shuffleIcon={
+            isCustomLightWallpaper
+              ? musicControlIconMap.shuffle[settings.accentColor]
+              : getMusicControlIcon('shuffle', isShuffleEnabled)
           }
-          listIcon={getMusicControlIcon('list', activeTheme !== 'dark')}
+          shuffleActiveIcon={getMusicControlIcon('shuffle')}
+          playlistIcon={
+            isCustomLightWallpaper
+              ? musicControlIconMap.playlist[settings.accentColor]
+              : activeTheme === 'dark'
+                ? musicControlIconMap.playlist.white
+                : getMusicControlIcon('playlist')
+          }
+          listIcon={
+            isCustomLightWallpaper
+              ? musicControlIconMap.list[settings.accentColor]
+              : getMusicControlIcon('list', activeTheme !== 'dark')
+          }
           listActiveIcon={getMusicControlIcon('list')}
           onChangeMode={(mode) => {
             updateSettings({

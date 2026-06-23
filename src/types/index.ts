@@ -5,6 +5,13 @@ export type LaunchBehavior = 'Launch in order' | 'Launch all at once'
 export type Theme = 'Light' | 'Dark' | 'System' | 'Custom Wallpaper'
 export type ResolvedTheme = 'light' | 'dark'
 export type CustomWallpaperTheme = 'light' | 'dark'
+export type PlaylistCoverTheme = 'light' | 'dark'
+export type PlaylistCoverOverride = Partial<Record<PlaylistCoverTheme, string>>
+export type PlaylistCoverOverrideMap = Record<string, string | PlaylistCoverOverride>
+export type PlaylistCoverChangeResult = {
+  theme: PlaylistCoverTheme
+  coverUrl: string
+}
 export type WallpaperHistoryItem = {
   image: string
   name: string
