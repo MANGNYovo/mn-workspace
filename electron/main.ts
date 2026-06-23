@@ -1,5 +1,4 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol } from 'electron'
-import { createRequire } from 'node:module'
 import { execFile } from 'node:child_process'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
@@ -7,12 +6,11 @@ import path from 'node:path'
 import fs from 'node:fs/promises'
 import dotenv from 'dotenv'
 import { google } from 'googleapis'
+import electronUpdater from 'electron-updater'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
-const require = createRequire(import.meta.url)
-const { autoUpdater } = require('electron-updater') as typeof import('electron-updater')
-
+const { autoUpdater } = electronUpdater
 
 const CUSTOM_WALLPAPER_PROTOCOL = 'mn-wallpaper'
 
