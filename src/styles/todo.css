@@ -1,0 +1,2701 @@
+.todo-page {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.todo-card {
+  width: min(100%, 1240px);
+  height: min(100%, 820px);
+  margin: auto;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  box-shadow: 0 24px 70px rgba(63, 70, 111, 0.10);
+  padding: 38px 42px 30px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-top: 34px;
+  padding-bottom: 18px;
+}
+
+.todo-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(130, 140, 170, 0.14);
+}
+
+.todo-header h1 {
+  margin: 0 0 7px;
+  color: #10172f;
+  font-size: 25px;
+  font-weight: 700;
+  line-height: 1.08;
+  margin-bottom: 8px;
+}
+
+.todo-header p {
+  margin: 0;
+  color: #65708d;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.35;
+}
+
+.todo-add-task-button {
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 17px;
+  background: var(--accent-color, #705bff);
+  color: #fff;
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--accent-color, #705bff) 24%, transparent);
+  font-size: 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.todo-add-task-button span {
+  font-size: 18px;
+}
+
+.todo-content-grid {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(220px, 23vw, 280px);
+  gap: 32px;
+  padding-top: 18px;
+  align-items: stretch;
+  grid-template-rows: 46px minmax(0, 1fr);
+  column-gap: clamp(18px, 2.2vw, 34px);
+  min-width: 0;
+}
+
+.todo-main-panel,
+.todo-summary-panel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.todo-filter-tabs {
+  width: fit-content;
+  max-width: min(520px, calc(100% - 150px));
+  height: 46px;
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  border-radius: 13px;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 20px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.32);
+  flex: 0 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.todo-filter-tab {
+  height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #65708d;
+  padding: 0 13px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  box-shadow: none;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.todo-filter-tab.active {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 18%, rgba(255, 255, 255, 0.44));
+  color: var(--accent-color, #705bff);
+}
+
+.todo-task-list {
+  height: auto;
+  min-height: 0;
+  border: 1px solid rgba(130, 140, 170, 0.16);
+  border-radius: 18px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.36);
+  flex: 1;
+}
+
+.todo-task-item {
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) minmax(190px, 260px);
+  align-items: center;
+  gap: 15px;
+  padding: 0 22px;
+  border-bottom: 1px solid rgba(130, 140, 170, 0.16);
+}
+
+.todo-task-item:last-child {
+  border-bottom: 0;
+}
+
+.todo-task-check {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(130, 140, 170, 0.50);
+  border-radius: 7px;
+  background: transparent;
+  color: transparent;
+  font-size: 0;
+  font-weight: 900;
+  display: grid;
+  place-items: center;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.todo-task-item.completed .todo-task-check {
+  border-color: var(--accent-color, #705bff);
+  background: var(--accent-color, #705bff);
+  color: transparent;
+  font-size: 0;
+}
+
+.todo-task-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.todo-task-text strong {
+  color: #10172f;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.16;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-task-text span {
+  color: #65708d;
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.24;
+}
+
+.todo-task-item.completed .todo-task-text strong,
+.todo-task-item.completed .todo-task-text span {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.todo-task-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  flex-wrap: nowrap;
+}
+
+.todo-task-due {
+  color: #65708d;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.todo-priority-pill {
+  min-width: 60px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 11.5px;
+  font-weight: 800;
+}
+
+.todo-priority-pill.high {
+  color: #e85a62; background: rgba(255, 89, 98, 0.16);
+}
+
+.todo-priority-pill.medium {
+  color: #d88438; background: rgba(255, 157, 67, 0.18);
+}
+
+.todo-priority-pill.low {
+  color: #4fa26f; background: rgba(86, 198, 127, 0.18);
+}
+
+.todo-task-more {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #9aa2b8;
+  font-size: 17px;
+  font-weight: 900;
+  box-shadow: none;
+}
+
+.todo-empty-state {
+  height: 100%;
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  color: #8d96ae;
+  font-weight: 700;
+}
+
+.todo-empty-state strong {
+  color: #65708d; font-size: 18px;
+}
+
+.todo-empty-state span {
+  font-size: 14px;
+}
+
+.todo-completion-line {
+  height: 26px;
+  padding-top: 0;
+  align-items: end;
+  display: grid;
+  place-items: end center;
+  font-size: 12px;
+}
+
+.todo-summary-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  box-sizing: border-box;
+  padding-top: 0;
+  padding-bottom: 26px;
+  min-height: 0;
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.todo-summary-card {
+  border: 1px solid rgba(130, 140, 170, 0.16);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 24px;
+}
+
+.todo-summary-card.today {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20px 24px 18px;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.todo-summary-card h2 {
+  margin: 0 0 26px; color: #10172f; font-size: 22px; font-weight: 900;
+}
+
+.todo-progress-ring {
+  width: 148px;
+  height: 148px;
+  margin: 0 auto 30px;
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  place-items: center;
+  position: relative;
+  --todo-track-color: rgba(130, 140, 170, 0.24);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: --todo-progress 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.todo-progress-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    conic-gradient(
+    var(--accent-color, #705bff) var(--todo-progress, 0%),
+    var(--todo-track-color) 0
+    );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+  transition:
+    --todo-progress 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: background;
+}
+
+.todo-progress-ring strong,
+.todo-progress-ring span {
+  position: relative;
+  z-index: 1;
+  align-self: auto;
+}
+
+.todo-progress-ring strong {
+  color: #10172f; font-size: 28px; font-weight: 900; align-self: end;
+  line-height: 1;
+  font-size: 28px;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  letter-spacing: 0.02em;
+}
+
+.todo-progress-ring span {
+  color: #65708d; font-size: 13px; font-weight: 700; align-self: start;
+  line-height: 1;
+  font-size: 11px;
+  font-weight: 800;
+  margin-top: 3px;
+}
+
+.todo-summary-stats {
+  border-top: 1px solid rgba(130, 140, 170, 0.16); padding-top: 18px; display: grid; gap: 14px;
+  margin-top: 4px;
+  flex: 0 0 auto;
+  gap: 18px;
+  padding-top: 18px;
+}
+
+.todo-summary-stats div {
+  display: flex; justify-content: space-between; color: #65708d; font-size: 14px; font-weight: 700;
+  align-items: center;
+  min-height: 19px;
+}
+
+.todo-summary-stats strong {
+  color: #10172f; font-weight: 900;
+}
+
+.todo-summary-card.note {
+  min-height: 150px; position: relative;
+  display: none;
+}
+
+.todo-summary-card.note strong {
+  color: #10172f; font-size: 15px; font-weight: 900;
+}
+
+.todo-summary-card.note p {
+  color: #65708d; line-height: 1.55; font-weight: 600;
+}
+
+.todo-summary-card.note span {
+  position: absolute; right: 24px; bottom: 20px; color: var(--accent-color, #705bff); font-size: 24px;
+}
+
+.todo-add-modal,
+.todo-date-picker-modal {
+  position: relative;
+  width: 560px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(130, 140, 170, 0.20);
+  box-shadow: 0 30px 80px rgba(20, 28, 58, 0.22);
+  padding: 34px 38px 36px;
+}
+
+.todo-add-modal h2 {
+  margin: 0 0 28px; color: #10172f; font-size: 26px; font-weight: 900;
+  margin-bottom: 22px;
+  font-size: 24px;
+}
+
+.todo-modal-field {
+  display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px;
+  gap: 8px;
+  margin-bottom: 17px;
+}
+
+.todo-modal-field > span {
+  color: #10172f; font-size: 15px; font-weight: 900;
+  font-size: 14px;
+}
+
+.todo-modal-field input,
+.todo-modal-field textarea,
+.todo-due-date-button {
+  width: 100%;
+  border: 1px solid rgba(130, 140, 170, 0.22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.52);
+  color: rgba(31, 36, 48, 0.88);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.todo-modal-field input {
+  height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.todo-modal-field textarea {
+  height: 70px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+.todo-due-date-button {
+  height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.todo-due-date-button.selected {
+  color: #10172f;
+}
+
+.todo-priority-options {
+  display: flex; gap: 10px;
+  gap: 8px;
+}
+
+.todo-priority-option {
+  height: 34px;
+  min-width: 68px;
+  border-radius: 9px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.todo-priority-option.high {
+  color: #e85a62;
+}
+
+.todo-priority-option.medium {
+  color: #d88438;
+}
+
+.todo-priority-option.low {
+  color: #4fa26f;
+}
+
+.todo-priority-option.active {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 16%, rgba(255,255,255,0.42)); border-color: color-mix(in srgb, var(--accent-color, #705bff) 34%, rgba(130,140,170,0.20));
+}
+
+.todo-reminder-row {
+  width: 100%; min-height: 70px; border: 1px solid rgba(130, 140, 170, 0.18); border-radius: 12px; background: rgba(255,255,255,0.40); display: grid; grid-template-columns: 30px minmax(0,1fr) 44px; align-items: center; gap: 12px; padding: 0 16px; margin-bottom: 24px; text-align: left; box-shadow: none;
+  min-height: 58px;
+  grid-template-columns: 26px minmax(0, 1fr) 40px;
+  gap: 10px;
+  padding: 0 14px;
+  margin-bottom: 18px;
+}
+
+.todo-reminder-row strong {
+  color: #10172f; font-size: 15px; font-weight: 900; display: block;
+  font-size: 14px;
+}
+
+.todo-reminder-row small {
+  color: #65708d; font-size: 13px; font-weight: 600;
+  font-size: 12px;
+}
+
+.todo-reminder-row i {
+  width: 38px;
+  height: 22px;
+}
+
+.todo-reminder-row i::before {
+  content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; background: white; left: 3px; top: 3px; transition: transform .16s ease;
+  width: 16px;
+  height: 16px;
+}
+
+.todo-reminder-row i.active {
+  background: var(--accent-color, #705bff);
+}
+
+.todo-reminder-row i.active::before {
+  transform: translateX(16px);
+}
+
+.todo-modal-actions {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  gap: 12px;
+}
+
+.todo-modal-actions button {
+  height: 40px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.todo-cancel-button {
+  border: 1px solid rgba(130, 140, 170, 0.22); background: rgba(255,255,255,0.42); color: #65708d;
+}
+
+.todo-submit-button {
+  border: 0; background: var(--accent-color, #705bff); color: #fff; box-shadow: 0 12px 24px color-mix(in srgb, var(--accent-color, #705bff) 24%, transparent);
+}
+
+.todo-submit-button:disabled {
+  opacity: .45; cursor: default;
+}
+
+.todo-date-picker-modal {
+  width: 440px;
+}
+
+.todo-date-picker-header {
+  height: 64px; display: grid; grid-template-columns: 42px 1fr 42px; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+
+.todo-date-picker-header button {
+  height: 38px; border: 1px solid rgba(130,140,170,.18); border-radius: 10px; background: rgba(255,255,255,.42); color: #65708d; font-size: 24px; box-shadow: none;
+}
+
+.todo-date-picker-header div {
+  text-align: center; display: flex; align-items: baseline; justify-content: center; gap: 12px;
+}
+
+.todo-date-picker-header strong {
+  color: #10172f; font-size: 25px; font-weight: 900;
+}
+
+.todo-date-picker-header span {
+  color: #65708d; font-weight: 800;
+}
+
+.todo-date-weekdays,
+.todo-date-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr);
+}
+
+.todo-date-weekdays {
+  margin-bottom: 8px;
+}
+
+.todo-date-weekdays span {
+  height: 28px; display: grid; place-items: center; color: #65708d; font-size: 12px; font-weight: 800;
+}
+
+.todo-date-grid {
+  aspect-ratio: 7 / var(--todo-date-week-count, 6); border-left: 1px solid rgba(130,140,170,.14); border-top: 1px solid rgba(130,140,170,.14);
+}
+
+.todo-date-grid button {
+  border: 0; border-right: 1px solid rgba(130,140,170,.14); border-bottom: 1px solid rgba(130,140,170,.14); background: transparent; color: #10172f; font-size: 14px; font-weight: 800; box-shadow: none;
+}
+
+.todo-date-grid button.muted {
+  color: rgba(101,112,141,.36);
+}
+
+.todo-date-grid button.today {
+  color: var(--accent-color, #705bff);
+}
+
+.todo-date-grid button.selected {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent); color: var(--accent-color, #705bff);
+}
+
+.todo-date-picker-actions {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px;
+}
+
+.todo-date-picker-actions button {
+  height: 42px; border-radius: 11px; font-weight: 800; border: 1px solid rgba(130,140,170,.20); background: rgba(255,255,255,.44); color: #65708d;
+}
+
+@media (max-width: 1250px) {
+  .todo-card { padding: 32px 32px 26px; }
+
+.todo-content-grid { grid-template-columns: minmax(0, 1fr) 240px; gap: 22px; }
+
+.todo-task-item { grid-template-columns: 38px minmax(0, 1fr); grid-template-rows: auto auto; padding: 16px 20px; gap: 8px 16px; }
+
+.todo-task-meta { grid-column: 2; justify-content: flex-start; flex-wrap: wrap; }
+}
+
+/* ========================= */
+/* To-Do visual polish: cards, tabs, checkbox, progress */
+/* ========================= */
+
+/* 필터는 각각 분리된 버튼이 아니라 하나의 묶음 안에서 active만 표시 */
+
+.todo-filter-tab:not(.active) {
+  background: transparent;
+  box-shadow: none;
+}
+
+/* 체크 완료 표시는 ✓ 문자 없이 안쪽이 accent로 칠해지는 방식 */
+
+/* 달성률 원형은 채워진 원이 아니라 회색 track + accent ring 형태 */
+
+/* ========================= */
+/* To-Do layout / typography / modal size fix */
+/* ========================= */
+
+/* 왼쪽 목록 카드와 오른쪽 진행도 카드 높이를 맞춘다. */
+
+.todo-main-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.todo-summary-card.today .todo-progress-ring {
+  flex: 0 0 auto;
+}
+
+.todo-summary-note-card {
+  position: relative;
+  min-height: 68px;
+  margin-top: auto;
+  border-radius: 16px;
+  border: 1px solid rgba(130, 140, 170, 0.16);
+  background: rgba(255, 255, 255, 0.34);
+  padding: 10px 16px 22px;
+  width: calc(100% + 36px);
+  margin-left: -18px;
+  margin-right: -18px;
+  box-sizing: border-box;
+  margin-bottom: 0;
+  transform: translateY(10px);
+  padding-top: 9px;
+  padding-bottom: 20px;
+}
+
+.todo-summary-note-card strong {
+  color: #10172f;
+  font-size: 12.5px;
+  font-weight: 900;
+}
+
+.todo-summary-note-card p {
+  margin: 18px 0 0;
+  color: #65708d;
+  line-height: 1.26;
+  font-size: 10.8px;
+  font-weight: 600;
+  margin-top: 7px;
+}
+
+.todo-summary-note-card span {
+  position: absolute;
+  right: 14px;
+  bottom: 9px;
+  color: var(--accent-color, #705bff);
+  font-size: 19px;
+}
+
+/* 기존 분리형 note 카드가 남아있더라도 숨겨서 이중 표시 방지 */
+
+/* 투두 목록 글씨 크기 축소 */
+
+/* Add Task 모달 중요도 버튼 크기 축소 */
+
+@media (max-width: 1250px) {
+  .todo-task-item {
+    min-height: 74px;
+    padding: 14px 18px;
+  }
+
+.todo-task-meta {
+    gap: 10px;
+  }
+
+.todo-summary-card.today {
+    padding: 22px;
+  }
+
+.todo-summary-note-card {
+    min-height: 132px;
+    padding: 20px 20px 38px;
+  }
+}
+
+/* ========================= */
+/* To-Do alignment / compact summary refine */
+/* ========================= */
+
+/*
+  오른쪽 진행도 카드를 왼쪽 To-Do 목록 카드와 같은 시작/끝 높이로 맞춘다.
+  왼쪽은 필터 탭 + 여백 + 목록 + 하단 완료 문구 구조이므로,
+  오른쪽 카드도 필터 탭 영역과 하단 완료 문구 영역만큼 제외한다.
+*/
+
+/* 진행도 영역 전체 크기 축소 */
+.todo-summary-card.today h2 {
+  margin-bottom: 18px;
+  font-size: 17px;
+  line-height: 1.1;
+}
+
+/* 통계 글씨 간격 확장 */
+
+/* Add Task 버튼 축소 */
+
+/* 내부 Daily Note가 진행도 카드 안에 들어간 상태에서 과하게 커지지 않게 */
+
+@media (max-width: 1250px) {
+  .todo-summary-panel {
+    padding-top: 68px;
+    padding-bottom: 34px;
+  }
+
+.todo-summary-card.today {
+    padding: 20px 22px;
+  }
+
+.todo-progress-ring {
+    width: 108px;
+    height: 108px;
+  }
+
+.todo-progress-ring strong {
+    font-size: 22px;
+  }
+
+.todo-summary-stats {
+    gap: 17px;
+  }
+
+.todo-add-task-button {
+    height: 38px;
+    padding: 0 15px;
+    font-size: 13px;
+  }
+}
+
+/* ========================= */
+/* To-Do Add Task modal compact size fix */
+/* ========================= */
+
+/* Add Task 모달 전체 사이즈를 줄이고 내부 간격도 compact하게 조정 */
+.todo-add-modal {
+  width: 500px;
+  border-radius: 16px;
+  padding: 28px 32px 30px;
+}
+
+@media (max-height: 760px) {
+  .todo-add-modal {
+    width: 480px;
+    padding: 24px 30px 26px;
+  }
+
+.todo-add-modal h2 {
+    margin-bottom: 18px;
+    font-size: 22px;
+  }
+
+.todo-modal-field {
+    margin-bottom: 14px;
+  }
+
+.todo-modal-field textarea {
+    height: 62px;
+  }
+
+.todo-reminder-row {
+    min-height: 54px;
+    margin-bottom: 16px;
+  }
+}
+
+/* ========================= */
+/* To-Do note/completion spacing fix */
+/* ========================= */
+
+/* Daily Note 카드를 조금 더 넓게 만들고 Remaining 영역과 간격을 늘린다. */
+
+/* 하단 완료 문구를 살짝 더 아래로 내려서 목록 카드와 여백이 답답하지 않게 조정 */
+
+/* ========================= */
+/* To-Do summary note height balance fix */
+/* ========================= */
+
+/*
+  Daily Note를 아래로 내린 만큼 카드 자체가 길어지지 않도록
+  진행도 카드는 border-box로 고정하고, Daily Note 높이를 줄인다.
+*/
+
+/* ========================= */
+/* To-Do filter image icon fix */
+/* ========================= */
+
+.todo-filter-icon-image {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  display: block;
+  opacity: 0.78;
+  pointer-events: none;
+}
+
+.todo-filter-tab.active .todo-filter-icon-image {
+  opacity: 1;
+}
+
+/* ========================= */
+/* To-Do summary exact height / note width fix */
+/* ========================= */
+
+/*
+  오른쪽 진행도 카드의 아래 끝선을 왼쪽 To-Do 목록 카드와 맞춘다.
+  왼쪽 구조: filter tabs 46px + margin 24px + list + completion line 46px
+  그래서 오른쪽 summary는 위 70px, 아래 46px을 비우면 목록 카드와 동일한 높이가 된다.
+*/
+
+/* Daily Note는 가로를 더 넓히고, 세로는 줄인다. */
+
+/* 하단 완료 문구는 목록 카드 아래쪽에 있으므로 커스텀 다크에서는 흰색으로 표시 */
+.app[data-theme='dark'][data-wallpaper='true'] .todo-completion-line {
+  color: #ffffff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.28);
+}
+
+@media (max-width: 1250px) {
+  .todo-summary-panel {
+    padding-top: 70px;
+    padding-bottom: 46px;
+  }
+
+.todo-summary-note-card {
+    width: calc(100% + 22px);
+    min-height: 80px;
+    margin-left: -11px;
+    margin-right: -11px;
+    margin-top: 22px;
+    padding: 11px 14px 24px;
+  }
+
+.todo-summary-note-card p {
+    font-size: 11px;
+    line-height: 1.28;
+  }
+}
+
+/* ========================= */
+/* To-Do Daily Note move down fix */
+/* ========================= */
+
+/* Daily Note 카드만 조금 더 아래로 이동 */
+
+@media (max-width: 1250px) {
+  .todo-summary-note-card {
+    margin-top: 28px;
+  }
+}
+
+/* ========================= */
+/* To-Do mockup layout final polish */
+/* ========================= */
+
+/*
+  첨부한 기존 To-Do UI 예시 기준으로 전체 간격/카드 높이/글씨 크기 재정렬.
+*/
+
+/* 헤더와 필터 사이 간격 축소 */
+
+/*
+  왼쪽 목록 카드와 오른쪽 진행도 카드의 시작/끝선을 맞춘다.
+  filter tabs 46px + margin-bottom 20px = 66px
+  completion line 26px = 아래 여백
+*/
+
+/* 완료 문구는 최대한 아래쪽으로 붙이고, 그만큼 목록 카드가 커지게 */
+
+/* 오른쪽 진행도 카드: Today 글씨는 줄이고 원형은 조금 키움 */
+
+/* 통계 줄 간격 */
+
+/* 목록 내부 글씨를 더 작게 */
+
+/* Daily Note는 넓고 낮게, 카드 하단 쪽으로 */
+
+@media (max-width: 1250px) {
+  .todo-card {
+    padding-top: 30px;
+    padding-bottom: 16px;
+  }
+
+.todo-header {
+    padding-bottom: 16px;
+  }
+
+.todo-content-grid {
+    padding-top: 16px;
+  }
+
+.todo-filter-tabs {
+    margin-bottom: 18px;
+  }
+
+.todo-summary-panel {
+    padding-top: 64px;
+    padding-bottom: 26px;
+  }
+
+.todo-progress-ring {
+    width: 124px;
+    height: 124px;
+  }
+
+.todo-task-item {
+    min-height: 68px;
+    padding: 12px 18px;
+  }
+
+.todo-task-text strong {
+    font-size: 14px;
+  }
+
+.todo-task-text span {
+    font-size: 11.5px;
+  }
+
+.todo-summary-note-card {
+    width: calc(100% + 28px);
+    min-height: 68px;
+    margin-left: -14px;
+    margin-right: -14px;
+    padding: 9px 14px 21px;
+  }
+}
+
+/* ========================= */
+/* To-Do header/progress/note refine fix */
+/* ========================= */
+
+/* To-Do 제목/설명 글씨를 Diary 페이지 헤더와 동일한 크기 계열로 맞춤 */
+
+/* 진행도 원형은 예시처럼 더 크게, 숫자와 라벨 크기를 분리 */
+
+/* 진행도 카드가 길어진 만큼 Daily Note는 하단에 붙도록 고정 */
+
+@media (max-width: 1250px) {
+  .todo-header h1 {
+    font-size: 27px;
+  }
+
+.todo-header p {
+    font-size: 14px;
+  }
+
+.todo-progress-ring {
+    width: 140px;
+    height: 140px;
+  }
+
+.todo-progress-ring strong {
+    font-size: 27px;
+  }
+
+.todo-progress-ring span {
+    font-size: 10.5px;
+  }
+}
+
+/* ========================= */
+/* To-Do Programs header / split progress number fix */
+/* ========================= */
+
+/*
+  To-Do 헤더를 Programs 페이지 최상단 제목/설명 크기와 맞춘다.
+  설명은 Programs 설명처럼 작고 얇은 두께로 정리.
+*/
+
+/* 진행도 숫자: 완료 수는 크게, /전체 수는 작게 */
+
+.todo-progress-ring strong em {
+  font-style: normal;
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.todo-progress-ring strong small {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+@media (max-width: 1250px) {
+  .todo-header h1 {
+    font-size: 28px;
+  }
+
+.todo-header p {
+    font-size: 14px;
+  }
+
+.todo-progress-ring strong em {
+    font-size: 28px;
+  }
+
+.todo-progress-ring strong small {
+    font-size: 16px;
+  }
+}
+
+/* ========================= */
+/* To-Do direct header size / progress spacing fix */
+/* ========================= */
+
+/*
+  Programs 페이지 헤더와 동일한 크기로 To-Do 제목/설명 직접 조정.
+  사용자가 직접 조절할 때는 이 블록의 font-size/font-weight만 바꾸면 된다.
+*/
+
+/* 0/2에서 0은 크게, /2는 작게 + 자간 살짝 확장 */
+
+/* ========================= */
+/* To-Do add button filter row / note bottom fix */
+/* ========================= */
+
+/* Add Task 버튼을 필터 버튼 줄과 같은 높이로 이동 */
+
+.todo-filter-action-row {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 0;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  width: 100%;
+  min-width: 0;
+}
+
+.todo-filter-action-row .todo-filter-tabs {
+  margin-bottom: 0;
+}
+
+.todo-filter-action-row .todo-add-task-button {
+  flex: 0 0 auto;
+  height: 38px;
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 13px;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.todo-filter-action-row .todo-add-task-button span {
+  font-size: 17px;
+}
+
+/*
+  필터 row가 46px + margin-bottom 20px 이므로
+  오른쪽 진행도 카드 시작 위치도 목록 카드와 맞추기 위해 66px 유지.
+*/
+
+/* Daily Note를 진행도 카드 하단 쪽으로 더 내려서 아래쪽 여백을 줄인다. */
+
+/* 이동한 만큼 note 자체는 낮게 유지해서 카드 전체가 늘어나지 않게 한다. */
+
+@media (max-width: 1250px) {
+  .todo-filter-action-row {
+    height: 44px;
+    margin-bottom: 18px;
+  }
+
+.todo-filter-action-row .todo-add-task-button {
+    height: 36px;
+    padding: 0 14px;
+    font-size: 12.5px;
+  }
+
+.todo-summary-panel {
+    padding-top: 62px;
+    padding-bottom: 26px;
+  }
+
+.todo-summary-note-card {
+    transform: translateY(8px);
+    min-height: 64px;
+  }
+}
+
+/* ========================= */
+/* To-Do Add Task right edge toolbar fix */
+/* ========================= */
+
+/*
+  Add Task 버튼은 필터 줄 높이에 맞추되,
+  위치는 왼쪽 목록 영역이 아니라 To-Do 카드 우측 끝으로 보낸다.
+*/
+
+@media (max-width: 1250px) {
+  .todo-content-grid {
+    grid-template-rows: 44px minmax(0, 1fr);
+  }
+
+.todo-filter-action-row {
+    height: 44px;
+  }
+
+.todo-summary-panel {
+    padding-top: 0;
+    padding-bottom: 26px;
+  }
+}
+
+/* ========================= */
+/* To-Do responsive resize fix */
+/* ========================= */
+
+/*
+  창 크기를 줄였을 때 필터 탭이 스크롤바처럼 깨지지 않고,
+  Add Task 버튼은 우측 끝을 유지하며,
+  목록/진행도 카드가 같이 자연스럽게 줄어들도록 한다.
+*/
+
+.todo-main-panel,
+.todo-summary-panel,
+.todo-task-list,
+.todo-summary-card.today {
+  min-width: 0;
+}
+
+@media (max-width: 1180px) and (min-width: 821px) {
+  .todo-content-grid {
+    grid-template-columns: minmax(0, 1fr) clamp(190px, 24vw, 240px);
+    column-gap: 16px;
+  }
+
+.todo-filter-action-row {
+    gap: 12px;
+  }
+
+.todo-filter-tabs {
+    height: 42px;
+    max-width: min(460px, calc(100% - 132px));
+    padding: 3px;
+  }
+
+.todo-filter-tab {
+    height: 34px;
+    padding: 0 9px;
+    gap: 5px;
+    font-size: 12px;
+  }
+
+.todo-filter-icon-image {
+    width: 12px;
+    height: 12px;
+  }
+
+.todo-filter-action-row .todo-add-task-button {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+
+.todo-filter-action-row .todo-add-task-button span {
+    font-size: 15px;
+  }
+
+.todo-task-item {
+    grid-template-columns: 36px minmax(0, 1fr) minmax(150px, 210px);
+    gap: 10px;
+    padding: 10px 14px;
+  }
+
+.todo-task-check {
+    width: 24px;
+    height: 24px;
+  }
+
+.todo-task-text strong {
+    font-size: 13px;
+  }
+
+.todo-task-text span {
+    font-size: 11px;
+  }
+
+.todo-task-meta {
+    gap: 8px;
+  }
+
+.todo-task-due {
+    font-size: 10.5px;
+  }
+
+.todo-priority-pill {
+    min-width: 52px;
+    height: 25px;
+    font-size: 10.5px;
+  }
+
+.todo-task-more {
+    width: 20px;
+    height: 20px;
+  }
+
+.todo-summary-card.today {
+    padding: 18px 18px 16px;
+  }
+
+.todo-summary-card.today h2 {
+    font-size: 15px;
+  }
+
+.todo-progress-ring {
+    width: 118px;
+    height: 118px;
+    margin-bottom: 24px;
+  }
+
+.todo-progress-ring strong em {
+    font-size: 26px;
+  }
+
+.todo-progress-ring strong small {
+    font-size: 15px;
+  }
+
+.todo-summary-stats {
+    gap: 14px;
+  }
+
+.todo-summary-stats div {
+    font-size: 11.5px;
+  }
+
+.todo-summary-note-card {
+    width: calc(100% + 22px);
+    margin-left: -11px;
+    margin-right: -11px;
+    min-height: 62px;
+    padding: 8px 12px 18px;
+  }
+
+.todo-summary-note-card strong {
+    font-size: 11.5px;
+  }
+
+.todo-summary-note-card p {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 980px) and (min-width: 821px) {
+  .todo-content-grid {
+    grid-template-columns: minmax(0, 1fr) 180px;
+    column-gap: 12px;
+  }
+
+.todo-filter-tabs {
+    max-width: min(400px, calc(100% - 118px));
+  }
+
+.todo-filter-tab {
+    padding: 0 7px;
+    font-size: 11px;
+  }
+
+.todo-filter-action-row .todo-add-task-button {
+    padding: 0 10px;
+    font-size: 11.5px;
+  }
+
+.todo-task-item {
+    grid-template-columns: 32px minmax(0, 1fr) minmax(116px, 150px);
+    gap: 8px;
+  }
+
+.todo-task-due {
+    max-width: 88px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+.todo-priority-pill {
+    min-width: 46px;
+  }
+
+.todo-summary-card.today {
+    padding: 16px 16px 14px;
+  }
+
+.todo-progress-ring {
+    width: 108px;
+    height: 108px;
+  }
+
+.todo-summary-stats {
+    gap: 12px;
+  }
+}
+
+/* ========================= */
+/* To-Do hidden scroll / today schedule card fix */
+/* ========================= */
+
+/* To-Do 목록과 진행도 카드에 안 보이는 스크롤 추가 */
+.todo-task-list,
+.todo-summary-card.today {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.todo-task-list::-webkit-scrollbar,
+.todo-summary-card.today::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Daily Note 대신 오늘 일정 카드로 사용 */
+.todo-today-schedule-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todo-today-schedule-card > strong {
+  flex: 0 0 auto;
+}
+
+.todo-today-schedule-card > p {
+  margin: 8px 0 0;
+  color: #65708d;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.todo-today-schedule-list {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+}
+
+.todo-today-schedule-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.todo-today-schedule-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  color: #10172f;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.todo-today-schedule-item time {
+  color: var(--accent-color, #705bff);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.todo-today-schedule-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 하단 스케줄 카드가 작아도 내부 일정은 스크롤 가능 */
+.todo-summary-note-card.todo-today-schedule-card {
+  overflow: hidden;
+}
+
+/* ========================= */
+/* To-Do today schedule font fix */
+/* ========================= */
+
+/*
+  기존 Daily Note 하트용 .todo-summary-note-card span 스타일이
+  오늘 일정 제목 span에 적용되어 글씨가 커지는 문제를 차단.
+*/
+.todo-today-schedule-card .todo-today-schedule-item {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+}
+
+.todo-today-schedule-card .todo-today-schedule-time {
+  position: static;
+  width: auto;
+  height: auto;
+  color: rgba(101, 112, 141, 0.78);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-shadow: none;
+}
+
+.todo-today-schedule-card .todo-today-schedule-title {
+  position: static;
+  right: auto;
+  bottom: auto;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  color: #10172f;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-shadow: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* No schedule도 일정 제목처럼 작게 표시 */
+
+/* ========================= */
+/* To-Do checkbox compact size fix */
+/* ========================= */
+
+@media (max-width: 1180px) and (min-width: 821px) {
+  .todo-task-check {
+    width: 18px;
+    height: 18px;
+    border-radius: 6px;
+  }
+}
+
+/* ========================= */
+/* To-Do progress ring smooth animation */
+/* ========================= */
+
+/*
+  진행도 원형이 한 번에 뚝 바뀌지 않고,
+  --todo-progress 값이 바뀔 때 스윽 채워지도록 등록.
+*/
+@property --todo-progress {
+  syntax: '<percentage>';
+  inherits: true;
+  initial-value: 0%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todo-progress-ring,
+  .todo-progress-ring::before {
+    transition: none;
+  }
+}
+
+/* ========================= */
+/* To-Do 레이아웃/타이포/모달 오버라이드 */
+/* ========================= */
+.app .todo-filter-tabs {
+  height: 46px !important;
+  padding: 4px !important;
+  gap: 0 !important;
+  border-radius: 13px !important;
+  background: rgba(255, 255, 255, 0.30) !important;
+  border-color: rgba(130, 140, 170, 0.16) !important;
+  box-shadow: none !important;
+  margin-bottom: 20px !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  max-width: min(520px, calc(100% - 150px)) !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}.app .todo-filter-tab {
+  height: 36px !important;
+  border-radius: 10px !important;
+  padding: 0 13px !important;
+  font-size: 14px !important;
+  gap: 7px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
+  white-space: nowrap !important;
+}.app .todo-filter-tab:not(.active) {
+  background: transparent !important;
+  box-shadow: none !important;
+}.app .todo-filter-tab.active {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 18%, rgba(255, 255, 255, 0.44)) !important;
+  color: var(--accent-color, #705bff) !important;
+}.app .todo-task-check,
+.app .todo-task-item.completed .todo-task-check {
+  font-size: 0 !important;
+  color: transparent !important;
+  overflow: hidden !important;
+}.app .todo-task-item.completed .todo-task-check {
+  border-color: var(--accent-color, #705bff) !important;
+  background: var(--accent-color, #705bff) !important;
+}.app .todo-progress-ring {
+  --todo-track-color: rgba(130, 140, 170, 0.24);
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  width: 148px !important;
+  height: 148px !important;
+  margin: 0 auto 30px !important;
+  transition: --todo-progress 0.85s cubic-bezier(0.22, 1, 0.36, 1) !important;
+}.app .todo-progress-ring::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: inherit !important;
+  background:
+    conic-gradient(
+    var(--accent-color, #705bff) var(--todo-progress, 0%),
+    var(--todo-track-color) 0
+    ) !important;
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)) !important;
+  mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)) !important;
+  transition:
+    --todo-progress 0.85s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.85s cubic-bezier(0.22, 1, 0.36, 1) !important;
+  will-change: background !important;
+}.app .todo-progress-ring strong,
+.app .todo-progress-ring span {
+  align-self: auto !important;
+  position: relative !important;
+  z-index: 1 !important;
+}.app .todo-summary-stats {
+  margin-top: 4px !important;
+  gap: 18px !important;
+  padding-top: 18px !important;
+  flex: 0 0 auto !important;
+}.app .todo-summary-stats div {
+  align-items: center !important;
+  min-height: 19px !important;
+}.app .todo-content-grid {
+  align-items: stretch !important;
+  padding-top: 18px !important;
+  grid-template-rows: 46px minmax(0, 1fr) !important;
+  grid-template-columns: minmax(0, 1fr) clamp(220px, 23vw, 280px) !important;
+  column-gap: clamp(18px, 2.2vw, 34px) !important;
+  min-width: 0 !important;
+}.app .todo-main-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0 !important;
+  grid-column: 1 !important;
+  grid-row: 2 !important;
+}.app .todo-task-list {
+  flex: 1 !important;
+  height: auto !important;
+  min-height: 0 !important;
+}.app .todo-summary-panel {
+  height: 100% !important;
+  box-sizing: border-box !important;
+  padding-top: 0 !important;
+  padding-bottom: 26px !important;
+  min-height: 0 !important;
+  grid-column: 2 !important;
+  grid-row: 2 !important;
+}.app .todo-summary-card.today {
+  height: 100% !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 20px 24px 18px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}.app .todo-summary-note-card {
+  position: relative !important;
+  min-height: 68px !important;
+  margin-top: auto !important;
+  border-radius: 16px !important;
+  border: 1px solid rgba(130, 140, 170, 0.16) !important;
+  background: rgba(255, 255, 255, 0.34) !important;
+  padding: 10px 16px 22px !important;
+  width: calc(100% + 36px) !important;
+  margin-left: -18px !important;
+  margin-right: -18px !important;
+  box-sizing: border-box !important;
+  margin-bottom: 0 !important;
+  transform: translateY(10px) !important;
+  padding-top: 9px !important;
+  padding-bottom: 20px !important;
+}.app .todo-summary-note-card strong {
+  color: #10172f !important;
+  font-size: 12.5px !important;
+  font-weight: 900 !important;
+}.app .todo-summary-note-card p {
+  margin: 18px 0 0 !important;
+  color: #65708d !important;
+  line-height: 1.26 !important;
+  font-size: 10.8px !important;
+  font-weight: 600 !important;
+  margin-top: 7px !important;
+}.app .todo-summary-note-card span {
+  position: absolute !important;
+  right: 14px !important;
+  bottom: 9px !important;
+  color: var(--accent-color, #705bff) !important;
+  font-size: 19px !important;
+}.app .todo-summary-card.note {
+  display: none !important;
+}.app .todo-task-item {
+  min-height: 72px !important;
+  gap: 15px !important;
+  padding: 0 22px !important;
+  grid-template-columns: 40px minmax(0, 1fr) minmax(190px, 260px) !important;
+}.app .todo-task-text {
+  gap: 5px !important;
+}.app .todo-task-text strong {
+  font-size: 15px !important;
+  line-height: 1.16 !important;
+}.app .todo-task-text span {
+  font-size: 12px !important;
+  line-height: 1.24 !important;
+}.app .todo-task-due {
+  font-size: 11.5px !important;
+  white-space: nowrap !important;
+}.app .todo-priority-pill {
+  min-width: 60px !important;
+  height: 28px !important;
+  border-radius: 8px !important;
+  font-size: 11.5px !important;
+}.app .todo-priority-options {
+  gap: 8px !important;
+}.app .todo-priority-option {
+  height: 34px !important;
+  min-width: 68px !important;
+  border-radius: 9px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+}@media (max-width: 1250px) {
+  .app .todo-task-item {
+    min-height: 74px !important;
+    padding: 14px 18px !important;
+  }
+
+.app .todo-task-meta {
+    gap: 10px !important;
+  }
+
+.app .todo-summary-card.today {
+    padding: 22px !important;
+  }
+
+.app .todo-summary-note-card {
+    min-height: 132px !important;
+    padding: 20px 20px 38px !important;
+  }
+}.app .todo-summary-card.today h2 {
+  margin-bottom: 18px !important;
+  font-size: 17px !important;
+  line-height: 1.1 !important;
+}.app .todo-progress-ring strong {
+  font-size: 28px !important;
+  line-height: 1 !important;
+  font-weight: 900 !important;
+  display: inline-flex !important;
+  align-items: baseline !important;
+  justify-content: center !important;
+  gap: 2px !important;
+  letter-spacing: 0.02em !important;
+}.app .todo-progress-ring span {
+  font-size: 11px !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+  margin-top: 3px !important;
+}.app .todo-add-task-button {
+  height: 40px !important;
+  border-radius: 12px !important;
+  padding: 0 17px !important;
+  gap: 8px !important;
+  font-size: 14px !important;
+}.app .todo-add-task-button span {
+  font-size: 18px !important;
+}@media (max-width: 1250px) {
+  .app .todo-summary-panel {
+    padding-top: 68px !important;
+    padding-bottom: 34px !important;
+  }
+
+.app .todo-summary-card.today {
+    padding: 20px 22px !important;
+  }
+
+.app .todo-progress-ring {
+    width: 108px !important;
+    height: 108px !important;
+  }
+
+.app .todo-progress-ring strong {
+    font-size: 22px !important;
+  }
+
+.app .todo-summary-stats {
+    gap: 17px !important;
+  }
+
+.app .todo-add-task-button {
+    height: 38px !important;
+    padding: 0 15px !important;
+    font-size: 13px !important;
+  }
+}.app .todo-add-modal {
+  width: 500px !important;
+  border-radius: 16px !important;
+  padding: 28px 32px 30px !important;
+}.app .todo-add-modal h2 {
+  margin-bottom: 22px !important;
+  font-size: 24px !important;
+}.app .todo-modal-field {
+  gap: 8px !important;
+  margin-bottom: 17px !important;
+}.app .todo-modal-field > span {
+  font-size: 14px !important;
+}.app .todo-modal-field input {
+  height: 40px !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+}.app .todo-modal-field textarea {
+  height: 70px !important;
+  padding: 12px 14px !important;
+  font-size: 13px !important;
+}.app .todo-due-date-button {
+  height: 40px !important;
+  padding: 0 14px !important;
+  font-size: 13px !important;
+}.app .todo-reminder-row {
+  min-height: 58px !important;
+  grid-template-columns: 26px minmax(0, 1fr) 40px !important;
+  gap: 10px !important;
+  padding: 0 14px !important;
+  margin-bottom: 18px !important;
+}.app .todo-reminder-row strong {
+  font-size: 14px !important;
+}.app .todo-reminder-row small {
+  font-size: 12px !important;
+}.app .todo-reminder-row i {
+  width: 38px !important;
+  height: 22px !important;
+}.app .todo-reminder-row i::before {
+  width: 16px !important;
+  height: 16px !important;
+}.app .todo-reminder-row i.active::before {
+  transform: translateX(16px) !important;
+}.app .todo-modal-actions {
+  gap: 12px !important;
+}.app .todo-modal-actions button {
+  height: 40px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+}@media (max-height: 760px) {
+  .app .todo-add-modal {
+    width: 480px !important;
+    padding: 24px 30px 26px !important;
+  }
+
+.app .todo-add-modal h2 {
+    margin-bottom: 18px !important;
+    font-size: 22px !important;
+  }
+
+.app .todo-modal-field {
+    margin-bottom: 14px !important;
+  }
+
+.app .todo-modal-field textarea {
+    height: 62px !important;
+  }
+
+.app .todo-reminder-row {
+    min-height: 54px !important;
+    margin-bottom: 16px !important;
+  }
+}.app .todo-completion-line {
+  height: 26px !important;
+  padding-top: 0 !important;
+  align-items: end !important;
+  display: grid !important;
+  place-items: end center !important;
+  font-size: 12px !important;
+}@media (max-width: 1250px) {
+  .app .todo-summary-note-card {
+    width: calc(100% + 8px) !important;
+    margin-left: -4px !important;
+    margin-right: -4px !important;
+    margin-top: 22px !important;
+  }
+
+.app .todo-completion-line {
+    height: 44px !important;
+    padding-top: 9px !important;
+  }
+}@media (max-width: 1250px) {
+  .app .todo-summary-note-card {
+    min-height: 98px !important;
+    padding: 13px 16px 28px !important;
+    margin-top: 22px !important;
+  }
+
+.app .todo-summary-note-card p {
+    margin-top: 8px !important;
+    font-size: 11.5px !important;
+  }
+}.app .todo-filter-icon-image {
+  width: 14px !important;
+  height: 14px !important;
+  object-fit: contain !important;
+  display: block !important;
+  opacity: 0.78 !important;
+  pointer-events: none !important;
+}.app .todo-filter-tab.active .todo-filter-icon-image {
+  opacity: 1 !important;
+}@media (max-width: 1250px) {
+  .app .todo-summary-panel {
+    padding-top: 70px !important;
+    padding-bottom: 46px !important;
+  }
+
+.app .todo-summary-note-card {
+    width: calc(100% + 22px) !important;
+    min-height: 80px !important;
+    margin-left: -11px !important;
+    margin-right: -11px !important;
+    margin-top: 22px !important;
+    padding: 11px 14px 24px !important;
+  }
+
+.app .todo-summary-note-card p {
+    font-size: 11px !important;
+    line-height: 1.28 !important;
+  }
+}@media (max-width: 1250px) {
+  .app .todo-summary-note-card {
+    margin-top: 28px !important;
+  }
+}.app .todo-card {
+  padding-top: 34px !important;
+  padding-bottom: 18px !important;
+}.app .todo-header {
+  padding-bottom: 18px !important;
+  align-items: flex-start !important;
+}@media (max-width: 1250px) {
+  .app .todo-card {
+    padding-top: 30px !important;
+    padding-bottom: 16px !important;
+  }
+
+.app .todo-header {
+    padding-bottom: 16px !important;
+  }
+
+.app .todo-content-grid {
+    padding-top: 16px !important;
+  }
+
+.app .todo-filter-tabs {
+    margin-bottom: 18px !important;
+  }
+
+.app .todo-summary-panel {
+    padding-top: 64px !important;
+    padding-bottom: 26px !important;
+  }
+
+.app .todo-progress-ring {
+    width: 124px !important;
+    height: 124px !important;
+  }
+
+.app .todo-task-item {
+    min-height: 68px !important;
+    padding: 12px 18px !important;
+  }
+
+.app .todo-task-text strong {
+    font-size: 14px !important;
+  }
+
+.app .todo-task-text span {
+    font-size: 11.5px !important;
+  }
+
+.app .todo-summary-note-card {
+    width: calc(100% + 28px) !important;
+    min-height: 68px !important;
+    margin-left: -14px !important;
+    margin-right: -14px !important;
+    padding: 9px 14px 21px !important;
+  }
+}.app .todo-header h1 {
+  font-size: 25px !important;
+  line-height: 1.08 !important;
+  margin-bottom: 8px !important;
+  font-weight: 700 !important;
+  margin: 0 0 7px !important;
+}.app .todo-header p {
+  font-size: 14px !important;
+  line-height: 1.35 !important;
+  font-weight: 300 !important;
+  margin: 0 !important;
+}@media (max-width: 1250px) {
+  .app .todo-header h1 {
+    font-size: 27px !important;
+  }
+
+.app .todo-header p {
+    font-size: 14px !important;
+  }
+
+.app .todo-progress-ring {
+    width: 140px !important;
+    height: 140px !important;
+  }
+
+.app .todo-progress-ring strong {
+    font-size: 27px !important;
+  }
+
+.app .todo-progress-ring span {
+    font-size: 10.5px !important;
+  }
+}.app .todo-progress-ring strong em {
+  font-style: normal !important;
+  font-size: 30px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}.app .todo-progress-ring strong small {
+  font-size: 17px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: 0.01em !important;
+}@media (max-width: 1250px) {
+  .app .todo-header h1 {
+    font-size: 28px !important;
+  }
+
+.app .todo-header p {
+    font-size: 14px !important;
+  }
+
+.app .todo-progress-ring strong em {
+    font-size: 28px !important;
+  }
+
+.app .todo-progress-ring strong small {
+    font-size: 16px !important;
+  }
+}.app .todo-filter-action-row {
+  height: 46px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  margin-bottom: 0 !important;
+  grid-column: 1 / -1 !important;
+  grid-row: 1 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}.app .todo-filter-action-row .todo-filter-tabs {
+  margin-bottom: 0 !important;
+}.app .todo-filter-action-row .todo-add-task-button {
+  flex: 0 0 auto !important;
+  height: 38px !important;
+  border-radius: 12px !important;
+  padding: 0 16px !important;
+  font-size: 13px !important;
+  margin-left: auto !important;
+  white-space: nowrap !important;
+}.app .todo-filter-action-row .todo-add-task-button span {
+  font-size: 17px !important;
+}@media (max-width: 1250px) {
+  .app .todo-filter-action-row {
+    height: 44px !important;
+    margin-bottom: 18px !important;
+  }
+
+.app .todo-filter-action-row .todo-add-task-button {
+    height: 36px !important;
+    padding: 0 14px !important;
+    font-size: 12.5px !important;
+  }
+
+.app .todo-summary-panel {
+    padding-top: 62px !important;
+    padding-bottom: 26px !important;
+  }
+
+.app .todo-summary-note-card {
+    transform: translateY(8px) !important;
+    min-height: 64px !important;
+  }
+}@media (max-width: 1250px) {
+  .app .todo-content-grid {
+    grid-template-rows: 44px minmax(0, 1fr) !important;
+  }
+
+.app .todo-filter-action-row {
+    height: 44px !important;
+  }
+
+.app .todo-filter-action-row .todo-add-task-button {
+    height: 36px !important;
+    padding: 0 14px !important;
+    font-size: 12.5px !important;
+  }
+
+.app .todo-summary-panel {
+    padding-top: 0 !important;
+    padding-bottom: 26px !important;
+  }
+}.app .todo-main-panel,
+.app .todo-summary-panel,
+.app .todo-task-list,
+.app .todo-summary-card.today {
+  min-width: 0 !important;
+}.app .todo-task-meta {
+  min-width: 0 !important;
+  justify-content: flex-end !important;
+  flex-wrap: nowrap !important;
+}@media (max-width: 1180px) and (min-width: 821px) {
+  .app .todo-content-grid {
+    grid-template-columns: minmax(0, 1fr) clamp(190px, 24vw, 240px) !important;
+    column-gap: 16px !important;
+  }
+
+.app .todo-filter-action-row {
+    gap: 12px !important;
+  }
+
+.app .todo-filter-tabs {
+    height: 42px !important;
+    max-width: min(460px, calc(100% - 132px)) !important;
+    padding: 3px !important;
+  }
+
+.app .todo-filter-tab {
+    height: 34px !important;
+    padding: 0 9px !important;
+    gap: 5px !important;
+    font-size: 12px !important;
+  }
+
+.app .todo-filter-icon-image {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+.app .todo-filter-action-row .todo-add-task-button {
+    height: 34px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: 12px !important;
+  }
+
+.app .todo-filter-action-row .todo-add-task-button span {
+    font-size: 15px !important;
+  }
+
+.app .todo-task-item {
+    grid-template-columns: 36px minmax(0, 1fr) minmax(150px, 210px) !important;
+    gap: 10px !important;
+    padding: 10px 14px !important;
+  }
+
+.app .todo-task-check {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+.app .todo-task-text strong {
+    font-size: 13px !important;
+  }
+
+.app .todo-task-text span {
+    font-size: 11px !important;
+  }
+
+.app .todo-task-meta {
+    gap: 8px !important;
+  }
+
+.app .todo-task-due {
+    font-size: 10.5px !important;
+  }
+
+.app .todo-priority-pill {
+    min-width: 52px !important;
+    height: 25px !important;
+    font-size: 10.5px !important;
+  }
+
+.app .todo-task-more {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+.app .todo-summary-card.today {
+    padding: 18px 18px 16px !important;
+  }
+
+.app .todo-summary-card.today h2 {
+    font-size: 15px !important;
+  }
+
+.app .todo-progress-ring {
+    width: 118px !important;
+    height: 118px !important;
+    margin-bottom: 24px !important;
+  }
+
+.app .todo-progress-ring strong em {
+    font-size: 26px !important;
+  }
+
+.app .todo-progress-ring strong small {
+    font-size: 15px !important;
+  }
+
+.app .todo-summary-stats {
+    gap: 14px !important;
+  }
+
+.app .todo-summary-stats div {
+    font-size: 11.5px !important;
+  }
+
+.app .todo-summary-note-card {
+    width: calc(100% + 22px) !important;
+    margin-left: -11px !important;
+    margin-right: -11px !important;
+    min-height: 62px !important;
+    padding: 8px 12px 18px !important;
+  }
+
+.app .todo-summary-note-card strong {
+    font-size: 11.5px !important;
+  }
+
+.app .todo-summary-note-card p {
+    font-size: 10px !important;
+  }
+}@media (max-width: 980px) and (min-width: 821px) {
+  .app .todo-content-grid {
+    grid-template-columns: minmax(0, 1fr) 180px !important;
+    column-gap: 12px !important;
+  }
+
+.app .todo-filter-tabs {
+    max-width: min(400px, calc(100% - 118px)) !important;
+  }
+
+.app .todo-filter-tab {
+    padding: 0 7px !important;
+    font-size: 11px !important;
+  }
+
+.app .todo-filter-action-row .todo-add-task-button {
+    padding: 0 10px !important;
+    font-size: 11.5px !important;
+  }
+
+.app .todo-task-item {
+    grid-template-columns: 32px minmax(0, 1fr) minmax(116px, 150px) !important;
+    gap: 8px !important;
+  }
+
+.app .todo-task-due {
+    max-width: 88px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+.app .todo-priority-pill {
+    min-width: 46px !important;
+  }
+
+.app .todo-summary-card.today {
+    padding: 16px 16px 14px !important;
+  }
+
+.app .todo-progress-ring {
+    width: 108px !important;
+    height: 108px !important;
+  }
+
+.app .todo-summary-stats {
+    gap: 12px !important;
+  }
+}.app .todo-task-list,
+.app .todo-summary-card.today {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}.app .todo-task-list::-webkit-scrollbar,
+.app .todo-summary-card.today::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}.app .todo-today-schedule-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}.app .todo-today-schedule-card > strong {
+  flex: 0 0 auto !important;
+}.app .todo-today-schedule-card > p {
+  margin: 8px 0 0 !important;
+  color: #65708d !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+}.app .todo-today-schedule-list {
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  padding-right: 2px !important;
+}.app .todo-today-schedule-list::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}.app .todo-today-schedule-item {
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 7px !important;
+  color: #10172f !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+}.app .todo-today-schedule-item time {
+  color: var(--accent-color, #705bff) !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+}.app .todo-today-schedule-item span {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}.app .todo-summary-note-card.todo-today-schedule-card {
+  overflow: hidden !important;
+}.app .todo-today-schedule-card .todo-today-schedule-item {
+  min-width: 0 !important;
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 7px !important;
+}.app .todo-today-schedule-card .todo-today-schedule-time {
+  position: static !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: auto !important;
+  color: rgba(101, 112, 141, 0.78) !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  text-shadow: none !important;
+}.app .todo-today-schedule-card .todo-today-schedule-title {
+  position: static !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  color: #10172f !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  text-shadow: none !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}.app .todo-task-check {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 6px !important;
+}@media (max-width: 1180px) and (min-width: 821px) {
+  .app .todo-task-check {
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 6px !important;
+  }
+}@media (prefers-reduced-motion: reduce) {
+  .app .todo-progress-ring,
+  .app .todo-progress-ring::before {
+    transition: none !important;
+  }
+}
+
+/* Task editing */
+.todo-task-edit {
+  height: 30px;
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #65708d;
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.todo-task-edit:hover {
+  color: var(--accent-color, #705bff);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 34%, rgba(130, 140, 170, 0.18));
+}
+
+.app[data-theme='dark'] .todo-task-edit {
+  background: #333333;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #d8d8d8;
+}
+
+/* ========================= */
+/* To-Do edit modal refinement */
+/* ========================= */
+
+.app .todo-reminder-row {
+  align-items: center !important;
+}
+
+.app .todo-reminder-row > span {
+  width: 22px !important;
+  height: 22px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  align-self: center !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  line-height: 1 !important;
+}
+
+.app .todo-reminder-row i {
+  position: relative !important;
+  display: block !important;
+  width: 38px !important;
+  height: 22px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.24) !important;
+  border: 1px solid rgba(255, 255, 255, 0.42) !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  align-self: center !important;
+}
+
+.app .todo-reminder-row i::before {
+  content: '' !important;
+  position: absolute !important;
+  left: 3px !important;
+  top: 50% !important;
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  transform: translateY(-50%) !important;
+  transition: transform 0.16s ease !important;
+}
+
+.app .todo-reminder-row i.active {
+  background: var(--accent-color, #705bff) !important;
+  border-color: var(--accent-color, #705bff) !important;
+}
+
+.app .todo-reminder-row i.active::before {
+  transform: translate(16px, -50%) !important;
+}
+
+.app .todo-priority-option {
+  border-width: 1px !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.app[data-wallpaper='true'] .todo-priority-option {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.82) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.app:not([data-wallpaper='true']) .todo-priority-option {
+  background: transparent !important;
+  border: 1px solid rgba(130, 140, 170, 0.28) !important;
+}
+
+.app .todo-priority-option.high:not(.active),
+.app .todo-priority-option.medium:not(.active),
+.app .todo-priority-option.low:not(.active) {
+  border-width: 1px !important;
+}
+
+.app[data-wallpaper='true'] .todo-priority-option.high:not(.active),
+.app[data-wallpaper='true'] .todo-priority-option.medium:not(.active),
+.app[data-wallpaper='true'] .todo-priority-option.low:not(.active) {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.app .todo-priority-option.active,
+.app .todo-priority-option.high.active,
+.app .todo-priority-option.medium.active,
+.app .todo-priority-option.low.active {
+  background: var(--accent-color, #705bff) !important;
+  border: 1px solid var(--accent-color, #705bff) !important;
+  color: #ffffff !important;
+}
+
+
+/* ========================= */
+/* To-Do item action menu */
+/* ========================= */
+
+.app .todo-task-meta {
+  overflow: visible;
+}
+
+.app .todo-task-action-menu {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app .todo-task-action-menu .todo-task-more {
+  width: 34px;
+  height: 28px;
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  color: #65708d;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 1px;
+  padding: 0 0 5px;
+  cursor: pointer;
+  box-shadow: none;
+  transition:
+    color 0.14s ease,
+    border-color 0.14s ease,
+    background 0.14s ease;
+}
+
+.app .todo-task-action-menu .todo-task-more:hover,
+.app .todo-task-action-menu .todo-task-more.active {
+  color: var(--accent-color, #705bff);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 34%, rgba(130, 140, 170, 0.18));
+  background: color-mix(in srgb, var(--accent-color, #705bff) 10%, rgba(255, 255, 255, 0.62));
+}
+
+.app .todo-task-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 112px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  box-shadow: 0 16px 38px rgba(20, 28, 58, 0.18);
+  display: grid;
+  gap: 4px;
+  z-index: 50;
+}
+
+.app .todo-task-menu-popover::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 15px;
+  width: 9px;
+  height: 9px;
+  background: inherit;
+  border-left: 1px solid rgba(130, 140, 170, 0.18);
+  border-top: 1px solid rgba(130, 140, 170, 0.18);
+  transform: rotate(45deg);
+}
+
+.app .todo-task-menu-popover > button {
+  position: relative;
+  z-index: 1;
+  height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #4f5a72;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.app .todo-task-menu-popover > button:hover {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 12%, transparent);
+  color: var(--accent-color, #705bff);
+}
+
+.app .todo-task-menu-popover > button.danger {
+  color: #e85a62;
+}
+
+.app .todo-task-menu-popover > button.danger:hover {
+  background: rgba(255, 89, 98, 0.12);
+  color: #ff4e58;
+}
+
+.app[data-theme='dark'] .todo-task-action-menu .todo-task-more,
+.app[data-theme='dark'] .todo-task-menu-popover {
+  background: #333333;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #d8d8d8;
+}
+
+.app[data-theme='dark'] .todo-task-menu-popover::before {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.app[data-theme='dark'] .todo-task-menu-popover > button {
+  color: #d8d8d8;
+}
+
+.app[data-theme='dark'] .todo-task-menu-popover > button.danger {
+  color: #ff737a;
+}
+
+
+/* ========================= */
+/* To-Do more button transparent match */
+/* ========================= */
+
+.app .todo-task-action-menu .todo-task-more,
+.app .todo-task-action-menu .todo-task-more:hover,
+.app .todo-task-action-menu .todo-task-more.active,
+.app[data-theme='dark'] .todo-task-action-menu .todo-task-more,
+.app[data-wallpaper='true'] .todo-task-action-menu .todo-task-more,
+.app[data-theme='light'][data-wallpaper='true'] .todo-task-action-menu .todo-task-more {
+  min-width: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  padding: 0 2px !important;
+  font-size: 19px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: 1.5px !important;
+  opacity: 0.68 !important;
+}
+
+.app .todo-task-action-menu .todo-task-more:hover,
+.app .todo-task-action-menu .todo-task-more.active {
+  opacity: 1 !important;
+}
+
+
+/* ========================= */
+/* Date picker action compact fix */
+/* ========================= */
+
+.app .todo-date-picker-modal .diary-modal-close {
+  top: 10px !important;
+  right: 20px !important;
+}
+
+.app .todo-date-picker-actions {
+  grid-template-columns: 132px 132px !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  margin-top: 14px !important;
+}
+
+.app .todo-date-picker-actions button {
+  height: 36px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  padding: 0 14px !important;
+}
+
+@media (max-width: 520px) {
+  .app .todo-date-picker-actions {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+
+/* ========================= */
+/* Date picker action edge spacing final */
+/* ========================= */
+
+.app .todo-date-picker-actions {
+  width: 100% !important;
+  grid-template-columns: 132px 132px !important;
+  justify-content: space-between !important;
+  gap: 0 !important;
+  margin-top: 14px !important;
+}
+
+.app .todo-date-picker-actions button {
+  height: 36px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  padding: 0 14px !important;
+}
+
+@media (max-width: 520px) {
+  .app .todo-date-picker-actions {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+  }
+}

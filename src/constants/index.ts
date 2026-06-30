@@ -1,6 +1,6 @@
 import type {
   AccentColor, ProgramItem, ProgramType, HomeMusicPlaylist, PlaylistTrack, DiaryEntry, AppSettings,
-  PlaylistCoverOverrideMap, ResolvedTheme,
+  PlaylistCoverOverrideMap, ResolvedTheme, CalendarSchedule, TodoTask,
 } from '../types'
 
 // ─── 이미지 imports ───────────────────────────────────────────────────────────
@@ -353,6 +353,8 @@ export const monthNames = [
 export const weekdayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 export const calendarWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export const initialDiaryEntries: Record<string, DiaryEntry> = {}
+export const initialCalendarSchedules: Record<string, CalendarSchedule[]> = {}
+export const initialTodoTasks: TodoTask[] = []
 
 // ─── 헬퍼 함수 ───────────────────────────────────────────────────────────────
 
@@ -407,8 +409,12 @@ export function getDiaryCalendarDays(baseDate: Date) {
   const year = baseDate.getFullYear()
   const month = baseDate.getMonth()
   const firstDay = new Date(year, month, 1)
+  const lastDay = new Date(year, month + 1, 0)
   const startDate = new Date(year, month, 1 - firstDay.getDay())
-  return Array.from({ length: 35 }, (_, i) => {
+  const endDate = new Date(year, month + 1, 6 - lastDay.getDay())
+  const dayCount = Math.round((endDate.getTime() - startDate.getTime()) / 86400000) + 1
+
+  return Array.from({ length: dayCount }, (_, i) => {
     const date = new Date(startDate)
     date.setDate(startDate.getDate() + i)
     return date
@@ -469,6 +475,46 @@ export function isDiaryEntries(value: unknown): value is Record<string, DiaryEnt
     const d = item as DiaryEntry
     return typeof d.date === 'string' && typeof d.content === 'string' &&
       typeof d.createdAt === 'string' && typeof d.updatedAt === 'string'
+  })
+}
+
+export function isCalendarSchedules(value: unknown): value is Record<string, CalendarSchedule[]> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+
+  const validColors = ['red', 'blue', 'green', 'orange', 'purple', 'gray']
+
+  return Object.values(value).every((items) => (
+    Array.isArray(items) && items.every((item) => {
+      if (!item || typeof item !== 'object') return false
+      const schedule = item as CalendarSchedule
+      return typeof schedule.id === 'string' &&
+        typeof schedule.date === 'string' &&
+        typeof schedule.title === 'string' &&
+        typeof schedule.createdAt === 'string' &&
+        typeof schedule.updatedAt === 'string' &&
+        (schedule.time === undefined || typeof schedule.time === 'string') &&
+        (schedule.color === undefined || validColors.includes(schedule.color))
+    })
+  ))
+}
+
+export function isTodoTasks(value: unknown): value is TodoTask[] {
+  if (!Array.isArray(value)) return false
+  const validPriorities = ['high', 'medium', 'low']
+
+  return value.every((item) => {
+    if (!item || typeof item !== 'object') return false
+    const task = item as TodoTask
+    return typeof task.id === 'string' &&
+      typeof task.title === 'string' &&
+      (task.description === undefined || typeof task.description === 'string') &&
+      (task.dueDate === undefined || typeof task.dueDate === 'string') &&
+      validPriorities.includes(task.priority) &&
+      typeof task.reminderEnabled === 'boolean' &&
+      typeof task.completed === 'boolean' &&
+      (task.completedAt === undefined || task.completedAt === null || typeof task.completedAt === 'string') &&
+      typeof task.createdAt === 'string' &&
+      typeof task.updatedAt === 'string'
   })
 }
 

@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 
@@ -11,17 +11,27 @@ import './styles/playlist.css'
 import './styles/programs.css'
 import './styles/settings.css'
 import './styles/diary.css'
+import './styles/todo.css'
 import './styles/modal.css'
 import './styles/animations.css'
 import './styles/floating-player.css'
+import './styles/ai-chat.css'
+import aiBlueIcon from './assets/ai-blue.png'
+import aiGrayIcon from './assets/ai-gray.png'
+import aiGreenIcon from './assets/ai-green.png'
+import aiOrangeIcon from './assets/ai-orange.png'
+import aiPurpleIcon from './assets/ai-purple.png'
+import aiRedIcon from './assets/ai-red.png'
+import aiWhiteIcon from './assets/ai-white.png'
 import './styles/dark.css'
 import './styles/media.css'
 
 // types
 import type {
   Page, AudioDevice, MonitorOrientation, HomeMusicPlaylist, PlaylistTrack,
-  ProgramItem, AppSettings, DiaryEntry, LaunchStatus, ResolvedTheme, PlaylistViewMode,
+  ProgramItem, AppSettings, DiaryEntry, CalendarSchedule, TodoTask, TodoFilter, LaunchStatus, ResolvedTheme, PlaylistViewMode,
   YoutubeMusicAccount, PlaylistCoverOverrideMap, PlaylistCoverChangeResult,
+  AIChatCharacterId, AIChatContext, AICommand, TodoPriority,
 } from './types'
 
 // constants & helpers
@@ -29,9 +39,9 @@ import {
   iconMap, musicControlIconMap, logoMap, accentColorMap, accentRingMap,
   likedIconMap, prelikedIconMap, themeIconMap,
   fallbackHomeMusicPlaylists, fallbackPlaylistTracks, initialPrograms, defaultSettings,
-  initialDiaryEntries, formatDateKey, createMonthDate, parseDurationToSeconds,
+  initialDiaryEntries, initialCalendarSchedules, initialTodoTasks, formatDateKey, createMonthDate, parseDurationToSeconds,
   getProgramIcon, getNameFromPath, createId, getProgramPresets,
-  isProgramList, isSettings, isDiaryEntries, isHomeMusicPlaylistList,
+  isProgramList, isSettings, isDiaryEntries, isCalendarSchedules, isTodoTasks, isHomeMusicPlaylistList,
   applyHomeMusicPlaylistOrder, refreshHomeMusicPlaylistThumbnails,
   filterHiddenHomeMusicPlaylists, applyHomeMusicPlaylistCoverOverrides, getPlaylistCoverForTheme,
 } from './constants'
@@ -39,8 +49,9 @@ import {
 // pages
 import {
   HomePage, DashboardPage, PlaylistPage,
-  DiaryPage, WriteDiaryPage, ProgramsPage, SettingsPage,
+  DiaryPage, WriteDiaryPage, ToDoPage, ProgramsPage, SettingsPage, AIChatPage,
 } from './pages'
+import type { AIChatNotification } from './pages/AIChatPage'
 
 // components
 import { FloatingMusicPlayer } from './components'
@@ -48,11 +59,142 @@ import { FloatingMusicPlayer } from './components'
 // modals
 import {
   DiaryPickerModal, DiaryViewModal, DiaryDeleteModal,
+  ScheduleTimePickerModal, AddTodoTaskModal,
   UpdateModal, YoutubeLoginModal, FullPlaylistModal, AddProgramModal,
 } from './modals'
 
 const YOUTUBE_TRACK_SWITCH_DELAY_MS = 700
 const LIKED_PLAYLIST_ID = 'mn-liked-tracks'
+
+type AIToastNotification = AIChatNotification & {
+  id: string
+}
+
+const MINI_CHAT_EXPRESSION_IMAGES = import.meta.glob('./assets/minichat-*.png', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>
+
+const aiShortcutIconMap = {
+  blue: aiBlueIcon,
+  gray: aiGrayIcon,
+  green: aiGreenIcon,
+  orange: aiOrangeIcon,
+  purple: aiPurpleIcon,
+  red: aiRedIcon,
+  white: aiWhiteIcon,
+} as const
+
+const getMiniChatCharacterImage = (characterId: AIChatNotification['characterId']) => (
+  MINI_CHAT_EXPRESSION_IMAGES[`./assets/minichat-${characterId}.png`]
+    ?? MINI_CHAT_EXPRESSION_IMAGES['./assets/minichat-cheong.png']
+    ?? ''
+)
+
+const scheduleAccentColors: CalendarSchedule['color'][] = ['red', 'blue', 'green', 'orange', 'purple', 'gray']
+
+const normalizeScheduleTime = (value: string) => {
+  const trimmed = value.trim()
+  if (!trimmed) return undefined
+
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return undefined
+
+  const hours = Number(match[1])
+  const minutes = Number(match[2])
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return undefined
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return undefined
+
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+const parseScheduleInput = (value: string) => {
+  const trimmed = value.trim()
+  const match = trimmed.match(/^(\d{1,2}:\d{2})\s+(.+)$/)
+
+  if (!match) {
+    return { time: undefined as string | undefined, title: trimmed }
+  }
+
+  const time = normalizeScheduleTime(match[1])
+
+  return {
+    time,
+    title: match[2].trim(),
+  }
+}
+
+const sortSchedules = (schedules: CalendarSchedule[]) => (
+  [...schedules].sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'))
+)
+
+
+const isDateKey = (value?: string | null) => (
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+)
+
+const normalizeCommandDate = (value?: string | null) => (
+  isDateKey(value) ? value : undefined
+)
+
+const normalizeCommandTime = (value?: string | null) => {
+  if (value === null) return null
+  if (typeof value !== 'string') return undefined
+  if (!value.trim()) return null
+  return normalizeScheduleTime(value)
+}
+
+const normalizeTaskPriority = (value?: TodoPriority | null): TodoPriority => (
+  value === 'high' || value === 'medium' || value === 'low' ? value : 'medium'
+)
+
+const textMatches = (source: string, query?: string | null) => {
+  if (!query) return false
+  const a = source.trim().toLowerCase()
+  const b = query.trim().toLowerCase()
+  return a === b || a.includes(b) || b.includes(a)
+}
+
+const formatCommandDateLabel = (dateKey?: string | null) => {
+  if (!dateKey) return ''
+  const [year, month, day] = dateKey.split('-').map(Number)
+  if (!year || !month || !day) return dateKey
+  return `${month}/${day}`
+}
+
+const formatCommandDateTimeLabel = (dateKey?: string | null, time?: string | null) => {
+  const dateLabel = formatCommandDateLabel(dateKey)
+  if (dateLabel && time) return `${dateLabel} ${time}`
+  return dateLabel || time || 'To-Do'
+}
+
+
+const SCHEDULE_REMINDER_OFFSETS_MINUTES = [60, 30] as const
+
+const getCalendarScheduleDateTime = (schedule: CalendarSchedule) => {
+  if (!schedule.time) return null
+  return new Date(`${schedule.date}T${schedule.time}:00`)
+}
+
+const getCalendarScheduleReminderDateTime = (
+  schedule: CalendarSchedule,
+  minutesBefore: typeof SCHEDULE_REMINDER_OFFSETS_MINUTES[number],
+) => {
+  const scheduleDateTime = getCalendarScheduleDateTime(schedule)
+  if (!scheduleDateTime) return null
+  return new Date(scheduleDateTime.getTime() - minutesBefore * 60_000)
+}
+
+const getCalendarScheduleReminderKey = (
+  scheduleId: string,
+  minutesBefore: typeof SCHEDULE_REMINDER_OFFSETS_MINUTES[number],
+) => `${scheduleId}:${minutesBefore}`
+
+const isNotificationDueNow = (targetDate: Date, now: Date) => {
+  const diff = now.getTime() - targetDate.getTime()
+  return diff >= 0 && diff < 120_000
+}
 
 type YoutubePlayer = {
   playVideo?: () => void
@@ -99,6 +241,9 @@ declare global {
 function App() {
   // ─── State ────────────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState<Page>('home')
+  const [aiToastNotification, setAiToastNotification] = useState<AIToastNotification | null>(null)
+  const [isAiToastVisible, setIsAiToastVisible] = useState(false)
+  const aiToastTimerRef = useRef<number | null>(null)
   const [selectedPreset, setSelectedPreset] = useState(1)
   const [selectedAudioDevice, setSelectedAudioDevice] = useState<AudioDevice>('speaker')
   const [selectedMonitorOrientation, setSelectedMonitorOrientation] = useState<MonitorOrientation>('horizontal')
@@ -163,6 +308,7 @@ function App() {
   const [programs, setPrograms] = useState<ProgramItem[]>(initialPrograms)
   const [settings, setSettings] = useState<AppSettings>(defaultSettings)
   const [isSidebarThemeToggleHovered, setIsSidebarThemeToggleHovered] = useState(false)
+  const [isAIShortcutHovered, setIsAIShortcutHovered] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [hoveredCollapsedSidebarPage, setHoveredCollapsedSidebarPage] = useState<Page | null>(null)
   const [launchStatuses, setLaunchStatuses] = useState<Record<string, LaunchStatus>>({})
@@ -174,6 +320,9 @@ function App() {
   const [isProgramsLoaded, setIsProgramsLoaded] = useState(false)
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false)
   const [isDiariesLoaded, setIsDiariesLoaded] = useState(false)
+  const [isCalendarSchedulesLoaded, setIsCalendarSchedulesLoaded] = useState(false)
+  const [isTodoTasksLoaded, setIsTodoTasksLoaded] = useState(false)
+  const [inAppNotification, setInAppNotification] = useState<{ title: string; body?: string } | null>(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [newProgramName, setNewProgramName] = useState('')
@@ -185,9 +334,20 @@ function App() {
   const [updateModalType, setUpdateModalType] = useState<'available' | 'downloading' | 'ready' | 'latest' | 'error' | null>(null)
   const [updateProgress, setUpdateProgress] = useState(0)
   const [diaryEntries, setDiaryEntries] = useState<Record<string, DiaryEntry>>(initialDiaryEntries)
+  const [calendarSchedules, setCalendarSchedules] = useState<Record<string, CalendarSchedule[]>>(initialCalendarSchedules)
+  const [todoTasks, setTodoTasks] = useState<TodoTask[]>(initialTodoTasks)
+  const [todoFilter, setTodoFilter] = useState<TodoFilter>('all')
+  const [isAddTodoTaskModalOpen, setIsAddTodoTaskModalOpen] = useState(false)
+  const [editingTodoTask, setEditingTodoTask] = useState<TodoTask | null>(null)
   const [diaryDisplayDate, setDiaryDisplayDate] = useState(new Date(2026, 5, 1))
   const [isDiaryPickerOpen, setIsDiaryPickerOpen] = useState(false)
   const [selectedDiaryDate, setSelectedDiaryDate] = useState<Date | null>(null)
+  const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date>(currentDate)
+  const [scheduleInput, setScheduleInput] = useState('')
+  const [scheduleTimeInput, setScheduleTimeInput] = useState('')
+  const [isScheduleTimePickerOpen, setIsScheduleTimePickerOpen] = useState(false)
+  const [scheduleTimePickerHour, setScheduleTimePickerHour] = useState(currentDate.getHours())
+  const [scheduleTimePickerMinute, setScheduleTimePickerMinute] = useState(currentDate.getMinutes())
   const [diaryText, setDiaryText] = useState('')
   const [isDeleteDiaryConfirmOpen, setIsDeleteDiaryConfirmOpen] = useState(false)
   const [isDiarySavedVisible, setIsDiarySavedVisible] = useState(false)
@@ -196,6 +356,36 @@ function App() {
   const [diaryPickerYear, setDiaryPickerYear] = useState(diaryDisplayDate.getFullYear())
   const diaryMonthWheelRef = useRef<HTMLDivElement | null>(null)
   const diaryYearWheelRef = useRef<HTMLDivElement | null>(null)
+  const notifiedCalendarScheduleIdsRef = useRef<Set<string>>(new Set())
+
+  const clearCalendarScheduleNotificationKeys = (scheduleId: string) => {
+    SCHEDULE_REMINDER_OFFSETS_MINUTES.forEach((minutesBefore) => {
+      notifiedCalendarScheduleIdsRef.current.delete(getCalendarScheduleReminderKey(scheduleId, minutesBefore))
+    })
+  }
+
+  const showAIToastNotification = (notification: AIChatNotification) => {
+    if (aiToastTimerRef.current) {
+      window.clearTimeout(aiToastTimerRef.current)
+    }
+
+    setAiToastNotification({
+      ...notification,
+      id: `ai-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    })
+    setIsAiToastVisible(true)
+
+    aiToastTimerRef.current = window.setTimeout(() => {
+      setIsAiToastVisible(false)
+      aiToastTimerRef.current = null
+    }, 4200)
+  }
+
+  useEffect(() => {
+    return () => {
+      if (aiToastTimerRef.current) window.clearTimeout(aiToastTimerRef.current)
+    }
+  }, [])
 
   // ─── Computed values ──────────────────────────────────────────────────────
   const presetPrograms = programs.filter((p) => getProgramPresets(p).includes(selectedPreset))
@@ -249,6 +439,45 @@ function App() {
   const selectedDiaryEntry = selectedDiaryDate ? diaryEntries[formatDateKey(selectedDiaryDate)] : null
   const diaryPickerMinYear = currentDate.getFullYear() - 50
   const diaryPickerMaxYear = currentDate.getFullYear() + 50
+
+
+  const aiChatContext = useMemo<AIChatContext>(() => {
+    const schedules = (Object.values(calendarSchedules) as CalendarSchedule[][])
+      .flat()
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 40)
+      .map((schedule) => ({
+        id: schedule.id,
+        title: schedule.title,
+        date: schedule.date,
+        time: schedule.time,
+        createdAt: schedule.createdAt,
+        updatedAt: schedule.updatedAt,
+      }))
+
+    const todos = todoTasks
+      .slice()
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 40)
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        dueDate: task.dueDate,
+        priority: task.priority,
+        completed: task.completed,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+      }))
+
+    return {
+      currentDate: todayDateKey,
+      currentDateTime: currentDate.toISOString(),
+      selectedScheduleDate: formatDateKey(selectedScheduleDate),
+      schedules,
+      todos,
+    }
+  }, [calendarSchedules, currentDate, selectedScheduleDate, todayDateKey, todoTasks])
 
   const likedTrackIdSet = new Set(likedTrackIds)
   const knownTrackMap = new Map<string, PlaylistTrack>()
@@ -398,6 +627,12 @@ function App() {
     return getMusicControlIcon(iconName, isActive)
   }
 
+  const getAIShortcutIcon = (isActive: boolean, isHovered = false) => {
+    if (isActive || isHovered) return aiShortcutIconMap[settings.accentColor]
+    if (activeTheme === 'dark' || isCustomWallpaperMode) return aiShortcutIconMap.white
+    return aiShortcutIconMap.gray
+  }
+
   const getLikeIcon = (isLiked: boolean, isHovered = false) => {
     if (isLiked) return likedIconMap[settings.accentColor]
     // 좋아요가 안 눌린 상태에서 hover 시 빈 하트 accent 아이콘으로
@@ -416,7 +651,12 @@ function App() {
     )
   }
 
-  const updateSettings = (partial: Partial<AppSettings>) =>
+  const getHasModal = () =>
+    isDiaryPickerOpen || Boolean(selectedDiaryDate) || isDeleteDiaryConfirmOpen ||
+    isFullPlaylistModalOpen || isYoutubeLoginModalOpen || Boolean(updateModalType) ||
+    isAddModalOpen || isAddTodoTaskModalOpen
+
+    const updateSettings = (partial: Partial<AppSettings>) =>
     setSettings((prev) => ({ ...prev, ...partial }))
 
   const updateSidebarCollapsed = (collapsed: boolean) => {
@@ -1071,10 +1311,10 @@ function App() {
       return Math.max(0, Math.min(prev + direction, max))
     })
   }
-  const handleHomeMusicPlaylistWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    const amount = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX
+  const handleHomeMusicPlaylistWheel = (event: WheelEvent) => {
+    const amount = Math.abs(event.deltaY) > Math.abs(event.deltaX) ? event.deltaY : event.deltaX
     if (Math.abs(amount) < 20 || homeMusicPlaylistWheelLockRef.current) return
-    e.preventDefault()
+    event.preventDefault()
     homeMusicPlaylistWheelLockRef.current = true
     handleMoveHomeMusicPlaylist(amount > 0 ? 1 : -1)
     window.setTimeout(() => { homeMusicPlaylistWheelLockRef.current = false }, 320)
@@ -1085,6 +1325,485 @@ function App() {
     if (!diaryEntries[formatDateKey(date)]) return
     setSelectedDiaryDate(date)
   }
+
+  const handleSelectScheduleDate = (date: Date) => {
+    setSelectedScheduleDate(date)
+    setScheduleInput('')
+    setScheduleTimeInput('')
+  }
+  const handleAddSchedule = () => {
+    const { title, time: typedTime } = parseScheduleInput(scheduleInput)
+    const time = normalizeScheduleTime(scheduleTimeInput) ?? typedTime
+    if (!title) return
+
+    const dateKey = formatDateKey(selectedScheduleDate)
+    const now = new Date().toISOString()
+    const existingCount = calendarSchedules[dateKey]?.length ?? 0
+    const schedule: CalendarSchedule = {
+      id: createId(),
+      date: dateKey,
+      title,
+      time,
+      color: scheduleAccentColors[existingCount % scheduleAccentColors.length],
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    setCalendarSchedules((prev) => ({
+      ...prev,
+      [dateKey]: sortSchedules([...(prev[dateKey] ?? []), schedule]),
+    }))
+    setScheduleInput('')
+    setScheduleTimeInput('')
+  }
+
+  const handleOpenScheduleTimePicker = () => {
+    const typedTime = parseScheduleInput(scheduleInput).time
+    const time = normalizeScheduleTime(scheduleTimeInput) ?? typedTime
+    const fallbackHour = currentDate.getHours()
+    const fallbackMinute = currentDate.getMinutes()
+
+    if (time) {
+      const [hour, minute] = time.split(':').map(Number)
+      setScheduleTimePickerHour(Number.isFinite(hour) ? hour : fallbackHour)
+      setScheduleTimePickerMinute(Number.isFinite(minute) ? minute : fallbackMinute)
+    } else {
+      setScheduleTimePickerHour(fallbackHour)
+      setScheduleTimePickerMinute(fallbackMinute)
+    }
+
+    setIsScheduleTimePickerOpen(true)
+  }
+
+  const handleConfirmScheduleTime = () => {
+    setScheduleTimeInput(`${String(scheduleTimePickerHour).padStart(2, '0')}:${String(scheduleTimePickerMinute).padStart(2, '0')}`)
+    setIsScheduleTimePickerOpen(false)
+  }
+
+  const handleClearScheduleTime = () => {
+    setScheduleTimeInput('')
+    setIsScheduleTimePickerOpen(false)
+  }
+
+  const handleDeleteSchedule = (scheduleId: string) => {
+    clearCalendarScheduleNotificationKeys(scheduleId)
+    const dateKey = formatDateKey(selectedScheduleDate)
+    setCalendarSchedules((prev) => {
+      const nextSchedules = (prev[dateKey] ?? []).filter((schedule) => schedule.id !== scheduleId)
+      const next = { ...prev }
+
+      if (nextSchedules.length > 0) next[dateKey] = nextSchedules
+      else delete next[dateKey]
+
+      return next
+    })
+  }
+
+
+  const handleUpdateSchedule = (scheduleId: string, updates: Partial<Pick<CalendarSchedule, 'title' | 'date' | 'time' | 'color'>>) => {
+    clearCalendarScheduleNotificationKeys(scheduleId)
+    const nextTitle = typeof updates.title === 'string' ? updates.title.trim() : undefined
+    const nextDate = normalizeCommandDate(updates.date)
+    const normalizedTime = normalizeCommandTime(updates.time ?? undefined)
+    const now = new Date().toISOString()
+
+    setCalendarSchedules((prev) => {
+      let foundSchedule: CalendarSchedule | undefined
+      let foundDateKey = ''
+
+      for (const [dateKey, schedules] of Object.entries(prev) as Array<[string, CalendarSchedule[]]>) {
+        const schedule = schedules.find((item) => item.id === scheduleId)
+        if (!schedule) continue
+        foundSchedule = schedule
+        foundDateKey = dateKey
+        break
+      }
+
+      if (!foundSchedule || !foundDateKey) return prev
+      if (nextTitle !== undefined && !nextTitle) return prev
+
+      const currentSchedule = foundSchedule
+      const targetDateKey = nextDate ?? currentSchedule.date ?? foundDateKey
+      const updatedSchedule: CalendarSchedule = {
+        ...currentSchedule,
+        title: nextTitle ?? currentSchedule.title,
+        date: targetDateKey,
+        time: normalizedTime === null ? undefined : normalizedTime ?? currentSchedule.time,
+        color: updates.color ?? currentSchedule.color,
+        updatedAt: now,
+      }
+
+      const next = { ...prev }
+      const oldList = (next[foundDateKey] ?? []).filter((schedule) => schedule.id !== scheduleId)
+      if (oldList.length > 0) next[foundDateKey] = oldList
+      else delete next[foundDateKey]
+
+      next[targetDateKey] = sortSchedules([...(next[targetDateKey] ?? []), updatedSchedule])
+      return next
+    })
+  }
+
+  type AICalendarTargetPayload = {
+    id?: string | null
+    targetId?: string | null
+    targetTitle?: string | null
+    targetDate?: string | null
+    targetHint?: 'latest' | 'matched' | 'selected' | 'today' | null
+    title?: string | null
+    date?: string | null
+  }
+
+  const findScheduleForAICommand = (
+    schedulesByDate: Record<string, CalendarSchedule[]>,
+    payload: AICalendarTargetPayload,
+  ) => {
+    const allSchedules = Object.values(schedulesByDate).flat()
+    const targetId = payload.targetId ?? payload.id
+    if (targetId) {
+      const byId = allSchedules.find((schedule) => schedule.id === targetId)
+      if (byId) return byId
+    }
+
+    let candidates = allSchedules
+    const targetDate = normalizeCommandDate(payload.targetDate ?? payload.date)
+    const targetTitle = payload.targetTitle ?? payload.title
+
+    if (targetDate) candidates = candidates.filter((schedule) => schedule.date === targetDate)
+    if (targetTitle) candidates = candidates.filter((schedule) => textMatches(schedule.title, targetTitle))
+
+    if (payload.targetHint === 'today') {
+      const todayKey = formatDateKey(currentDate)
+      candidates = candidates.filter((schedule) => schedule.date === todayKey)
+    }
+
+    if (payload.targetHint === 'selected') {
+      const selectedDateKey = formatDateKey(selectedScheduleDate)
+      candidates = candidates.filter((schedule) => schedule.date === selectedDateKey)
+    }
+
+    return [...candidates].sort((a, b) => {
+      if (payload.targetHint === 'latest') return b.createdAt.localeCompare(a.createdAt)
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
+      return (a.time || '99:99').localeCompare(b.time || '99:99')
+    })[0]
+  }
+
+  const handleUpdateScheduleByAICommand = (payload: Extract<AICommand, { type: 'calendar.update' }>['payload']) => {
+    const now = new Date().toISOString()
+
+    setCalendarSchedules((prev) => {
+      const target = findScheduleForAICommand(prev, payload)
+      if (!target) return prev
+
+      clearCalendarScheduleNotificationKeys(target.id)
+      const oldDateKey = target.date
+      const nextDateKey = normalizeCommandDate(payload.newDate ?? payload.date) ?? oldDateKey
+      const titleValue = payload.newTitle ?? payload.title
+      const nextTitle = typeof titleValue === 'string' ? titleValue.trim() : undefined
+      const timeValue = normalizeCommandTime(payload.newTime ?? payload.time)
+
+      if (nextTitle !== undefined && !nextTitle) return prev
+
+      const updatedSchedule: CalendarSchedule = {
+        ...target,
+        title: nextTitle ?? target.title,
+        date: nextDateKey,
+        time: timeValue === null ? undefined : timeValue ?? target.time,
+        updatedAt: now,
+      }
+
+      const next = { ...prev }
+      const oldList = (next[oldDateKey] ?? []).filter((schedule) => schedule.id !== target.id)
+      if (oldList.length > 0) next[oldDateKey] = oldList
+      else delete next[oldDateKey]
+
+      next[nextDateKey] = sortSchedules([...(next[nextDateKey] ?? []), updatedSchedule])
+      return next
+    })
+  }
+
+  const handleDeleteScheduleByAICommand = (payload: Extract<AICommand, { type: 'calendar.delete' }>['payload']) => {
+    const hasTarget = Boolean(
+      payload.id
+      ?? payload.targetId
+      ?? payload.targetTitle
+      ?? payload.targetDate
+      ?? payload.targetHint
+      ?? payload.title
+      ?? payload.date,
+    )
+    if (!hasTarget) return
+
+    setCalendarSchedules((prev) => {
+      const target = findScheduleForAICommand(prev, payload)
+      if (!target) return prev
+
+      clearCalendarScheduleNotificationKeys(target.id)
+      const next = { ...prev }
+      const nextSchedules = (next[target.date] ?? []).filter((schedule) => schedule.id !== target.id)
+
+      if (nextSchedules.length > 0) next[target.date] = nextSchedules
+      else delete next[target.date]
+
+      return next
+    })
+  }
+
+  const handleAddTodoTask = (taskInput: Omit<TodoTask, 'id' | 'createdAt' | 'updatedAt' | 'completed' | 'completedAt'>) => {
+    const now = new Date().toISOString()
+    const task: TodoTask = {
+      ...taskInput,
+      priority: normalizeTaskPriority(taskInput.priority),
+      id: createId(),
+      completed: false,
+      completedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    setTodoTasks((prev) => [task, ...prev])
+    setIsAddTodoTaskModalOpen(false)
+  }
+
+  const handleUpdateTodoTask = (taskId: string, updates: Partial<Omit<TodoTask, 'id' | 'createdAt' | 'updatedAt'>>) => {
+    const now = new Date().toISOString()
+    const nextTitle = typeof updates.title === 'string' ? updates.title.trim() : undefined
+
+    if (nextTitle !== undefined && !nextTitle) return
+
+    setTodoTasks((prev) => prev.map((task) => {
+      if (task.id !== taskId) return task
+
+      const nextCompleted = updates.completed ?? task.completed
+      return {
+        ...task,
+        title: nextTitle ?? task.title,
+        description: Object.prototype.hasOwnProperty.call(updates, 'description') ? updates.description : task.description,
+        dueDate: Object.prototype.hasOwnProperty.call(updates, 'dueDate') ? updates.dueDate : task.dueDate,
+        priority: updates.priority ? normalizeTaskPriority(updates.priority) : task.priority,
+        reminderEnabled: updates.reminderEnabled ?? task.reminderEnabled,
+        completed: nextCompleted,
+        completedAt: nextCompleted
+          ? task.completedAt ?? now
+          : null,
+        updatedAt: now,
+      }
+    }))
+    setEditingTodoTask(null)
+  }
+
+  type AITodoTargetPayload = {
+    id?: string | null
+    targetId?: string | null
+    targetTitle?: string | null
+    targetDueDate?: string | null
+    targetHint?: 'latest' | 'matched' | 'selected' | 'today' | null
+    title?: string | null
+    dueDate?: string | null
+  }
+
+  const findTodoForAICommand = (
+    tasks: TodoTask[],
+    payload: AITodoTargetPayload,
+  ) => {
+    const targetId = payload.targetId ?? payload.id
+    if (targetId) {
+      const byId = tasks.find((task) => task.id === targetId)
+      if (byId) return byId
+    }
+
+    let candidates = tasks
+    const targetTitle = payload.targetTitle ?? payload.title
+    const targetDueDate = normalizeCommandDate(payload.targetDueDate ?? payload.dueDate)
+
+    if (targetDueDate) candidates = candidates.filter((task) => task.dueDate === targetDueDate)
+    if (targetTitle) candidates = candidates.filter((task) => textMatches(task.title, targetTitle))
+
+    if (payload.targetHint === 'today') {
+      const todayKey = formatDateKey(currentDate)
+      candidates = candidates.filter((task) => task.dueDate === todayKey)
+    }
+
+    return [...candidates].sort((a, b) => {
+      if (payload.targetHint === 'latest') return b.createdAt.localeCompare(a.createdAt)
+      if (a.completed !== b.completed) return a.completed ? 1 : -1
+      return b.updatedAt.localeCompare(a.updatedAt)
+    })[0]
+  }
+
+  const handleUpdateTodoByAICommand = (payload: Extract<AICommand, { type: 'todo.update' }>['payload']) => {
+    const now = new Date().toISOString()
+
+    setTodoTasks((prev) => {
+      const target = findTodoForAICommand(prev, payload)
+      if (!target) return prev
+
+      const titleValue = payload.newTitle ?? payload.title
+      const nextTitle = typeof titleValue === 'string' ? titleValue.trim() : undefined
+      if (nextTitle !== undefined && !nextTitle) return prev
+
+      return prev.map((task) => {
+        if (task.id !== target.id) return task
+
+        const nextCompleted = payload.completed ?? task.completed
+        return {
+          ...task,
+          title: nextTitle ?? task.title,
+          description: payload.description === null ? undefined : payload.description ?? task.description,
+          dueDate: payload.dueDate === null ? undefined : normalizeCommandDate(payload.dueDate) ?? task.dueDate,
+          priority: payload.priority ? normalizeTaskPriority(payload.priority) : task.priority,
+          reminderEnabled: payload.reminderEnabled ?? task.reminderEnabled,
+          completed: nextCompleted,
+          completedAt: nextCompleted ? task.completedAt ?? now : null,
+          updatedAt: now,
+        }
+      })
+    })
+  }
+
+  const handleDeleteTodoByAICommand = (payload: Extract<AICommand, { type: 'todo.delete' }>['payload']) => {
+    const hasTarget = Boolean(
+      payload.id
+      ?? payload.targetId
+      ?? payload.targetTitle
+      ?? payload.targetDueDate
+      ?? payload.targetHint
+      ?? payload.title
+      ?? payload.dueDate,
+    )
+    if (!hasTarget) return
+
+    setTodoTasks((prev) => {
+      const target = findTodoForAICommand(prev, payload)
+      if (!target) return prev
+
+      return prev.filter((task) => task.id !== target.id)
+    })
+  }
+
+  const handleExecuteAICommands = (commands: AICommand[], characterId: AIChatCharacterId) => {
+    if (characterId !== 'noah' || commands.length === 0) return
+
+    const commandNotifications: Array<{ title: string; body: string }> = []
+
+    commands.forEach((command) => {
+      if (command.type === 'calendar.create') {
+        const title = command.payload.title.trim()
+        const dateKey = normalizeCommandDate(command.payload.date)
+        const timeValue = normalizeCommandTime(command.payload.time)
+        if (!title || !dateKey) return
+
+        const normalizedTime = timeValue === null ? undefined : timeValue
+        const now = new Date().toISOString()
+        setCalendarSchedules((prev) => {
+          const existingCount = prev[dateKey]?.length ?? 0
+          const schedule: CalendarSchedule = {
+            id: createId(),
+            date: dateKey,
+            title,
+            time: normalizedTime,
+            color: command.payload.color ?? scheduleAccentColors[existingCount % scheduleAccentColors.length],
+            createdAt: now,
+            updatedAt: now,
+          }
+
+          return {
+            ...prev,
+            [dateKey]: sortSchedules([...(prev[dateKey] ?? []), schedule]),
+          }
+        })
+
+        commandNotifications.push({
+          title: formatCommandDateTimeLabel(dateKey, normalizedTime),
+          body: title,
+        })
+        return
+      }
+
+      if (command.type === 'calendar.update') {
+        handleUpdateScheduleByAICommand(command.payload)
+        commandNotifications.push({
+          title: 'Schedule',
+          body: 'Schedule updated',
+        })
+        return
+      }
+
+      if (command.type === 'calendar.delete') {
+        handleDeleteScheduleByAICommand(command.payload)
+        commandNotifications.push({
+          title: 'Schedule',
+          body: 'Schedule deleted',
+        })
+        return
+      }
+
+      if (command.type === 'todo.create') {
+        const title = command.payload.title.trim()
+        if (!title) return
+
+        const dueDate = normalizeCommandDate(command.payload.dueDate) ?? undefined
+        const now = new Date().toISOString()
+        const task: TodoTask = {
+          id: createId(),
+          title,
+          description: command.payload.description ?? undefined,
+          dueDate,
+          priority: normalizeTaskPriority(command.payload.priority),
+          reminderEnabled: command.payload.reminderEnabled ?? false,
+          completed: false,
+          completedAt: null,
+          createdAt: now,
+          updatedAt: now,
+        }
+
+        setTodoTasks((prev) => [task, ...prev])
+        commandNotifications.push({
+          title: formatCommandDateTimeLabel(dueDate),
+          body: title,
+        })
+        return
+      }
+
+      if (command.type === 'todo.update') {
+        handleUpdateTodoByAICommand(command.payload)
+        commandNotifications.push({
+          title: 'To-Do',
+          body: 'Task updated',
+        })
+        return
+      }
+
+      if (command.type === 'todo.delete') {
+        handleDeleteTodoByAICommand(command.payload)
+        commandNotifications.push({
+          title: 'To-Do',
+          body: 'Task deleted',
+        })
+      }
+    })
+
+    const notification = commandNotifications.at(-1)
+    if (notification) showInAppNotification(notification.title, notification.body)
+  }
+
+  const handleToggleTodoTask = (taskId: string) => {
+    const now = new Date().toISOString()
+    setTodoTasks((prev) => prev.map((task) => (
+      task.id === taskId
+        ? { ...task, completed: !task.completed, completedAt: task.completed ? null : now, updatedAt: now }
+        : task
+    )))
+  }
+
+  const handleDeleteTodoTask = (taskId: string) => {
+    setTodoTasks((prev) => prev.filter((task) => task.id !== taskId))
+  }
+
+  const handleOpenTodoFromDiary = () => {
+    setActivePage('todo')
+  }
+
   const handleMoveDiaryMonth = (offset: number) => setDiaryDisplayDate((prev) => createMonthDate(prev, offset))
   const handleDiaryMonthScroll = () => {
     const el = diaryMonthWheelRef.current
@@ -1363,17 +2082,15 @@ function App() {
     return () => mq.removeEventListener('change', onChange)
   }, [])
 
+  // ─── 데이터 초기 로드 ──────────────────────────────────────────────────────
   useEffect(() => {
-    const load = async () => {
+    const loadAll = async () => {
+      // 프로그램
       try { const s = await window.mnAPI.loadPrograms(); if (isProgramList(s)) setPrograms(s) }
       catch (e) { console.error(e) }
       finally { setIsProgramsLoaded(true) }
-    }
-    load()
-  }, [])
 
-  useEffect(() => {
-    const load = async () => {
+      // 설정
       try {
         const s = await window.mnAPI.loadSettings()
         if (isSettings(s)) {
@@ -1396,21 +2113,23 @@ function App() {
         }
       } catch (e) { console.error(e) }
       finally { setIsSettingsLoaded(true) }
-    }
-    load()
-  }, [])
 
-  useEffect(() => {
-    const load = async () => {
+      // 다이어리
       try { const d = await window.mnAPI.loadDiaries(); if (isDiaryEntries(d)) setDiaryEntries(d) }
       catch (e) { console.error(e) }
       finally { setIsDiariesLoaded(true) }
-    }
-    load()
-  }, [])
 
-  useEffect(() => {
-    const load = async () => {
+      // 캘린더 일정
+      try { const sc = await window.mnAPI.loadCalendarSchedules(); if (isCalendarSchedules(sc)) setCalendarSchedules(sc) }
+      catch (e) { console.error(e) }
+      finally { setIsCalendarSchedulesLoaded(true) }
+
+      // 투두
+      try { const tasks = await window.mnAPI.loadTodoTasks(); if (isTodoTasks(tasks)) setTodoTasks(tasks) }
+      catch (e) { console.error(e) }
+      finally { setIsTodoTasksLoaded(true) }
+
+      // 좋아요 트랙
       try {
         const loaded = await window.mnAPI.loadLikedTracks()
         if (Array.isArray(loaded)) {
@@ -1419,20 +2138,67 @@ function App() {
       } catch (e) { console.error(e) }
       finally { setIsLikedTracksLoaded(true) }
     }
-    load()
+    loadAll()
   }, [])
 
-  useEffect(() => { if (!isProgramsLoaded) return; window.mnAPI.savePrograms(programs).catch(console.error) }, [programs, isProgramsLoaded])
-  useEffect(() => { if (!isSettingsLoaded) return; window.mnAPI.saveSettings(settings).catch(console.error) }, [settings, isSettingsLoaded])
-  useEffect(() => { if (!isDiariesLoaded) return; window.mnAPI.saveDiaries(diaryEntries).catch(console.error) }, [diaryEntries, isDiariesLoaded])
-  useEffect(() => { if (!isLikedTracksLoaded) return; window.mnAPI.saveLikedTracks(likedTrackIds).catch(console.error) }, [likedTrackIds, isLikedTracksLoaded])
+  // ─── 데이터 자동 저장 ──────────────────────────────────────────────────────
+  useEffect(() => { if (isProgramsLoaded)         window.mnAPI.savePrograms(programs).catch(console.error) }, [programs, isProgramsLoaded])
+  useEffect(() => { if (isSettingsLoaded)          window.mnAPI.saveSettings(settings).catch(console.error) }, [settings, isSettingsLoaded])
+  useEffect(() => { if (isDiariesLoaded)           window.mnAPI.saveDiaries(diaryEntries).catch(console.error) }, [diaryEntries, isDiariesLoaded])
+  useEffect(() => { if (isCalendarSchedulesLoaded) window.mnAPI.saveCalendarSchedules(calendarSchedules).catch(console.error) }, [calendarSchedules, isCalendarSchedulesLoaded])
+  useEffect(() => { if (isTodoTasksLoaded)         window.mnAPI.saveTodoTasks(todoTasks).catch(console.error) }, [todoTasks, isTodoTasksLoaded])
+  useEffect(() => { if (isLikedTracksLoaded)       window.mnAPI.saveLikedTracks(likedTrackIds).catch(console.error) }, [likedTrackIds, isLikedTracksLoaded])
+
+
+  const showInAppNotification = (title: string, body?: string) => {
+    setInAppNotification({ title, body })
+    window.setTimeout(() => {
+      setInAppNotification((current) => (
+        current?.title === title && current?.body === body ? null : current
+      ))
+    }, 5200)
+  }
+
+  const showReminderNotification = (title: string, body?: string) => {
+    showInAppNotification(title, body)
+    window.mnAPI.showSystemNotification({ title, body }).catch(console.error)
+  }
+
+  useEffect(() => {
+    if (!isCalendarSchedulesLoaded) return
+
+    const checkNotifications = () => {
+      const now = new Date()
+      const schedules = (Object.values(calendarSchedules) as CalendarSchedule[][]).flat()
+
+      schedules.forEach((schedule: CalendarSchedule) => {
+        SCHEDULE_REMINDER_OFFSETS_MINUTES.forEach((minutesBefore) => {
+          const notificationKey = getCalendarScheduleReminderKey(schedule.id, minutesBefore)
+          if (notifiedCalendarScheduleIdsRef.current.has(notificationKey)) return
+
+          const target = getCalendarScheduleReminderDateTime(schedule, minutesBefore)
+          if (!target || !isNotificationDueNow(target, now)) return
+
+          notifiedCalendarScheduleIdsRef.current.add(notificationKey)
+          showReminderNotification(
+            'Upcoming Schedule',
+            schedule.time ? `${schedule.title} · ${schedule.time}` : schedule.title,
+          )
+        })
+      })
+    }
+
+    checkNotifications()
+    const timer = window.setInterval(checkNotifications, 5_000)
+    return () => window.clearInterval(timer)
+  }, [calendarSchedules, isCalendarSchedulesLoaded])
 
   useEffect(() => {
     if (!isAddModalOpen) return
     const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') closeAddModal() }
     window.addEventListener('keydown', onEsc)
     return () => window.removeEventListener('keydown', onEsc)
-  }, [isAddModalOpen])
+  }, [isAddModalOpen, isAddTodoTaskModalOpen])
 
   useEffect(() => {
     const rm1 = window.mnAPI.onUpdateAvailable(() => window.setTimeout(() => setUpdateModalType('available'), 850))
@@ -1455,8 +2221,7 @@ function App() {
   }, [isDiaryPickerOpen])
 
   useEffect(() => {
-    const hasModal = isDiaryPickerOpen || Boolean(selectedDiaryDate) || isDeleteDiaryConfirmOpen || isFullPlaylistModalOpen || isYoutubeLoginModalOpen || Boolean(updateModalType) || isAddModalOpen
-    if (!hasModal) return
+    if (!getHasModal()) return
     const onEsc = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (isDeleteDiaryConfirmOpen) { setIsDeleteDiaryConfirmOpen(false); return }
@@ -1466,10 +2231,11 @@ function App() {
       if (isYoutubeLoginModalOpen) { setIsYoutubeLoginModalOpen(false); return }
       if (updateModalType) { setUpdateModalType(null); return }
       if (isAddModalOpen) closeAddModal()
+      if (isAddTodoTaskModalOpen) setIsAddTodoTaskModalOpen(false)
     }
     window.addEventListener('keydown', onEsc)
     return () => window.removeEventListener('keydown', onEsc)
-  }, [isDiaryPickerOpen, selectedDiaryDate, isDeleteDiaryConfirmOpen, isFullPlaylistModalOpen, isYoutubeLoginModalOpen, updateModalType, isAddModalOpen])
+  }, [isDiaryPickerOpen, selectedDiaryDate, isDeleteDiaryConfirmOpen, isFullPlaylistModalOpen, isYoutubeLoginModalOpen, updateModalType, isAddModalOpen, isAddTodoTaskModalOpen])
 
   useEffect(() => {
     const isMusicShortcutPage = activePage === 'home' || activePage === 'playlist'
@@ -1481,8 +2247,7 @@ function App() {
     if (!isMusicShortcutPage && !isFloatingMusicShortcutEnabled) return
     if (!currentVideoId) return
 
-    const hasModal = isDiaryPickerOpen || Boolean(selectedDiaryDate) || isDeleteDiaryConfirmOpen || isFullPlaylistModalOpen || isYoutubeLoginModalOpen || Boolean(updateModalType) || isAddModalOpen
-    if (hasModal) return
+    if (getHasModal()) return
 
     const preventFocusedButtonSpaceClick = (event: KeyboardEvent) => {
       if (event.code !== 'Space' && event.key !== ' ') return
@@ -1670,6 +2435,21 @@ function App() {
             <span className="menu-label">Diary</span>
           </button>
           <button
+            className={`menu-item ${activePage === 'todo' ? 'active' : ''}`}
+            aria-label="To-Do"
+            title={isSidebarCollapsed ? 'To-Do' : undefined}
+            onMouseEnter={() => setHoveredCollapsedSidebarPage('todo')}
+            onMouseLeave={() => setHoveredCollapsedSidebarPage(null)}
+            onClick={() => setActivePage('todo')}
+          >
+            <img
+              src={getCollapsedSidebarIcon('check', activePage === 'todo', hoveredCollapsedSidebarPage === 'todo')}
+              alt=""
+              className="menu-icon"
+            />
+            <span className="menu-label">To-Do</span>
+          </button>
+          <button
             className={`menu-item ${activePage === 'playlist' ? 'active' : ''}`}
             aria-label="Playlist"
             title={isSidebarCollapsed ? 'Playlist' : undefined}
@@ -1701,61 +2481,80 @@ function App() {
           </button>
         </nav>
         <div className="sidebar-accent-picker" aria-label="Quick appearance controls">
-          {isSidebarCollapsed ? (
+          <div className="sidebar-expanded-controls" aria-hidden={isSidebarCollapsed}>
             <button
               type="button"
-              className="sidebar-collapse-button"
-              aria-label="Expand sidebar"
-              title="Expand sidebar"
-              aria-expanded={false}
-              onClick={() => updateSidebarCollapsed(false)}
+              className="sidebar-theme-toggle"
+              aria-label={sidebarThemeToggleLabel}
+              title={sidebarThemeToggleTitle}
+              tabIndex={isSidebarCollapsed ? -1 : 0}
+              onMouseEnter={() => setIsSidebarThemeToggleHovered(true)}
+              onMouseLeave={() => setIsSidebarThemeToggleHovered(false)}
+              onClick={toggleSidebarTheme}
             >
-              &gt;
+              <img
+                src={themeIconMap[activeTheme][isSidebarThemeToggleHovered ? settings.accentColor : 'gray']}
+                alt=""
+                className="sidebar-theme-icon"
+              />
             </button>
-          ) : (
-            <>
+            {(['purple', 'blue', 'green', 'orange', 'red', 'gray'] as const).map((color) => (
               <button
+                key={color}
                 type="button"
-                className="sidebar-theme-toggle"
-                aria-label={sidebarThemeToggleLabel}
-                title={sidebarThemeToggleTitle}
-                onMouseEnter={() => setIsSidebarThemeToggleHovered(true)}
-                onMouseLeave={() => setIsSidebarThemeToggleHovered(false)}
-                onClick={toggleSidebarTheme}
-              >
-                <img
-                  src={themeIconMap[activeTheme][isSidebarThemeToggleHovered ? settings.accentColor : 'gray']}
-                  alt=""
-                  className="sidebar-theme-icon"
-                />
-              </button>
-              {(['purple', 'blue', 'green', 'orange', 'red', 'gray'] as const).map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`sidebar-accent-dot ${settings.accentColor === color ? 'active' : ''}`}
-                  style={{
-                    '--sidebar-dot-color': accentColorMap[color],
-                    '--sidebar-dot-ring': accentRingMap[color],
-                  } as CSSProperties}
-                  aria-label={`Set accent color to ${color}`}
-                  title={color}
-                  onClick={() => updateSettings({ accentColor: color })}
-                />
-              ))}
-              <button
-                type="button"
-                className="sidebar-collapse-button"
-                aria-label="Collapse sidebar"
-                title="Collapse sidebar"
-                aria-expanded={true}
-                onClick={() => updateSidebarCollapsed(true)}
-              >
-                &lt;
-              </button>
-            </>
-          )}
+                className={`sidebar-accent-dot ${settings.accentColor === color ? 'active' : ''}`}
+                style={{
+                  '--sidebar-dot-color': accentColorMap[color],
+                  '--sidebar-dot-ring': accentRingMap[color],
+                } as CSSProperties}
+                aria-label={`Set accent color to ${color}`}
+                title={color}
+                tabIndex={isSidebarCollapsed ? -1 : 0}
+                onClick={() => updateSettings({ accentColor: color })}
+              />
+            ))}
+            <button
+              type="button"
+              className="sidebar-collapse-button sidebar-collapse-toggle"
+              aria-label="Collapse sidebar"
+              title="Collapse sidebar"
+              aria-expanded={true}
+              tabIndex={isSidebarCollapsed ? -1 : 0}
+              onClick={() => updateSidebarCollapsed(true)}
+            >
+              &lt;
+            </button>
+          </div>
+          <button
+            type="button"
+            className="sidebar-collapse-button sidebar-expand-toggle"
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            aria-expanded={false}
+            tabIndex={isSidebarCollapsed ? 0 : -1}
+            onClick={() => updateSidebarCollapsed(false)}
+          >
+            &gt;
+          </button>
         </div>
+        <button
+          type="button"
+          className={`sidebar-ai-shortcut ${activePage === 'aiChat' ? 'active' : ''}`}
+          aria-label="AI Chat"
+          title="AI Chat"
+          onMouseEnter={() => setIsAIShortcutHovered(true)}
+          onMouseLeave={() => setIsAIShortcutHovered(false)}
+          onFocus={() => setIsAIShortcutHovered(true)}
+          onBlur={() => setIsAIShortcutHovered(false)}
+          onClick={() => setActivePage('aiChat')}
+        >
+          <img
+            src={getAIShortcutIcon(activePage === 'aiChat', isAIShortcutHovered)}
+            alt=""
+            className="sidebar-ai-shortcut-icon"
+            draggable={false}
+          />
+        </button>
       </aside>
 
       {/* 메인 콘텐츠 */}
@@ -1845,9 +2644,35 @@ function App() {
           <DiaryPage
             currentDate={currentDate} diaryDisplayDate={diaryDisplayDate}
             diaryEntries={diaryEntries} todayDiaryEntry={todayDiaryEntry}
+            calendarSchedules={calendarSchedules}
+            selectedScheduleDate={selectedScheduleDate}
+            scheduleInput={scheduleInput}
+            scheduleTimeInput={scheduleTimeInput}
+            onSetScheduleInput={setScheduleInput}
+              onOpenScheduleTimePicker={handleOpenScheduleTimePicker}
+            onAddSchedule={handleAddSchedule}
+            onUpdateSchedule={handleUpdateSchedule}
+            onDeleteSchedule={handleDeleteSchedule}
             onSetActivePage={(p) => setActivePage(p)} onMoveDiaryMonth={handleMoveDiaryMonth}
             onOpenDiaryPickerWithDate={() => { setDiaryPickerMonthIndex(diaryDisplayDate.getMonth()); setDiaryPickerYear(diaryDisplayDate.getFullYear()); setIsDiaryPickerOpen(true) }}
-            onSetDiaryDisplayDate={setDiaryDisplayDate} onOpenDiaryDate={handleOpenDiaryDate}
+            onSetDiaryDisplayDate={setDiaryDisplayDate}
+            onSelectScheduleDate={handleSelectScheduleDate}
+            onOpenDiaryDate={handleOpenDiaryDate}
+            onOpenTodoPage={handleOpenTodoFromDiary}
+          />
+        )}
+
+        {activePage === 'todo' && (
+          <ToDoPage
+            currentDate={currentDate}
+            tasks={todoTasks}
+            todaySchedules={calendarSchedules[formatDateKey(currentDate)] ?? []}
+            filter={todoFilter}
+            onSetFilter={setTodoFilter}
+            onOpenAddTask={() => setIsAddTodoTaskModalOpen(true)}
+            onToggleTask={handleToggleTodoTask}
+            onEditTask={setEditingTodoTask}
+            onDeleteTask={handleDeleteTodoTask}
           />
         )}
 
@@ -1880,9 +2705,17 @@ function App() {
             onCheckForUpdates={handleCheckForUpdates} onReloadYoutubeMusicData={handleReloadYoutubeMusicData}
             onLoginYoutubeMusic={handleLoginYoutubeMusicFromSettings}
             onLogoutYoutubeMusic={handleLogoutYoutubeMusic}
-            getThemeIcon={getThemeIcon}
           />
         )}
+
+        <div className={`ai-chat-keepalive ${activePage === 'aiChat' ? 'active' : ''}`} aria-hidden={activePage !== 'aiChat'}>
+          <AIChatPage
+            isActive={activePage === 'aiChat'}
+            aiContext={aiChatContext}
+            onNotify={showAIToastNotification}
+            onExecuteCommands={handleExecuteAICommands}
+          />
+        </div>
 
         {/* 모달들 */}
         {isDiaryPickerOpen && (
@@ -1893,6 +2726,28 @@ function App() {
             onClose={() => setIsDiaryPickerOpen(false)}
             onMonthScroll={handleDiaryMonthScroll} onYearScroll={handleDiaryYearScroll}
             onConfirm={() => { setDiaryDisplayDate(new Date(diaryPickerYear, diaryPickerMonthIndex, 1)); setIsDiaryPickerOpen(false) }}
+          />
+        )}
+
+        {isScheduleTimePickerOpen && (
+          <ScheduleTimePickerModal
+            scheduleTimePickerHour={scheduleTimePickerHour}
+            scheduleTimePickerMinute={scheduleTimePickerMinute}
+            onSetScheduleTimePickerHour={setScheduleTimePickerHour}
+            onSetScheduleTimePickerMinute={setScheduleTimePickerMinute}
+            onClose={() => setIsScheduleTimePickerOpen(false)}
+            onClear={handleClearScheduleTime}
+            onConfirm={handleConfirmScheduleTime}
+          />
+        )}
+
+        {(isAddTodoTaskModalOpen || editingTodoTask) && (
+          <AddTodoTaskModal
+            currentDate={currentDate}
+            initialTask={editingTodoTask ?? undefined}
+            onClose={() => { setIsAddTodoTaskModalOpen(false); setEditingTodoTask(null) }}
+            onAddTask={handleAddTodoTask}
+            onUpdateTask={handleUpdateTodoTask}
           />
         )}
 
@@ -1968,6 +2823,52 @@ function App() {
           />
         )}
       </main>
+
+      {inAppNotification && (
+        <div className="app-notification-toast" role="status" aria-live="polite">
+          <strong>{inAppNotification.title}</strong>
+          {inAppNotification.body && <span>{inAppNotification.body}</span>}
+          <button
+            type="button"
+            aria-label="Close notification"
+            onClick={() => setInAppNotification(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {aiToastNotification && (
+        <button
+          type="button"
+          className={`ai-notification-toast ${isAiToastVisible ? 'show' : ''}`}
+          data-character={aiToastNotification.characterId}
+          aria-label={`Open AI Chat from ${aiToastNotification.characterName}`}
+          onClick={() => {
+            setActivePage('aiChat')
+            setIsAiToastVisible(false)
+          }}
+        >
+          <span className="ai-notification-face" aria-hidden="true">
+            {getMiniChatCharacterImage(aiToastNotification.characterId) ? (
+              <img
+                src={getMiniChatCharacterImage(aiToastNotification.characterId)}
+                alt=""
+                className="ai-notification-image"
+                draggable={false}
+              />
+            ) : (
+              <span className="ai-notification-screen">
+                <span className="ai-notification-eye ai-notification-eye-left" />
+                <span className="ai-notification-eye ai-notification-eye-right" />
+                <span className="ai-notification-mouth" />
+              </span>
+            )}
+          </span>
+          <span className="ai-notification-meta">{aiToastNotification.characterName}</span>
+          <span className="ai-notification-message">{aiToastNotification.text}</span>
+        </button>
+      )}
 
       {shouldShowFloatingMusicPlayer && currentTrack && (
         <FloatingMusicPlayer

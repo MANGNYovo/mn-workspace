@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLikeBurst } from '../components'
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
 } from '@dnd-kit/core'
@@ -88,21 +89,12 @@ export function PlaylistPage({
   const isLikedPlaylistSelected = selectedHomeMusicPlaylistId === 'mn-liked-tracks'
   const tracks = isLikedPlaylistSelected ? ytPlaylistTracks : isYtAuthenticated ? ytPlaylistTracks : fallbackPlaylistTracks
   const [isLikeButtonHovered, setIsLikeButtonHovered] = useState(false)
-  const [isLikeButtonBursting, setIsLikeButtonBursting] = useState(false)
   const [isRefreshButtonHovered, setIsRefreshButtonHovered] = useState(false)
   const [isShuffleButtonHovered, setIsShuffleButtonHovered] = useState(false)
-
-  const playLikeBurst = () => {
-    setIsLikeButtonBursting(false)
-    window.requestAnimationFrame(() => setIsLikeButtonBursting(true))
-    window.setTimeout(() => setIsLikeButtonBursting(false), 760)
-  }
+  const { isBursting: isLikeButtonBursting, triggerBurst: triggerLikeBurst } = useLikeBurst()
 
   const handleLikeButtonClick = () => {
-    const willLike = Boolean(currentTrack?.id && !isTrackLiked(currentTrack.id))
-
-    if (willLike) playLikeBurst()
-
+    if (currentTrack?.id && !isTrackLiked(currentTrack.id)) triggerLikeBurst()
     onToggleTrackLike(currentTrack?.id)
   }
 

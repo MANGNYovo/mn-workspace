@@ -38,6 +38,12 @@ contextBridge.exposeInMainWorld('mnAPI', {
   saveSettings: (settings: unknown) => ipcRenderer.invoke('settings:save', settings),
   loadDiaries: () => ipcRenderer.invoke('diaries:load'),
   saveDiaries: (diaries: unknown) => ipcRenderer.invoke('diaries:save', diaries),
+  loadCalendarSchedules: () => ipcRenderer.invoke('calendar-schedules:load'),
+  saveCalendarSchedules: (schedules: unknown) => ipcRenderer.invoke('calendar-schedules:save', schedules),
+  loadTodoTasks: () => ipcRenderer.invoke('todo-tasks:load'),
+  saveTodoTasks: (tasks: unknown) => ipcRenderer.invoke('todo-tasks:save', tasks),
+  showSystemNotification: (options: { title: string; body?: string }) =>
+    ipcRenderer.invoke('notifications:show', options),
   loadLikedTracks: () => ipcRenderer.invoke('liked-tracks:load'),
   saveLikedTracks: (trackIds: string[]) => ipcRenderer.invoke('liked-tracks:save', trackIds),
 
@@ -58,6 +64,19 @@ contextBridge.exposeInMainWorld('mnAPI', {
     ipcRenderer.invoke('youtube-music:load-playlist-covers'),
   changeYoutubeMusicPlaylistCover: (playlistId: string, theme: 'light' | 'dark') =>
     ipcRenderer.invoke('youtube-music:change-playlist-cover', playlistId, theme),
+
+  loadAIChatHistory: (characterId?: 'cheong' | 'noah') =>
+    ipcRenderer.invoke('ai-chat:load-history', characterId),
+  saveAIChatHistory: (characterId: 'cheong' | 'noah', history: unknown) =>
+    ipcRenderer.invoke('ai-chat:save-history', characterId, history),
+  clearAIChatHistory: (characterId?: 'cheong' | 'noah') =>
+    ipcRenderer.invoke('ai-chat:clear-history', characterId),
+  sendAIChatMessage: (
+    characterId: 'cheong' | 'noah',
+    messages: { role: 'user' | 'assistant'; content: string }[],
+    context?: unknown,
+  ) =>
+    ipcRenderer.invoke('ai-chat:send', { characterId, messages, context }),
 
   setStartWithWindows: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-start-with-windows', enabled),

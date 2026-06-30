@@ -48,10 +48,7 @@ export function FullPlaylistModal({
   }
 
   const handleLikeButtonClick = (trackId: string) => {
-    const willLike = !isTrackLiked(trackId)
-
-    if (willLike) playLikeBurst(trackId)
-
+    if (!isTrackLiked(trackId)) playLikeBurst(trackId)
     onToggleTrackLike(trackId)
   }
 

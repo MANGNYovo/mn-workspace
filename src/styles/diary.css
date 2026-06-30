@@ -68,11 +68,11 @@
   border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
-.app[data-theme='dark'] .diary-day.muted span {
+.app[data-theme='dark'] .diary-day.muted .diary-day-number {
   color: #707070;
 }
 
-.app[data-theme='dark'] .diary-day.today span {
+.app[data-theme='dark'] .diary-day.today .diary-day-number {
   color: var(--accent-color, #705bff);
   background: color-mix(in srgb, var(--accent-color, #705bff) 18%, transparent);
 }
@@ -250,9 +250,10 @@
   margin: 0 34px 46px;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  grid-template-rows: repeat(5, 1fr);
+  grid-template-rows: repeat(var(--diary-week-count, 6), minmax(0, 1fr));
   border-top: 1px solid rgba(130, 140, 170, 0.16);
   border-left: 1px solid rgba(130, 140, 170, 0.16);
+  aspect-ratio: 7 / var(--diary-week-count, 6);
 }
 
 .diary-day {
@@ -276,7 +277,7 @@
   box-shadow: none;
 }
 
-.diary-day span {
+.diary-day > span {
   min-width: 36px;
   height: 36px;
   border-radius: 50%;
@@ -298,12 +299,12 @@
   cursor: pointer;
 }
 
-.diary-day.today span {
+.diary-day.today .diary-day-number {
   color: var(--accent-color, #705bff);
   background: color-mix(in srgb, var(--accent-color, #705bff) 14%, transparent);
 }
 
-.diary-day.muted span {
+.diary-day.muted .diary-day-number {
   color: #a7afc2;
 }
 
@@ -729,3 +730,1746 @@
   color: #ffffff;
 }
 
+/* ========================= */
+/* Diary schedule layout */
+/* ========================= */
+
+.diary-page.has-schedule-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(240px, 21.5vw, 320px);
+  gap: clamp(16px, 1.7vw, 28px);
+  align-items: stretch;
+}
+
+.diary-page.has-schedule-panel .diary-card {
+  min-width: 0;
+}
+
+.diary-page.has-schedule-panel .diary-header {
+  height: 112px;
+  padding: 26px 34px;
+}
+
+.diary-page.has-schedule-panel .diary-calendar-header {
+  height: 84px;
+}
+
+.diary-page.has-schedule-panel .diary-weekdays {
+  height: 30px;
+}
+
+.diary-page.has-schedule-panel .diary-calendar-grid {
+  height: auto;
+  min-height: 0;
+  grid-template-rows: repeat(var(--diary-week-count, 6), minmax(0, 1fr));
+  margin-bottom: 34px;
+  width: min(calc(100% - 72px), 760px);
+  max-width: 760px;
+  aspect-ratio: 7 / var(--diary-week-count, 6);
+  margin-left: auto;
+  margin-right: auto;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-self: center;
+}
+
+.diary-page.has-schedule-panel .diary-day {
+  padding: 12px 12px 10px;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 1 / 1;
+}
+
+.diary-page.has-schedule-panel .diary-day:hover {
+  background: rgba(255, 255, 255, 0.34);
+}
+
+.diary-page.has-schedule-panel .diary-day.selected {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 10%, rgba(255, 255, 255, 0.28));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-color, #705bff) 42%, rgba(255, 255, 255, 0.2));
+}
+
+.diary-day-topline {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  line-height: 1;
+}
+
+.diary-page.has-schedule-panel .diary-day .diary-day-number {
+  min-width: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.diary-page.has-schedule-panel .diary-day.today .diary-day-number {
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  color: #ffffff;
+  background: var(--accent-color, #705bff);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  width: 22px;
+  line-height: 1;
+  transform: translateY(-2px);
+}
+
+.diary-page.has-schedule-panel .diary-day.muted .diary-day-number {
+  color: #a7afc2;
+}
+
+.diary-entry-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent-color, #705bff);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color, #705bff) 38%, transparent);
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.diary-entry-dot:hover,
+.diary-entry-dot:focus-visible {
+  transform: scale(1.25);
+  outline: none;
+}
+
+.diary-day-schedules {
+  width: 100%;
+  min-width: 0;
+  height: auto;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.diary-calendar-schedule,
+.diary-calendar-more {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  border-radius: 7px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1;
+  overflow: hidden;
+}
+
+.diary-calendar-schedule span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diary-calendar-schedule i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  flex: 0 0 auto;
+  box-shadow: none;
+}
+
+.diary-calendar-more {
+  color: #65708d;
+  background: rgba(255, 255, 255, 0.48);
+  justify-content: center;
+}
+
+.diary-calendar-schedule,
+.diary-calendar-schedule.schedule-red,
+.diary-calendar-schedule.schedule-blue,
+.diary-calendar-schedule.schedule-green,
+.diary-calendar-schedule.schedule-orange,
+.diary-calendar-schedule.schedule-purple,
+.diary-calendar-schedule.schedule-gray {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 62%, transparent);
+}
+
+.diary-calendar-schedule.schedule-red + .diary-schedule-dot.schedule-red,
+.diary-schedule-dot.schedule-red {
+  background: #ff5151;
+}
+
+.diary-schedule-dot.schedule-blue {
+  background: #6388ff;
+}
+
+.diary-schedule-dot.schedule-green {
+  background: #48cf7f;
+}
+
+.diary-schedule-dot.schedule-orange {
+  background: #ff9f3d;
+}
+
+.diary-schedule-dot.schedule-purple {
+  background: #8b6cff;
+}
+
+.diary-schedule-dot.schedule-gray {
+  background: #9aa0b8;
+}
+
+.diary-schedule-panel {
+  height: 100%;
+  max-height: 820px;
+  min-width: 0;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  box-shadow: none;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.diary-schedule-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 20px;
+}
+
+.diary-schedule-date-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent-color, #705bff) 12%, rgba(255, 255, 255, 0.48));
+  color: var(--accent-color, #705bff);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.diary-schedule-panel-header h2 {
+  margin: 0 0 4px;
+  color: #10172f;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.diary-schedule-panel-header p {
+  margin: 0;
+  color: #65708d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.diary-schedule-input-row {
+  height: 44px;
+  display: grid;
+  grid-template-columns: 86px minmax(0, 1fr) 44px;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.diary-schedule-input-row input {
+  min-width: 0;
+  border: 1px solid rgba(130, 140, 170, 0.22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.52);
+  color: rgba(31, 36, 48, 0.82);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0 14px;
+  outline: none;
+}
+
+.diary-schedule-input-row input::placeholder {
+  color: rgba(31, 36, 48, 0.46);
+  font-weight: 700;
+  font-family: 'MNFont', 'Paperlogy', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.diary-schedule-input-row input:focus {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 38%, rgba(130, 140, 170, 0.22));
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.diary-schedule-input-row button {
+  border: 0;
+  border-radius: 11px;
+  background: var(--accent-color, #705bff);
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-color, #705bff) 24%, transparent);
+}
+
+.diary-schedule-input-row button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.diary-schedule-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 2px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.diary-schedule-list::-webkit-scrollbar {
+  display: none;
+}
+
+.diary-schedule-item {
+  min-height: 62px;
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.42);
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.diary-schedule-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.diary-schedule-item time {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(31, 36, 48, 0.58);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.diary-schedule-item strong {
+  display: block;
+  min-width: 0;
+  color: rgba(31, 36, 48, 0.82);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diary-schedule-item > button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #a4aec4;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.diary-schedule-item > button:hover {
+  color: #ff5151;
+  background: rgba(255, 81, 81, 0.08);
+}
+
+.diary-schedule-empty {
+  flex: 1;
+  min-height: 170px;
+  border: 1px dashed rgba(130, 140, 170, 0.22);
+  border-radius: 14px;
+  color: #8993ad;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.diary-schedule-empty strong {
+  color: #65708d;
+  font-size: 14px;
+}
+
+.diary-schedule-empty span {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.diary-side-diary-button {
+  height: 42px;
+  margin-top: 18px;
+  border: 1px solid rgba(130, 140, 170, 0.22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.42);
+  color: #65708d;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.diary-side-diary-button.has-diary {
+  color: var(--accent-color, #705bff);
+  background: color-mix(in srgb, var(--accent-color, #705bff) 10%, rgba(255, 255, 255, 0.48));
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 30%, rgba(130, 140, 170, 0.18));
+}
+
+.diary-side-diary-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.app[data-theme='dark'] .diary-schedule-panel {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .diary-page.has-schedule-panel .diary-day.selected {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 16%, #2b2b2b);
+}
+
+.app[data-theme='dark'] .diary-schedule-panel-header h2,
+.app[data-theme='dark'] .diary-schedule-item strong,
+.app[data-theme='dark'] .diary-schedule-input-row input {
+  color: #f5f7ff;
+}
+
+.app[data-theme='dark'] .diary-schedule-panel-header p,
+.app[data-theme='dark'] .diary-schedule-item time,
+.app[data-theme='dark'] .diary-schedule-empty {
+  color: #b8b8b8;
+}
+
+.app[data-theme='dark'] .diary-schedule-input-row input,
+.app[data-theme='dark'] .diary-schedule-item,
+.app[data-theme='dark'] .diary-calendar-more,
+.app[data-theme='dark'] .diary-side-diary-button {
+  background: #333333;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.app[data-wallpaper='true'] .diary-schedule-panel {
+  background: rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.app[data-wallpaper='true'][data-theme='dark'] .diary-schedule-panel {
+  background: rgba(20, 20, 26, 0.42);
+}
+
+@media (max-width: 820px) {
+  .diary-page.has-schedule-panel {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+.diary-schedule-panel {
+    max-height: none;
+    min-height: 360px;
+  }
+}
+
+.diary-page.has-schedule-panel .diary-day .diary-calendar-schedule > span {
+  min-width: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.diary-page.has-schedule-panel .diary-day.today .diary-day-topline,
+.diary-page.has-schedule-panel .diary-day.today .diary-day-schedules,
+.diary-page.has-schedule-panel .diary-day.today .diary-calendar-schedule > span,
+.diary-page.has-schedule-panel .diary-day.muted .diary-day-topline,
+.diary-page.has-schedule-panel .diary-day.muted .diary-day-schedules,
+.diary-page.has-schedule-panel .diary-day.muted .diary-calendar-schedule > span {
+  background: transparent;
+}
+
+.diary-page.has-schedule-panel .diary-day.today .diary-calendar-schedule > span,
+.diary-page.has-schedule-panel .diary-day.muted .diary-calendar-schedule > span {
+  color: inherit;
+}
+
+.diary-page.has-schedule-panel .diary-day .diary-entry-dot {
+  min-width: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  color: transparent;
+  line-height: 1;
+}
+
+.diary-page.has-schedule-panel .diary-day.today .diary-entry-dot,
+.diary-page.has-schedule-panel .diary-day.muted .diary-entry-dot {
+  background: var(--accent-color, #705bff);
+}
+
+/* ========================= */
+/* Diary schedule structural fix */
+/* ========================= */
+
+/* 일정 레이아웃에서 날짜 줄/일정 목록 래퍼는 예전 날짜 span 원형 규칙을 받으면 안 된다. */
+.diary-page.has-schedule-panel .diary-day-topline,
+.diary-page.has-schedule-panel .diary-day-schedules {
+  min-width: 0 !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  line-height: 1 !important;
+}
+
+.diary-page.has-schedule-panel .diary-day-schedules:empty {
+  display: none !important;
+}
+
+.diary-page.has-schedule-panel .diary-day.today .diary-day-topline,
+.diary-page.has-schedule-panel .diary-day.today .diary-day-schedules,
+.diary-page.has-schedule-panel .diary-day.muted .diary-day-topline,
+.diary-page.has-schedule-panel .diary-day.muted .diary-day-schedules {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* ========================= */
+/* Diary schedule compact window layout fix */
+/* ========================= */
+
+/* 최소 창 크기에서도 달력이 사라지지 않도록 1180px 이하에서 바로 세로 전환하지 않는다. */
+@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) 292px;
+    gap: 14px;
+    overflow: hidden;
+    padding-right: 0;
+  }
+
+.diary-page.has-schedule-panel .diary-card,
+  .diary-page.has-schedule-panel .diary-schedule-panel {
+    max-height: 820px;
+    min-height: 0;
+  }
+
+.diary-page.has-schedule-panel .diary-header {
+    height: 104px;
+    padding: 24px 30px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-header {
+    height: 76px;
+    margin: 0 26px;
+  }
+
+.diary-page.has-schedule-panel .diary-weekdays {
+    margin: 0 26px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-grid {
+    height: calc(100% - 208px);
+    min-height: 500px;
+    margin: 0 26px 28px;
+    grid-template-rows: repeat(6, minmax(68px, 1fr));
+  }
+
+.diary-page.has-schedule-panel .diary-day {
+    padding: 10px 10px 8px;
+    gap: 6px;
+  }
+
+.diary-schedule-panel {
+    padding: 22px;
+  }
+
+.diary-schedule-panel-header {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+.diary-schedule-date-mark {
+    width: 42px;
+    height: 42px;
+  }
+
+.diary-schedule-panel-header h2 {
+    font-size: 20px;
+  }
+
+.diary-schedule-input-row {
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 8px;
+  }
+}
+
+/* ========================= */
+/* Diary compact square calendar fix */
+/* ========================= */
+
+/*
+  창이 줄어들 때 우측 일정 패널도 같이 줄이고,
+  달력 칸은 7 x 6 비율을 유지해서 정사각형에 가깝게 보이도록 한다.
+*/
+@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) clamp(220px, 25vw, 270px);
+    gap: 12px;
+  }
+
+.diary-page.has-schedule-panel .diary-card {
+    min-width: 0;
+  }
+
+.diary-page.has-schedule-panel .diary-header {
+    height: 102px;
+    padding: 22px 30px;
+  }
+
+.diary-page.has-schedule-panel .diary-header h1 {
+    font-size: 27px;
+  }
+
+.diary-page.has-schedule-panel .diary-header p {
+    max-width: 310px;
+    line-height: 1.25;
+  }
+
+.diary-page.has-schedule-panel .write-diary-button {
+    min-width: 118px;
+    height: 42px;
+    padding: 0 16px;
+    font-size: 14px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-header {
+    height: 72px;
+    margin: 0 24px;
+    grid-template-columns: 44px minmax(0, 1fr) 44px 74px;
+    column-gap: 10px;
+  }
+
+.diary-page.has-schedule-panel .diary-month-control {
+    min-width: 0;
+  }
+
+.diary-page.has-schedule-panel .diary-current-month {
+    gap: 14px;
+    min-width: 0;
+  }
+
+.diary-page.has-schedule-panel .diary-current-month strong {
+    font-size: 30px;
+  }
+
+.diary-page.has-schedule-panel .diary-current-month span {
+    font-size: 19px;
+  }
+
+.diary-page.has-schedule-panel .diary-month-control > button:not(.diary-current-month) {
+    width: 38px;
+    height: 38px;
+  }
+
+.diary-page.has-schedule-panel .diary-today-button {
+    width: 64px;
+    height: 38px;
+    padding: 0;
+    justify-self: end;
+    font-size: 13px;
+  }
+
+.diary-page.has-schedule-panel .diary-weekdays {
+    height: 28px;
+    margin: 0 24px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-grid {
+    width: calc(100% - 48px);
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 7 / 6;
+    margin: 0 24px 24px;
+    grid-template-rows: repeat(6, minmax(0, 1fr));
+  }
+
+.diary-page.has-schedule-panel .diary-day {
+    min-width: 0;
+    aspect-ratio: 1 / 1;
+    padding: 9px 8px 7px;
+    gap: 5px;
+  }
+
+.diary-page.has-schedule-panel .diary-day .diary-day-number {
+    font-size: 14px;
+  }
+
+.diary-page.has-schedule-panel .diary-day.today .diary-day-number {
+    width: 25px;
+    min-width: 25px;
+    height: 25px;
+    font-size: 13px;
+  }
+
+.diary-page.has-schedule-panel .diary-entry-dot {
+    width: 7px;
+    min-width: 7px;
+    height: 7px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-schedule,
+  .diary-page.has-schedule-panel .diary-calendar-more {
+    height: 19px;
+    border-radius: 6px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-schedule i {
+    width: 5px;
+    height: 5px;
+  }
+
+.diary-schedule-panel {
+    padding: 18px;
+  }
+
+.diary-schedule-panel-header {
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+.diary-schedule-date-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    font-size: 16px;
+  }
+
+.diary-schedule-panel-header h2 {
+    font-size: 19px;
+  }
+
+.diary-schedule-panel-header p {
+    font-size: 12px;
+  }
+
+.diary-schedule-input-row {
+    height: 40px;
+    grid-template-columns: minmax(0, 1fr) 40px;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+.diary-schedule-input-row input {
+    padding: 0 12px;
+    font-size: 12px;
+  }
+
+.diary-schedule-input-row button {
+    font-size: 22px;
+  }
+
+.diary-schedule-list {
+    gap: 8px;
+  }
+
+.diary-schedule-item {
+    min-height: 56px;
+    grid-template-columns: 9px minmax(0, 1fr) 24px;
+    gap: 10px;
+    padding: 10px;
+  }
+
+.diary-schedule-item strong {
+    font-size: 12px;
+  }
+
+.diary-schedule-item > button {
+    width: 24px;
+    height: 24px;
+  }
+
+.diary-side-diary-button {
+    height: 39px;
+    margin-top: 14px;
+  }
+}
+
+/* ========================= */
+/* Diary today number alignment fix */
+/* ========================= */
+
+/* 오늘 날짜 숫자가 다른 날짜보다 커 보이거나 아래로 밀려 보이지 않도록 배지 크기와 폰트를 맞춘다. */
+
+@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-page.has-schedule-panel .diary-day.today .diary-day-number {
+    min-width: 21px;
+    width: 21px;
+    height: 21px;
+    font-size: 14px;
+    line-height: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* ========================= */
+/* Diary schedule panel text weight/color fix */
+/* ========================= */
+
+/* 우측 일정 입력창/목록 글씨를 다시 적당히 굵게 정리 */
+
+.diary-schedule-item time,
+.diary-schedule-item strong {
+  font-weight: 700;
+}
+
+/* ========================= */
+/* Diary schedule panel bold text override */
+/* ========================= */
+
+/* 우측 일정 입력창/일정 목록 글씨를 너무 얇지 않게 다시 굵게 */
+
+/* ========================= */
+/* Diary schedule force bold font fix */
+/* ========================= */
+
+/* 폰트 파일이 thin/bold로 나뉘어 있어서 font-weight만으로 부족한 경우를 대비해 bold face를 직접 강제 */
+.diary-schedule-input-row input,
+.diary-schedule-item strong,
+.diary-schedule-item time {
+  font-family: 'MNFont', 'Paperlogy', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 800;
+  -webkit-text-stroke: 0.01px currentColor;
+}
+
+/* ========================= */
+/* Diary schedule time input */
+/* ========================= */
+
+/* 일정 입력 영역을 시간 선택 + 제목 입력 + 추가 버튼 구조로 변경 */
+
+.diary-schedule-time-input {
+  padding: 0 8px !important;
+  text-align: center;
+  letter-spacing: -0.02em;
+}
+
+.diary-schedule-title-input {
+  min-width: 0;
+}
+
+.diary-schedule-time-input::-webkit-calendar-picker-indicator {
+  width: 14px;
+  height: 14px;
+  margin-left: 2px;
+  opacity: 0.58;
+  cursor: pointer;
+}
+
+.diary-schedule-time-input::-webkit-datetime-edit {
+  padding: 0;
+}
+
+.diary-schedule-time-input::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-schedule-input-row {
+    grid-template-columns: 74px minmax(0, 1fr) 40px;
+  }
+
+.diary-schedule-time-input {
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+
+.diary-schedule-title-input {
+    padding: 0 10px !important;
+  }
+}
+
+/* ========================= */
+/* Diary custom schedule time picker */
+/* ========================= */
+
+/* 우측 일정 패널 상단 날짜 배지를 제거했으므로 텍스트만 정렬 */
+
+/* native time input 대신 앱 내부 시간 선택 버튼 사용 */
+.diary-schedule-time-button {
+  min-width: 0;
+  border: 1px solid rgba(130, 140, 170, 0.22) !important;
+  border-radius: 11px !important;
+  background: rgba(255, 255, 255, 0.52) !important;
+  color: rgba(31, 36, 48, 0.62) !important;
+  box-shadow: none !important;
+  padding: 0 8px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diary-schedule-time-button.has-time {
+  color: var(--accent-color, #705bff) !important;
+  background: color-mix(in srgb, var(--accent-color, #705bff) 10%, rgba(255, 255, 255, 0.50)) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 28%, rgba(130, 140, 170, 0.22)) !important;
+}
+
+.diary-schedule-time-button:hover {
+  background: rgba(255, 255, 255, 0.70) !important;
+  transform: none !important;
+}
+
+.diary-schedule-add-button {
+  border: 0 !important;
+  border-radius: 11px !important;
+  background: var(--accent-color, #705bff) !important;
+  color: #ffffff !important;
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  cursor: pointer;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-color, #705bff) 24%, transparent) !important;
+}
+
+.schedule-time-picker-modal {
+  position: relative;
+  width: 430px;
+  min-height: 560px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(130, 140, 170, 0.2);
+  box-shadow: 0 30px 80px rgba(20, 28, 58, 0.2);
+  padding: 34px 30px 28px;
+  overflow: hidden;
+}
+
+.schedule-time-picker-header {
+  height: 72px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 42px;
+}
+
+.schedule-time-picker-header span {
+  color: #65708d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.schedule-time-picker-header strong {
+  color: #10172f;
+  font-size: 31px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.schedule-time-wheel-picker {
+  position: relative;
+  height: 350px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 10px;
+}
+
+.schedule-time-wheel-picker::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 163px;
+  height: 56px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent-color, #705bff) 12%, transparent);
+  pointer-events: none;
+}
+
+.schedule-time-wheel-column {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.schedule-time-column-label {
+  height: 32px;
+  color: #8a93ad;
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.schedule-time-wheel-list {
+  height: 318px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: auto;
+  overscroll-behavior: contain;
+  padding: 131px 0;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: 131px;
+  scroll-padding-bottom: 131px;
+}
+
+.schedule-time-wheel-list::-webkit-scrollbar {
+  display: none;
+}
+
+.schedule-time-wheel-item {
+  width: 100%;
+  height: 56px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #8a93ad;
+  font-size: 16px;
+  font-weight: 800;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    color 0.16s ease,
+    font-size 0.16s ease,
+    transform 0.16s ease,
+    opacity 0.16s ease;
+  scroll-snap-align: center;
+}
+
+.schedule-time-wheel-item:hover {
+  color: var(--accent-color, #705bff);
+  background: transparent;
+  box-shadow: none;
+}
+
+.schedule-time-wheel-item.active {
+  color: var(--accent-color, #705bff);
+  font-size: 21px;
+  font-weight: 900;
+  transform: scale(1.03);
+}
+
+.schedule-time-picker-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.schedule-time-picker-actions button {
+  height: 42px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.schedule-time-clear-button {
+  border: 1px solid rgba(130, 140, 170, 0.22);
+  background: rgba(255, 255, 255, 0.58);
+  color: #65708d;
+}
+
+.schedule-time-confirm-button {
+  border: 0;
+  background: var(--accent-color, #705bff);
+  color: #ffffff;
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-color, #705bff) 24%, transparent);
+}
+
+@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-schedule-time-button {
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* ========================= */
+/* Diary square calendar and resizable schedule panel fix */
+/* ========================= */
+
+/*
+  창 크기 변경 시 달력 grid가 가로로 길게 늘어나지 않게 7:6 비율을 고정하고,
+  우측 일정 패널도 화면 폭에 따라 같이 줄어들도록 한다.
+*/
+
+.diary-page.has-schedule-panel .diary-schedule-panel {
+  width: auto;
+  min-width: 0;
+  max-width: 320px;
+}
+
+.diary-page.has-schedule-panel .diary-calendar-schedule,
+.diary-page.has-schedule-panel .diary-calendar-more {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1450px) and (min-width: 1181px) {
+  .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) clamp(230px, 20vw, 288px);
+    gap: 18px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-grid {
+    width: min(calc(100% - 56px), 700px);
+    max-width: 700px;
+  }
+
+.diary-schedule-panel {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+.diary-schedule-input-row {
+    grid-template-columns: 72px minmax(0, 1fr) 42px;
+  }
+}
+
+@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) clamp(210px, 22vw, 260px);
+    gap: 12px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-grid {
+    width: min(calc(100% - 48px), 620px);
+    max-width: 620px;
+    height: auto;
+    aspect-ratio: 7 / 6;
+  }
+
+.diary-schedule-panel {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+.diary-schedule-input-row {
+    grid-template-columns: 64px minmax(0, 1fr) 38px;
+  }
+}
+
+@media (max-width: 980px) and (min-width: 821px) {
+  .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) 200px;
+    gap: 10px;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-grid {
+    width: min(calc(100% - 40px), 560px);
+    max-width: 560px;
+  }
+
+.diary-schedule-panel {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+.diary-schedule-input-row {
+    grid-template-columns: 60px minmax(0, 1fr) 36px;
+  }
+}
+
+/* ========================= */
+/* Diary time wheel scroll selection fix */
+/* ========================= */
+
+/* 휠 스크롤 시 선택 바에 걸린 row가 실제 선택값이 되도록 선택 바 위치를 row 중심과 맞춘다. */
+
+/* ========================= */
+/* Diary dynamic calendar week count fix */
+/* ========================= */
+
+/*
+  달력을 항상 6주/42칸으로 고정하지 않고,
+  실제 달에 필요한 주 수에 맞춰 4~6줄로 표시한다.
+*/
+
+/* ========================= */
+/* Diary to-do shortcut */
+/* ========================= */
+
+.diary-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.diary-todo-shortcut-button {
+  height: 42px;
+  border: 1px solid rgba(130, 140, 170, 0.22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.50);
+  color: #65708d;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.diary-todo-shortcut-button:hover {
+  color: var(--accent-color, #705bff);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 28%, rgba(130, 140, 170, 0.22));
+}
+
+/* ========================= */
+/* Diary 일정 패널 / 달력 오버라이드 */
+/* ========================= */
+.diary-page.has-schedule-panel .diary-calendar-schedule,
+.diary-page.has-schedule-panel .diary-calendar-schedule.schedule-red,
+.diary-page.has-schedule-panel .diary-calendar-schedule.schedule-blue,
+.diary-page.has-schedule-panel .diary-calendar-schedule.schedule-green,
+.diary-page.has-schedule-panel .diary-calendar-schedule.schedule-orange,
+.diary-page.has-schedule-panel .diary-calendar-schedule.schedule-purple,
+.diary-page.has-schedule-panel .diary-calendar-schedule.schedule-gray {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 58%, transparent) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-weight: 400 !important;
+  box-shadow: none !important;
+}@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) 292px !important;
+    gap: 14px !important;
+    overflow: hidden !important;
+    padding-right: 0 !important;
+  }
+
+.diary-schedule-panel {
+    max-height: 820px !important;
+    min-height: 0 !important;
+  }
+}@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) clamp(220px, 25vw, 270px) !important;
+    gap: 12px !important;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-header {
+    grid-template-columns: 44px minmax(0, 1fr) 44px 74px !important;
+    column-gap: 10px !important;
+  }
+
+.diary-page.has-schedule-panel .diary-calendar-grid {
+    width: calc(100% - 48px) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    aspect-ratio: 7 / 6 !important;
+    margin: 0 24px 24px !important;
+    grid-template-rows: repeat(6, minmax(0, 1fr)) !important;
+  }
+
+.diary-page.has-schedule-panel .diary-day {
+    aspect-ratio: 1 / 1 !important;
+  }
+
+.diary-schedule-panel {
+    max-height: 820px !important;
+    min-height: 0 !important;
+    padding: 18px !important;
+  }
+}@media (max-width: 1180px) and (min-width: 821px) {
+  .diary-page.has-schedule-panel .diary-day.today .diary-day-number,
+  .app[data-wallpaper='true'] .diary-page.has-schedule-panel .diary-day.today .diary-day-number,
+  .app[data-theme='dark'][data-wallpaper='true'] .diary-page.has-schedule-panel .diary-day.today .diary-day-number {
+    min-width: 21px !important;
+    width: 21px !important;
+    height: 21px !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+    transform: translateY(-2px) !important;
+  }
+}.app .diary-schedule-input-row input {
+  font-weight: 700 !important;
+}.app .diary-schedule-input-row input::placeholder {
+  font-weight: 700 !important;
+  font-family: 'MNFont', 'Paperlogy', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+}.app .diary-schedule-item time,
+.app .diary-schedule-item strong {
+  font-weight: 700 !important;
+}.app .diary-schedule-input-row input,
+.app .diary-schedule-item strong,
+.app .diary-schedule-item time {
+  font-family: 'MNFont', 'Paperlogy', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-weight: 800 !important;
+  -webkit-text-stroke: 0.01px currentColor;
+}.app .diary-schedule-time-button {
+  border: 1px solid rgba(130, 140, 170, 0.22) !important;
+  border-radius: 11px !important;
+  background: rgba(255, 255, 255, 0.52) !important;
+  color: rgba(31, 36, 48, 0.62) !important;
+  box-shadow: none !important;
+  padding: 0 8px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}.app .diary-schedule-time-button.has-time {
+  color: var(--accent-color, #705bff) !important;
+  background: color-mix(in srgb, var(--accent-color, #705bff) 10%, rgba(255, 255, 255, 0.50)) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 28%, rgba(130, 140, 170, 0.22)) !important;
+}.app .diary-schedule-panel-header {
+  gap: 0 !important;
+}@media (max-width: 1180px) and (min-width: 821px) {
+  .app .diary-schedule-time-button {
+    padding: 0 6px !important;
+    font-size: 11px !important;
+  }
+}.app .diary-page.has-schedule-panel {
+  grid-template-columns: minmax(0, 1fr) clamp(240px, 21.5vw, 320px) !important;
+  gap: clamp(16px, 1.7vw, 28px) !important;
+}.app .diary-page.has-schedule-panel .diary-card {
+  min-width: 0 !important;
+}.app .diary-page.has-schedule-panel .diary-schedule-panel {
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 320px !important;
+}.app .diary-page.has-schedule-panel .diary-calendar-grid {
+  width: min(calc(100% - 72px), 760px) !important;
+  max-width: 760px !important;
+  height: auto !important;
+  min-height: 0 !important;
+  aspect-ratio: 7 / 6 !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  grid-template-rows: repeat(6, minmax(0, 1fr)) !important;
+}.app .diary-page.has-schedule-panel .diary-day {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+}.app .diary-page.has-schedule-panel .diary-calendar-schedule,
+.app .diary-page.has-schedule-panel .diary-calendar-more {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+}@media (max-width: 1450px) and (min-width: 1181px) {
+  .app .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) clamp(230px, 20vw, 288px) !important;
+    gap: 18px !important;
+  }
+
+.app .diary-page.has-schedule-panel .diary-calendar-grid {
+    width: min(calc(100% - 56px), 700px) !important;
+    max-width: 700px !important;
+  }
+
+.app .diary-schedule-panel {
+    padding-left: 24px !important;
+    padding-right: 24px !important;
+  }
+
+.app .diary-schedule-input-row {
+    grid-template-columns: 72px minmax(0, 1fr) 42px !important;
+  }
+}@media (max-width: 1180px) and (min-width: 821px) {
+  .app .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) clamp(210px, 22vw, 260px) !important;
+    gap: 12px !important;
+  }
+
+.app .diary-page.has-schedule-panel .diary-calendar-grid {
+    width: min(calc(100% - 48px), 620px) !important;
+    max-width: 620px !important;
+    height: auto !important;
+    aspect-ratio: 7 / 6 !important;
+  }
+
+.app .diary-schedule-panel {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+.app .diary-schedule-input-row {
+    grid-template-columns: 64px minmax(0, 1fr) 38px !important;
+  }
+}@media (max-width: 980px) and (min-width: 821px) {
+  .app .diary-page.has-schedule-panel {
+    grid-template-columns: minmax(0, 1fr) 200px !important;
+    gap: 10px !important;
+  }
+
+.app .diary-page.has-schedule-panel .diary-calendar-grid {
+    width: min(calc(100% - 40px), 560px) !important;
+    max-width: 560px !important;
+  }
+
+.app .diary-schedule-panel {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+
+.app .diary-schedule-input-row {
+    grid-template-columns: 60px minmax(0, 1fr) 36px !important;
+  }
+}.app .schedule-time-wheel-picker::before {
+  top: 163px !important;
+  height: 56px !important;
+}.app .schedule-time-wheel-list {
+  scroll-snap-type: y mandatory;
+  scroll-padding-top: 131px;
+  scroll-padding-bottom: 131px;
+}.app .schedule-time-wheel-item {
+  scroll-snap-align: center;
+}.app .diary-page.has-schedule-panel .diary-calendar-grid,
+.app .diary-calendar-grid {
+  aspect-ratio: 7 / var(--diary-week-count, 6) !important;
+  grid-template-rows: repeat(var(--diary-week-count, 6), minmax(0, 1fr)) !important;
+}
+
+/* Schedule editing */
+.diary-schedule-actions {
+  position: relative;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.diary-schedule-more-button {
+  min-width: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  opacity: 0.68;
+  padding: 0 2px !important;
+  font-size: 19px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  letter-spacing: 1.5px;
+  cursor: pointer;
+}
+
+.diary-schedule-more-button:hover,
+.diary-schedule-more-button.active {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: inherit !important;
+  opacity: 1;
+}
+
+.diary-schedule-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 112px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  box-shadow: 0 16px 38px rgba(20, 28, 58, 0.18);
+  display: grid;
+  gap: 4px;
+  z-index: 60;
+}
+
+.diary-schedule-menu-popover::before {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 15px;
+  width: 9px;
+  height: 9px;
+  background: inherit;
+  border-left: 1px solid rgba(130, 140, 170, 0.18);
+  border-top: 1px solid rgba(130, 140, 170, 0.18);
+  transform: rotate(45deg);
+}
+
+.diary-schedule-menu-popover > button {
+  position: relative;
+  z-index: 1;
+  height: 30px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #4f5a72;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.diary-schedule-menu-popover > button:hover {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 12%, transparent);
+  color: var(--accent-color, #705bff);
+}
+
+.diary-schedule-menu-popover > button.danger {
+  color: #e85a62;
+}
+
+.diary-schedule-menu-popover > button.danger:hover {
+  background: rgba(255, 89, 98, 0.12);
+  color: #ff4e58;
+}
+
+.diary-schedule-edit-modal {
+  width: min(360px, calc(100vw - 36px));
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(130, 140, 170, 0.20);
+  box-shadow: 0 30px 80px rgba(20, 28, 58, 0.22);
+  padding: 22px;
+}
+
+.diary-schedule-edit-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.diary-schedule-edit-modal-header h3 {
+  margin: 0;
+  color: #10172f;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.diary-schedule-edit-modal-header > button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #65708d;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.diary-schedule-edit-modal-header > button:hover {
+  color: var(--accent-color, #705bff);
+  background: transparent;
+}
+
+.diary-schedule-edit-modal-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.diary-schedule-edit-modal-fields label {
+  display: grid;
+  gap: 7px;
+}
+
+.diary-schedule-edit-modal-fields label > span {
+  color: #10172f;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.diary-schedule-edit-modal-fields input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border: 1px solid rgba(130, 140, 170, 0.22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.52);
+  color: rgba(31, 36, 48, 0.88);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  outline: none;
+}
+
+.diary-schedule-edit-modal-fields input:focus {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 40%, rgba(130, 140, 170, 0.22));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, #705bff) 12%, transparent);
+}
+
+.diary-schedule-edit-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.diary-schedule-edit-modal-actions > button {
+  min-width: 92px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.app[data-theme='dark'] .diary-schedule-menu-popover,
+.app[data-theme='dark'] .diary-schedule-edit-modal,
+.app[data-theme='dark'] .diary-schedule-edit-modal-fields input {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f5f7ff;
+  box-shadow: none;
+}
+
+.app[data-theme='dark'] .diary-schedule-menu-popover::before {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .diary-schedule-menu-popover > button,
+.app[data-theme='dark'] .diary-schedule-edit-modal-header > button {
+  color: #d8d8d8;
+}
+
+.app[data-theme='dark'] .diary-schedule-menu-popover > button.danger {
+  color: #ff737a;
+}
+
+.app[data-theme='dark'] .diary-schedule-edit-modal-fields label > span,
+.app[data-theme='dark'] .diary-schedule-edit-modal-header h3 {
+  color: #ffffff;
+}
+
+
+
+/* ========================= */
+/* Schedule edit picker buttons */
+/* ========================= */
+
+.app .diary-schedule-edit-picker-button {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  border: 1px solid rgba(130, 140, 170, 0.22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.52);
+  color: rgba(31, 36, 48, 0.88);
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+
+.app .diary-schedule-edit-picker-button:hover {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 40%, rgba(130, 140, 170, 0.22));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color, #705bff) 10%, transparent);
+}
+
+.app .diary-schedule-edit-modal-actions {
+  gap: 10px !important;
+}
+
+.app .diary-schedule-edit-modal-actions > button {
+  min-width: 78px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+  font-size: 12px !important;
+}
+
+.app .diary-schedule-edit-modal-actions > .modal-cancel-button {
+  background: transparent !important;
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: none !important;
+}
+
+.app[data-wallpaper='false'] .diary-schedule-edit-modal-actions > .modal-cancel-button {
+  border-color: rgba(130, 140, 170, 0.28) !important;
+  color: #65708d !important;
+}
+
+.app .diary-schedule-edit-modal-actions > .modal-cancel-button:hover {
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 42%, rgba(130, 140, 170, 0.28)) !important;
+  color: var(--accent-color, #705bff) !important;
+  background: color-mix(in srgb, var(--accent-color, #705bff) 8%, transparent) !important;
+}
+
+.app[data-theme='dark'] .diary-schedule-edit-picker-button {
+  background: #303030;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f5f7ff;
+}
+
+
+/* ========================= */
+/* Schedule edit action final sizing */
+/* ========================= */
+
+.app .diary-schedule-edit-modal-actions > .modal-cancel-button {
+  background: transparent !important;
+  border: 1px solid rgba(130, 140, 170, 0.34) !important;
+  color: #65708d !important;
+  box-shadow: none !important;
+}
+
+.app[data-theme='dark'] .diary-schedule-edit-modal-actions > .modal-cancel-button {
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  color: #d8d8d8 !important;
+}
+
+
+/* ========================= */
+/* Write diary back button accent outline */
+/* ========================= */
+
+.app .write-diary-back-button {
+  background: transparent !important;
+  border: 1px solid var(--accent-color, #705bff) !important;
+  color: var(--accent-color, #705bff) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.app .write-diary-back-button:hover {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 9%, transparent) !important;
+  border-color: var(--accent-color, #705bff) !important;
+  color: var(--accent-color, #705bff) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}

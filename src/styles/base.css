@@ -7,6 +7,31 @@
   src: url('../assets/fonts/thin.ttf') format('truetype');
   font-weight: 300;
   font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MNFont';
+  src: url('../assets/fonts/thin.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MNFont';
+  src: url('../assets/fonts/thin.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MNFont';
+  src: url('../assets/fonts/bold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
 }
 
 @font-face {
@@ -14,14 +39,37 @@
   src: url('../assets/fonts/bold.ttf') format('truetype');
   font-weight: 700;
   font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MNFont';
+  src: url('../assets/fonts/bold.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MNFont';
+  src: url('../assets/fonts/bold.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
 }
 
 /* ========================= */
 /* 리셋 */
 /* ========================= */
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+* {
+  font-family: inherit;
 }
 
 html,
@@ -34,7 +82,7 @@ body,
 }
 
 body {
-  font-family: 'MNFont', sans-serif;
+  font-family: 'MNFont', 'Paperlogy', 'Apple SD Gothic Neo', 'Malgun Gothic', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   font-weight: 300;
   background: #f5f6fb;
   color: #10172f;
@@ -45,6 +93,24 @@ input,
 textarea,
 select {
   font-family: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus,
+button:focus-visible,
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none;
 }
 
 /* ========================= */

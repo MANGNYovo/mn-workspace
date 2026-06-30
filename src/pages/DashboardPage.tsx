@@ -69,7 +69,7 @@ export function DashboardPage({
       </section>
 
       <section className="timeline-card">
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {enabledPrograms.map((program, index) => {
             const status = launchStatuses[program.id] ?? 'waiting'
             return (

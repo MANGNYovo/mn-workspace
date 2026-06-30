@@ -1,5 +1,7 @@
-import type { RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import { monthNames } from '../constants'
+
+const DIARY_WHEEL_ITEM_HEIGHT = 60
 
 type Props = {
   diaryPickerMonthIndex: number
@@ -19,10 +21,37 @@ export function DiaryPickerModal({
   diaryMonthWheelRef, diaryYearWheelRef,
   onClose, onMonthScroll, onYearScroll, onConfirm,
 }: Props) {
+  const diaryWheelSelectRef = useRef<HTMLButtonElement | null>(null)
   const diaryPickerYearOptions = Array.from(
     { length: diaryPickerMaxYear - diaryPickerMinYear + 1 },
     (_, i) => diaryPickerMinYear + i,
   )
+
+  useEffect(() => {
+    const wheelSelect = diaryWheelSelectRef.current
+    if (!wheelSelect) return
+
+    const handleWheel = (event: WheelEvent) => {
+      const amount = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX
+      if (Math.abs(amount) < 4) return
+
+      event.preventDefault()
+      const direction = amount > 0 ? 1 : -1
+      const pickerElement = wheelSelect.parentElement
+      const columnWidth = pickerElement ? pickerElement.clientWidth / 2 : 0
+      const targetColumn = event.offsetX < columnWidth
+        ? diaryMonthWheelRef.current
+        : diaryYearWheelRef.current
+
+      targetColumn?.scrollBy({
+        top: direction * DIARY_WHEEL_ITEM_HEIGHT,
+        behavior: 'auto',
+      })
+    }
+
+    wheelSelect.addEventListener('wheel', handleWheel, { passive: false })
+    return () => wheelSelect.removeEventListener('wheel', handleWheel)
+  }, [diaryMonthWheelRef, diaryYearWheelRef])
 
   return (
     <div className="modal-overlay">
@@ -59,17 +88,8 @@ export function DiaryPickerModal({
           </div>
 
           <button
+            ref={diaryWheelSelectRef}
             className="diary-wheel-select"
-            onWheel={(event) => {
-              event.preventDefault()
-              const pickerElement = event.currentTarget.parentElement
-              const columnWidth = pickerElement ? pickerElement.clientWidth / 2 : 0
-              if (event.nativeEvent.offsetX < columnWidth) {
-                diaryMonthWheelRef.current?.scrollBy({ top: event.deltaY, behavior: 'smooth' })
-              } else {
-                diaryYearWheelRef.current?.scrollBy({ top: event.deltaY, behavior: 'smooth' })
-              }
-            }}
             onClick={onConfirm}
           />
         </div>

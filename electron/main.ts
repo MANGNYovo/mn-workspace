@@ -1,10 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol, Notification } from 'electron'
 import { execFile } from 'node:child_process'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import dotenv from 'dotenv'
+import OpenAI from 'openai'
 import { google } from 'googleapis'
 import electronUpdater from 'electron-updater'
 
@@ -13,6 +14,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const { autoUpdater } = electronUpdater
 
 const CUSTOM_WALLPAPER_PROTOCOL = 'mn-wallpaper'
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId('MN Workspace')
+}
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -77,6 +82,841 @@ const YOUTUBE_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email',
   'https://www.googleapis.com/auth/userinfo.profile',
 ]
+
+// ─── OpenAI Chat API ───────────────────────────────────────────────────────
+
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim() ?? ''
+const OPENAI_MODEL = process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini'
+
+const AI_EMOTIONS = [
+  'default',
+  'smile',
+  'joy',
+  'sleepy',
+  'surprised',
+  'shy',
+  'pout',
+  'sad',
+  'soft-sad',
+  'gloomy',
+  'angry-small',
+  'done',
+] as const
+
+type AIEmotion = typeof AI_EMOTIONS[number]
+
+const AI_CHAT_MAIN_CHARACTERS = ['cheong', 'noah'] as const
+type AIChatCharacterId = typeof AI_CHAT_MAIN_CHARACTERS[number]
+
+const AI_CHAT_SPEAKERS = ['cheong', 'noah'] as const
+type AIChatSpeaker = typeof AI_CHAT_SPEAKERS[number]
+
+type AIPriority = 'high' | 'medium' | 'low'
+type AICommandTargetHint = 'latest' | 'matched' | 'selected' | 'today'
+
+type AICommand = {
+  type: 'calendar.create'
+  payload: {
+    title: string
+    date: string | null
+    time?: string | null
+    color?: 'red' | 'blue' | 'green' | 'orange' | 'purple' | 'gray' | null
+  }
+} | {
+  type: 'calendar.update'
+  payload: {
+    id?: string | null
+    targetId?: string | null
+    targetTitle?: string | null
+    targetDate?: string | null
+    targetHint?: AICommandTargetHint | null
+    title?: string | null
+    date?: string | null
+    time?: string | null
+    newTitle?: string | null
+    newDate?: string | null
+    newTime?: string | null
+  }
+} | {
+  type: 'calendar.delete'
+  payload: {
+    id?: string | null
+    targetId?: string | null
+    targetTitle?: string | null
+    targetDate?: string | null
+    targetHint?: AICommandTargetHint | null
+    title?: string | null
+    date?: string | null
+  }
+} | {
+  type: 'todo.create'
+  payload: {
+    title: string
+    description?: string | null
+    dueDate?: string | null
+    priority?: AIPriority | null
+    reminderEnabled?: boolean | null
+  }
+} | {
+  type: 'todo.update'
+  payload: {
+    id?: string | null
+    targetId?: string | null
+    targetTitle?: string | null
+    targetDueDate?: string | null
+    targetHint?: AICommandTargetHint | null
+    title?: string | null
+    newTitle?: string | null
+    description?: string | null
+    dueDate?: string | null
+    priority?: AIPriority | null
+    reminderEnabled?: boolean | null
+    completed?: boolean | null
+  }
+} | {
+  type: 'todo.delete'
+  payload: {
+    id?: string | null
+    targetId?: string | null
+    targetTitle?: string | null
+    targetDueDate?: string | null
+    targetHint?: AICommandTargetHint | null
+    title?: string | null
+    dueDate?: string | null
+  }
+}
+
+type AIChatContext = {
+  currentDate?: unknown
+  currentDateTime?: unknown
+  selectedScheduleDate?: unknown
+  schedules?: unknown
+  todos?: unknown
+}
+
+type AIChatResponseMessage = {
+  speaker: AIChatSpeaker
+  message: string
+  emotion?: AIEmotion
+}
+
+type AIChatRole = 'user' | 'assistant'
+
+type AIChatRequestMessage = {
+  role: AIChatRole
+  content: string
+}
+
+type AIChatResponsePayload = {
+  success: true
+  emotion: AIEmotion
+  message: string
+  messages: AIChatResponseMessage[]
+  action?: 'ask' | 'execute' | 'error'
+  commands?: AICommand[]
+  missingFields?: string[]
+} | {
+  success: false
+  error: string
+}
+
+type AIChatStoredMessage = {
+  id: string
+  sender: 'user' | 'ai'
+  text: string
+  timestamp: number
+  characterId?: AIChatCharacterId
+  emotion?: AIEmotion
+  speaker?: AIChatSpeaker
+}
+
+type AIChatHistoryPayload = {
+  messages: AIChatStoredMessage[]
+  emotion: AIEmotion
+}
+
+let openAIClient: OpenAI | null = null
+
+function getOpenAIClient() {
+  if (!OPENAI_API_KEY) {
+    throw new Error('missing-openai-api-key')
+  }
+
+  if (!openAIClient) {
+    openAIClient = new OpenAI({
+      apiKey: OPENAI_API_KEY,
+    })
+  }
+
+  return openAIClient
+}
+
+function normalizeAIChatMessages(messages: unknown): AIChatRequestMessage[] {
+  if (!Array.isArray(messages)) return []
+
+  return messages
+    .filter((message): message is AIChatRequestMessage => {
+      if (!message || typeof message !== 'object') return false
+
+      const role = (message as { role?: unknown }).role
+      const content = (message as { content?: unknown }).content
+
+      return (
+        (role === 'user' || role === 'assistant') &&
+        typeof content === 'string' &&
+        content.trim().length > 0
+      )
+    })
+    .map((message) => ({
+      role: message.role,
+      content: message.content.trim().slice(0, 4000),
+    }))
+    .slice(-10)
+}
+
+function normalizeAIChatCharacterId(value: unknown): AIChatCharacterId {
+  return (AI_CHAT_MAIN_CHARACTERS as readonly unknown[]).includes(value) ? value as AIChatCharacterId : 'cheong'
+}
+
+function getDefaultAIEmotion(characterId: AIChatCharacterId = 'cheong'): AIEmotion {
+  return characterId === 'noah' ? 'default' : 'default'
+}
+
+function normalizeAIEmotion(value: unknown, characterId: AIChatCharacterId = 'cheong'): AIEmotion {
+  if (typeof value === 'string' && (AI_EMOTIONS as readonly string[]).includes(value)) {
+    if (characterId === 'noah' && value === 'smile') return 'done'
+    if (characterId === 'noah' && value !== 'default' && value !== 'done') return getDefaultAIEmotion(characterId)
+    if (characterId === 'cheong' && value === 'done') return 'smile'
+    return value as AIEmotion
+  }
+
+  return getDefaultAIEmotion(characterId)
+}
+
+function normalizeAIChatSpeaker(value: unknown, fallback: AIChatCharacterId = 'cheong'): AIChatSpeaker {
+  return (AI_CHAT_SPEAKERS as readonly unknown[]).includes(value) ? value as AIChatSpeaker : fallback
+}
+
+function getStoredAIMessageCharacterId(item: Partial<AIChatStoredMessage>, requestedCharacterId: AIChatCharacterId): AIChatCharacterId | null {
+  if (normalizeAIChatCharacterId(item.characterId) === item.characterId) return item.characterId
+
+  if (item.sender === 'ai') {
+    if (normalizeAIChatCharacterId(item.speaker) === item.speaker) return item.speaker
+    return requestedCharacterId === 'cheong' ? 'cheong' : null
+  }
+
+  return requestedCharacterId === 'cheong' ? 'cheong' : null
+}
+
+function normalizeAIChatStoredMessage(value: unknown, characterId: AIChatCharacterId): AIChatStoredMessage | null {
+  if (!value || typeof value !== 'object') return null
+
+  const item = value as Partial<AIChatStoredMessage>
+
+  if (
+    typeof item.id !== 'string' ||
+    (item.sender !== 'user' && item.sender !== 'ai') ||
+    typeof item.text !== 'string' ||
+    typeof item.timestamp !== 'number'
+  ) {
+    return null
+  }
+
+  const messageCharacterId = getStoredAIMessageCharacterId(item, characterId)
+  if (messageCharacterId !== characterId) return null
+
+  return {
+    id: item.id,
+    sender: item.sender,
+    text: item.text,
+    timestamp: item.timestamp,
+    characterId: messageCharacterId,
+    emotion: item.emotion ? normalizeAIEmotion(item.emotion, characterId) : undefined,
+    speaker: item.sender === 'ai' ? normalizeAIChatSpeaker(item.speaker, characterId) : undefined,
+  }
+}
+
+function normalizeAIChatHistoryPayload(payload: unknown, characterId: AIChatCharacterId): AIChatHistoryPayload {
+  if (!payload || typeof payload !== 'object') {
+    return {
+      messages: [],
+      emotion: getDefaultAIEmotion(characterId),
+    }
+  }
+
+  const item = payload as Partial<AIChatHistoryPayload>
+
+  return {
+    messages: Array.isArray(item.messages)
+      ? item.messages
+        .map((message) => normalizeAIChatStoredMessage(message, characterId))
+        .filter((message): message is AIChatStoredMessage => Boolean(message))
+      : [],
+    emotion: normalizeAIEmotion(item.emotion, characterId),
+  }
+}
+
+function sanitizeAIMessageText(message: string) {
+  return message
+    .replace(/(^|\n)\s*(오|아)(?:[,，]+|[.?!！？~…]+)\s+/g, '$1')
+    .replace(/^\s*승연아[,，]\s*(?=.{12,})/, '')
+    .replace(/승연아는/g, '승연이는')
+    .replace(/승연아가/g, '승연이가')
+    .replace(/승연아를/g, '승연이를')
+    .replace(/승연아도/g, '승연이도')
+    .replace(/승연아의/g, '승연이의')
+    .replace(/승연아랑/g, '승연이랑')
+    .replace(/승연아한테/g, '승연이한테')
+    .replace(/승연아에게/g, '승연이한테')
+    .replace(/청명이가/g, '내가')
+    .replace(/청명은/g, '나는')
+    .replace(/청명이는/g, '나는')
+    .replace(/청명도/g, '나도')
+    .replace(/청명을/g, '나를')
+    .replace(/청명에게/g, '나한테')
+    .replace(/청명한테/g, '나한테')
+    .replace(/청명의/g, '내')
+    .replace(/노아가/g, '내가')
+    .replace(/노아는/g, '나는')
+    .replace(/노아도/g, '나도')
+    .replace(/노아를/g, '나를')
+    .replace(/노아에게/g, '나한테')
+    .replace(/노아한테/g, '나한테')
+    .replace(/노아의/g, '내')
+    .replace(/유청명은/g, '나는')
+    .replace(/유청명도/g, '나도')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+}
+
+function extractFirstJSONObjectText(rawText: string) {
+  const text = rawText.trim()
+  const start = text.indexOf('{')
+
+  if (start < 0) return ''
+
+  let depth = 0
+  let inString = false
+  let escaped = false
+
+  for (let index = start; index < text.length; index += 1) {
+    const char = text[index]
+
+    if (escaped) {
+      escaped = false
+      continue
+    }
+
+    if (char === '\\') {
+      escaped = true
+      continue
+    }
+
+    if (char === '"') {
+      inString = !inString
+      continue
+    }
+
+    if (inString) continue
+
+    if (char === '{') {
+      depth += 1
+      continue
+    }
+
+    if (char === '}') {
+      depth -= 1
+
+      if (depth === 0) {
+        return text.slice(start, index + 1)
+      }
+    }
+  }
+
+  return ''
+}
+
+function parseAIResponseJSON(rawText: string) {
+  const trimmedText = rawText.trim()
+
+  try {
+    return JSON.parse(trimmedText) as {
+      emotion?: unknown
+      message?: unknown
+      messages?: unknown
+      action?: unknown
+      commands?: unknown
+      missingFields?: unknown
+    }
+  } catch (error) {
+    const firstJSONObjectText = extractFirstJSONObjectText(trimmedText)
+
+    if (firstJSONObjectText && firstJSONObjectText !== trimmedText) {
+      return JSON.parse(firstJSONObjectText) as {
+        emotion?: unknown
+        message?: unknown
+        messages?: unknown
+        action?: unknown
+        commands?: unknown
+        missingFields?: unknown
+      }
+    }
+
+    throw error
+  }
+}
+
+function normalizeOptionalString(value: unknown) {
+  if (value === null) return null
+  if (typeof value !== 'string') return undefined
+  const trimmed = value.trim()
+  return trimmed || null
+}
+
+function normalizeBoolean(value: unknown) {
+  return typeof value === 'boolean' ? value : undefined
+}
+
+function normalizePriority(value: unknown): AIPriority | undefined {
+  return value === 'high' || value === 'medium' || value === 'low' ? value : undefined
+}
+
+function normalizeTargetHint(value: unknown): AICommandTargetHint | undefined {
+  return value === 'latest' || value === 'matched' || value === 'selected' || value === 'today' ? value : undefined
+}
+
+type AICalendarColor = 'red' | 'blue' | 'green' | 'orange' | 'purple' | 'gray'
+
+function normalizeCalendarColor(value: unknown): AICalendarColor | undefined {
+  return (value === 'red' || value === 'blue' || value === 'green' || value === 'orange' || value === 'purple' || value === 'gray')
+    ? value
+    : undefined
+}
+
+function normalizeAICommand(value: unknown): AICommand | null {
+  if (!value || typeof value !== 'object') return null
+
+  const command = value as { type?: unknown; payload?: unknown }
+  const payload = command.payload && typeof command.payload === 'object'
+    ? command.payload as Record<string, unknown>
+    : {}
+
+  if (command.type === 'calendar.create') {
+    const title = normalizeOptionalString(payload.title)
+    if (!title) return null
+
+    return {
+      type: 'calendar.create',
+      payload: {
+        title,
+        date: normalizeOptionalString(payload.date) ?? null,
+        time: normalizeOptionalString(payload.time),
+        color: normalizeCalendarColor(payload.color),
+      },
+    }
+  }
+
+  if (command.type === 'calendar.update') {
+    return {
+      type: 'calendar.update',
+      payload: {
+        id: normalizeOptionalString(payload.id),
+        targetId: normalizeOptionalString(payload.targetId),
+        targetTitle: normalizeOptionalString(payload.targetTitle),
+        targetDate: normalizeOptionalString(payload.targetDate),
+        targetHint: normalizeTargetHint(payload.targetHint),
+        title: normalizeOptionalString(payload.title),
+        date: normalizeOptionalString(payload.date),
+        time: normalizeOptionalString(payload.time),
+        newTitle: normalizeOptionalString(payload.newTitle),
+        newDate: normalizeOptionalString(payload.newDate),
+        newTime: normalizeOptionalString(payload.newTime),
+      },
+    }
+  }
+
+  if (command.type === 'calendar.delete') {
+    return {
+      type: 'calendar.delete',
+      payload: {
+        id: normalizeOptionalString(payload.id),
+        targetId: normalizeOptionalString(payload.targetId),
+        targetTitle: normalizeOptionalString(payload.targetTitle),
+        targetDate: normalizeOptionalString(payload.targetDate),
+        targetHint: normalizeTargetHint(payload.targetHint),
+        title: normalizeOptionalString(payload.title),
+        date: normalizeOptionalString(payload.date),
+      },
+    }
+  }
+
+  if (command.type === 'todo.create') {
+    const title = normalizeOptionalString(payload.title)
+    if (!title) return null
+
+    return {
+      type: 'todo.create',
+      payload: {
+        title,
+        description: normalizeOptionalString(payload.description),
+        dueDate: normalizeOptionalString(payload.dueDate),
+        priority: normalizePriority(payload.priority),
+        reminderEnabled: normalizeBoolean(payload.reminderEnabled),
+      },
+    }
+  }
+
+  if (command.type === 'todo.update') {
+    return {
+      type: 'todo.update',
+      payload: {
+        id: normalizeOptionalString(payload.id),
+        targetId: normalizeOptionalString(payload.targetId),
+        targetTitle: normalizeOptionalString(payload.targetTitle),
+        targetDueDate: normalizeOptionalString(payload.targetDueDate),
+        targetHint: normalizeTargetHint(payload.targetHint),
+        title: normalizeOptionalString(payload.title),
+        newTitle: normalizeOptionalString(payload.newTitle),
+        description: normalizeOptionalString(payload.description),
+        dueDate: normalizeOptionalString(payload.dueDate),
+        priority: normalizePriority(payload.priority),
+        reminderEnabled: normalizeBoolean(payload.reminderEnabled),
+        completed: normalizeBoolean(payload.completed),
+      },
+    }
+  }
+
+  if (command.type === 'todo.delete') {
+    return {
+      type: 'todo.delete',
+      payload: {
+        id: normalizeOptionalString(payload.id),
+        targetId: normalizeOptionalString(payload.targetId),
+        targetTitle: normalizeOptionalString(payload.targetTitle),
+        targetDueDate: normalizeOptionalString(payload.targetDueDate),
+        targetHint: normalizeTargetHint(payload.targetHint),
+        title: normalizeOptionalString(payload.title),
+        dueDate: normalizeOptionalString(payload.dueDate),
+      },
+    }
+  }
+
+  return null
+}
+
+function normalizeAICommands(value: unknown): AICommand[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map(normalizeAICommand)
+    .filter((command): command is AICommand => Boolean(command))
+    .slice(0, 5)
+}
+
+function normalizeMissingFields(value: unknown) {
+  if (!Array.isArray(value)) return undefined
+  const fields = value
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    .map((item) => item.trim())
+    .slice(0, 8)
+
+  return fields.length > 0 ? fields : undefined
+}
+
+function normalizeAIAction(value: unknown): 'ask' | 'execute' | 'error' | undefined {
+  if (value === 'ask' || value === 'execute' || value === 'error') return value
+  return undefined
+}
+
+function parseAIResponsePayload(rawText: string, characterId: AIChatCharacterId = 'cheong'): {
+  emotion: AIEmotion
+  message: string
+  messages: AIChatResponseMessage[]
+  action?: 'ask' | 'execute' | 'error'
+  commands?: AICommand[]
+  missingFields?: string[]
+} {
+  const parsed = parseAIResponseJSON(rawText)
+  const fallbackEmotion = normalizeAIEmotion(parsed.emotion, characterId)
+  const fallbackMessage = typeof parsed.message === 'string'
+    ? sanitizeAIMessageText(parsed.message)
+    : ''
+
+  const firstMessage = Array.isArray(parsed.messages)
+    ? parsed.messages
+      .map((item): AIChatResponseMessage | null => {
+        if (!item || typeof item !== 'object') return null
+
+        const candidate = item as {
+          speaker?: unknown
+          emotion?: unknown
+          message?: unknown
+        }
+        const message = typeof candidate.message === 'string'
+          ? sanitizeAIMessageText(candidate.message)
+          : ''
+
+        if (!message) return null
+
+        return {
+          speaker: normalizeAIChatSpeaker(candidate.speaker, characterId),
+          message,
+          emotion: normalizeAIEmotion(candidate.emotion ?? fallbackEmotion, characterId),
+        }
+      })
+      .filter((item): item is AIChatResponseMessage => Boolean(item))
+      .at(0)
+    : null
+
+  const mainMessage = firstMessage ?? {
+    speaker: characterId,
+    message: fallbackMessage || '잠깐, 방금 신호가 좀 비었어. 다시 한 번 말해줄래?',
+    emotion: fallbackEmotion,
+  }
+
+  const commands = normalizeAICommands(parsed.commands)
+  const missingFields = normalizeMissingFields(parsed.missingFields)
+
+  return {
+    emotion: mainMessage.emotion ?? fallbackEmotion,
+    message: mainMessage.message,
+    messages: [mainMessage],
+    action: normalizeAIAction(parsed.action) ?? (commands.length > 0 ? 'execute' : missingFields ? 'ask' : undefined),
+    commands: commands.length > 0 ? commands : undefined,
+    missingFields,
+  }
+}
+
+function normalizeAIChatContext(context: unknown): AIChatContext {
+  if (!context || typeof context !== 'object') return {}
+
+  const item = context as AIChatContext
+  const normalizeSchedule = (value: unknown) => {
+    if (!value || typeof value !== 'object') return null
+    const schedule = value as Record<string, unknown>
+    if (typeof schedule.id !== 'string' || typeof schedule.title !== 'string' || typeof schedule.date !== 'string') return null
+
+    return {
+      id: schedule.id,
+      title: schedule.title,
+      date: schedule.date,
+      time: typeof schedule.time === 'string' ? schedule.time : undefined,
+      createdAt: typeof schedule.createdAt === 'string' ? schedule.createdAt : '',
+      updatedAt: typeof schedule.updatedAt === 'string' ? schedule.updatedAt : '',
+    }
+  }
+
+  const normalizeTodo = (value: unknown) => {
+    if (!value || typeof value !== 'object') return null
+    const task = value as Record<string, unknown>
+    if (typeof task.id !== 'string' || typeof task.title !== 'string') return null
+
+    return {
+      id: task.id,
+      title: task.title,
+      description: typeof task.description === 'string' ? task.description : undefined,
+      dueDate: typeof task.dueDate === 'string' ? task.dueDate : undefined,
+      priority: normalizePriority(task.priority) ?? 'medium',
+      completed: typeof task.completed === 'boolean' ? task.completed : false,
+      createdAt: typeof task.createdAt === 'string' ? task.createdAt : '',
+      updatedAt: typeof task.updatedAt === 'string' ? task.updatedAt : '',
+    }
+  }
+
+  return {
+    currentDate: typeof item.currentDate === 'string' ? item.currentDate : undefined,
+    currentDateTime: typeof item.currentDateTime === 'string' ? item.currentDateTime : undefined,
+    selectedScheduleDate: typeof item.selectedScheduleDate === 'string' ? item.selectedScheduleDate : undefined,
+    schedules: Array.isArray(item.schedules)
+      ? item.schedules.map(normalizeSchedule).filter(Boolean).slice(-40)
+      : undefined,
+    todos: Array.isArray(item.todos)
+      ? item.todos.map(normalizeTodo).filter(Boolean).slice(0, 40)
+      : undefined,
+  }
+}
+
+// ─── Lore 파일 경로 ──────────────────────────────────────────────────────────
+function getCheongLoreFilePath() {
+  // 개발환경: electron/ 폴더 옆, 빌드: exe 옆 (package.json extraFiles 설정)
+  return [
+    path.join(process.env.APP_ROOT ?? '', 'electron', 'cheong-lore.json'),
+    path.join(path.dirname(app.getPath('exe')), 'cheong-lore.json'),
+  ]
+}
+
+// lore 파일에서 캐릭터 설정을 읽어 시스템 프롬프트 생성
+async function createCheongDeveloperPrompt(): Promise<string> {
+  // lore 파일 로드 시도 (개발/빌드 환경 순서로)
+  let loreItems: Array<{ section: string; content: string }> = []
+
+  for (const lorePath of getCheongLoreFilePath()) {
+    try {
+      const raw = await readJsonFile(lorePath)
+      if (Array.isArray(raw) && raw.length > 0) {
+        loreItems = raw
+        break
+      }
+    } catch {
+      // 다음 경로 시도
+    }
+  }
+
+  // lore에서 읽은 캐릭터 설명 조합
+  const loreContent = loreItems.length > 0
+    ? loreItems.map((item) => item.content).join(' ')
+    : ''
+
+  // AI 응답 형식 규칙 (캐릭터와 무관한 기술적 지시사항 — lore에 넣지 않음)
+  const systemRules = [
+    '너는 "청명"이라는 이름의 AI 캐릭터다. 사용자 이름은 "승연"이다.',
+    loreContent,
+    '청명은 자신을 3인칭으로 부르지 않는다. 자신은 "나", "내", "내가", "나한테", "나도"라고 말한다.',
+    '승연이 이름을 억지로 자주 부르지 않는다. 이름을 불러야 자연스러운 상황에서만 "승연 씨"라고 부른다.',
+    '현재 대화 중인 캐릭터가 청명일 때는 노아처럼 일정이나 투두를 직접 실행하지 않는다. 비서 기능이 필요하면 노아에게 말하라고 짧게 안내할 수 있다.',
+    'messages 배열에도 speaker는 반드시 "cheong"만 사용한다.',
+    '사용자의 말에 상담사나 비서처럼 과하게 정리해서 답하지 않는다. 짧고 자연스럽게 반응한다.',
+    '답변은 반드시 JSON 하나로만 출력한다.',
+    '스키마: {"emotion":"default|smile|joy|sleepy|surprised|shy|pout|sad|soft-sad|gloomy|angry-small","message":"청명의 답변","messages":[{"speaker":"cheong","emotion":"same emotion","message":"청명의 답변"}]}',
+    'emotion 규칙: default는 평온함, smile은 작은 미소/기분 좋음, joy는 조용한 즐거움, sleepy는 나른함/졸림, surprised는 놀람, shy는 부끄러움, pout은 삐짐, sad는 슬픔, soft-sad는 약간 슬픔, gloomy는 우울/무기력, angry-small은 작게 화남/차가운 짜증에 쓴다.',
+    'JSON 외의 문장, 설명, 마크다운, 코드블록은 절대 출력하지 않는다.',
+  ].filter(Boolean).join(' ')
+
+  return systemRules
+}
+
+function createNoahDeveloperPrompt(context: AIChatContext): string {
+  const safeContext = normalizeAIChatContext(context)
+  const contextText = JSON.stringify(safeContext)
+
+  return [
+    '너는 "노아"라는 이름의 일정/할 일 관리 전용 AI 비서다. 사용자 이름은 "승연"이다. 필요할 때만 자연스럽게 "승연님"이라고 부른다.',
+    '노아는 차분하고 부드러운 비서 말투로 말한다. 답변은 너무 짧게 끊지 말고 1~2문장 정도로 자연스럽게 말하되, 장황하게 설명하지 않는다. 모든 실제 앱 조작은 네가 직접 하는 것이 아니라 commands 배열로 앱에 전달한다.',
+    '현재 날짜와 시간 기준은 Asia/Seoul이다. 상대 날짜는 APP_CONTEXT.currentDate/currentDateTime을 기준으로 ISO 날짜 YYYY-MM-DD로 해석한다.',
+    '월이 생략된 "19일" 같은 표현은 현재 월의 해당 일이 아직 지나지 않았으면 현재 월, 이미 지났으면 다음 달로 해석한다.',
+    '일정 생성 최소 조건은 title과 date다. time은 선택값이다. 제목과 날짜가 있으면 시간이 없어도 바로 calendar.create 명령을 만든다.',
+    '할 일 생성 최소 조건은 title이다. dueDate, priority, reminderEnabled는 선택값이다. 제목이 있으면 마감기한/중요도가 없어도 바로 todo.create 명령을 만든다.',
+    '필수 정보가 부족할 때만 action:"ask"로 질문하고 commands는 비운다. 선택값만 부족한 경우에는 되묻지 않는다.',
+    '호칭은 매 답변마다 반복하지 않는다. 인사, 확인, 되묻기, 조금 더 정중하게 말해야 하는 상황에서만 "승연님"을 자연스럽게 사용한다. 예: "승연님, 어떤 할 일을 삭제할까요?" / 단순 완료는 "일정 추가해둘게요."처럼 호칭 없이 말해도 된다.',
+    '수정 요청은 APP_CONTEXT.schedules와 APP_CONTEXT.todos에서 가장 잘 맞는 항목을 고른다. id를 알 수 있으면 targetId 또는 id를 넣는다. "방금", "최근"은 targetHint:"latest"를 쓴다.',
+    '일정 수정은 calendar.update를 사용한다. 변경값은 newTitle/newDate/newTime에 넣고, 찾을 조건은 targetId/targetTitle/targetDate/targetHint에 넣는다.',
+    '일정 삭제 요청은 calendar.delete를 사용한다. APP_CONTEXT.schedules에서 가장 잘 맞는 항목을 골라 targetId 또는 targetTitle/targetDate/targetHint를 넣는다. 찾을 수 있으면 지원하지 않는다고 말하지 말고 calendar.delete 명령을 만든다. 삭제할 항목이 전혀 특정되지 않으면 action:"ask"로 어떤 일정을 삭제할지 묻고 commands는 비운다.',
+    '할 일 수정은 todo.update를 사용한다. 변경값은 newTitle/dueDate/priority/description/reminderEnabled/completed에 넣고, 찾을 조건은 targetId/targetTitle/targetDueDate/targetHint에 넣는다.',
+    '할 일 삭제 요청은 todo.delete를 사용한다. APP_CONTEXT.todos에서 가장 잘 맞는 항목을 골라 targetId 또는 targetTitle/targetDueDate/targetHint를 넣는다. 찾을 수 있으면 지원하지 않는다고 말하지 말고 todo.delete 명령을 만든다. 삭제할 항목이 전혀 특정되지 않으면 action:"ask"로 어떤 할 일을 삭제할지 묻고 commands는 비운다.',
+    '완료 답변을 할 때 emotion은 "done"을 사용한다. 추가/수정 명령을 실행할 때 action은 "execute"를 사용한다.',
+    '답변은 반드시 JSON 하나로만 출력한다. JSON 외 문장, 설명, 마크다운, 코드블록은 절대 출력하지 않는다.',
+    '스키마: {"emotion":"default|done","action":"ask|execute|error","message":"사용자에게 보여줄 짧은 답변","messages":[{"speaker":"noah","emotion":"default|done","message":"같은 답변"}],"commands":[{"type":"calendar.create|calendar.update|calendar.delete|todo.create|todo.update|todo.delete","payload":{}}],"missingFields":["필요한 필드"]}',
+    'calendar.create payload 예시: {"title":"치과예약","date":"2026-07-19","time":null}',
+    'calendar.update payload 예시: {"targetTitle":"치과예약","targetHint":"latest","newTime":"15:00"}',
+    'calendar.delete payload 예시: {"targetTitle":"치과예약","targetHint":"matched"}',
+    'todo.create payload 예시: {"title":"문제집 독해","dueDate":null,"priority":"medium","reminderEnabled":false}',
+    'todo.update payload 예시: {"targetTitle":"문제집 독해","priority":"high"}',
+    'todo.delete payload 예시: {"targetTitle":"문제집 독해","targetHint":"matched"}',
+    `APP_CONTEXT=${contextText}`,
+  ].join(' ')
+}
+
+async function createAIChatDeveloperPrompt(characterId: AIChatCharacterId, context: AIChatContext): Promise<string> {
+  if (characterId === 'noah') return createNoahDeveloperPrompt(context)
+  return createCheongDeveloperPrompt()
+}
+
+// ─── AI Chat IPC 핸들러 ─────────────────────────────────────────────────────
+
+ipcMain.handle('ai-chat:load-history', async (_event, characterIdPayload?: unknown): Promise<AIChatHistoryPayload> => {
+  const characterId = normalizeAIChatCharacterId(characterIdPayload)
+
+  try {
+    const characterHistory = await readJsonFile(getAIChatHistoryFilePath(characterId))
+
+    if (characterHistory) {
+      return normalizeAIChatHistoryPayload(characterHistory, characterId)
+    }
+
+    return normalizeAIChatHistoryPayload(null, characterId)
+  } catch (error) {
+    console.error('Failed to load AI chat history:', error)
+    return {
+      messages: [],
+      emotion: getDefaultAIEmotion(characterId),
+    }
+  }
+})
+
+ipcMain.handle('ai-chat:save-history', async (_event, characterIdPayload: unknown, payload: unknown): Promise<boolean> => {
+  const characterId = normalizeAIChatCharacterId(characterIdPayload)
+
+  try {
+    await writeJsonFile(getAIChatHistoryFilePath(characterId), normalizeAIChatHistoryPayload(payload, characterId))
+    return true
+  } catch (error) {
+    console.error('Failed to save AI chat history:', error)
+    return false
+  }
+})
+
+ipcMain.handle('ai-chat:clear-history', async (_event, characterIdPayload?: unknown): Promise<boolean> => {
+  const characterId = normalizeAIChatCharacterId(characterIdPayload)
+
+  try {
+    await writeJsonFile(getAIChatHistoryFilePath(characterId), {
+      messages: [],
+      emotion: getDefaultAIEmotion(characterId),
+    })
+    return true
+  } catch (error) {
+    console.error('Failed to clear AI chat history:', error)
+    return false
+  }
+})
+
+ipcMain.handle('ai-chat:send', async (_event, payload: { characterId?: unknown; messages?: unknown; context?: unknown }): Promise<AIChatResponsePayload> => {
+  try {
+    const client = getOpenAIClient()
+    const characterId = normalizeAIChatCharacterId(payload?.characterId)
+    const messages = normalizeAIChatMessages(payload?.messages)
+    const context = normalizeAIChatContext(payload?.context)
+
+    if (messages.length === 0) {
+      return {
+        success: false,
+        error: 'empty-message',
+      }
+    }
+
+    const response = await client.responses.create({
+      model: OPENAI_MODEL,
+      input: [
+        {
+          role: 'developer',
+          content: await createAIChatDeveloperPrompt(characterId, context),
+        },
+        ...messages,
+      ],
+      text: {
+        format: {
+          type: 'json_object',
+        },
+      },
+      temperature: characterId === 'noah' ? 0.2 : 0.85,
+      max_output_tokens: characterId === 'noah' ? 650 : 500,
+    })
+
+    const rawText = response.output_text?.trim() ?? ''
+    return {
+      success: true,
+      ...parseAIResponsePayload(rawText, characterId),
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown-error'
+    console.error('AI chat request failed:', error)
+
+    return {
+      success: false,
+      error: message || 'ai-chat-failed',
+    }
+  }
+})
 
 type PlaylistCoverTheme = 'light' | 'dark'
 type PlaylistCoverEntry = string | Partial<Record<PlaylistCoverTheme, string>>
@@ -400,8 +1240,20 @@ function getDiariesFilePath() {
   return path.join(app.getPath('userData'), 'diaries.json')
 }
 
+function getCalendarSchedulesFilePath() {
+  return path.join(app.getPath('userData'), 'calendar-schedules.json')
+}
+
+function getTodoTasksFilePath() {
+  return path.join(app.getPath('userData'), 'todo-tasks.json')
+}
+
 function getLikedTracksFilePath() {
   return path.join(app.getPath('userData'), 'liked-tracks.json')
+}
+
+function getAIChatHistoryFilePath(characterId: AIChatCharacterId = 'cheong') {
+  return path.join(app.getPath('userData'), `ai-chat-history-${characterId}.json`)
 }
 
 async function readJsonFile(filePath: string) {
@@ -532,37 +1384,25 @@ function runPowerShell(command: string) {
         windowsHide: true,
       },
       (error, stdout, stderr) => {
+        const exitCode = typeof (error as { code?: unknown } | null)?.code === 'number'
+          ? (error as { code: number }).code
+          : null
+        const errorMessage = error
+          ? stderr.trim() || stdout.trim() || `PowerShell exited with code ${exitCode ?? 'unknown'}`
+          : undefined
+
         resolve({
           success: !error,
           stdout,
           stderr,
-          error: error ? String(error) : undefined,
+          error: errorMessage,
         })
       },
     )
   })
 }
 
-function getMonitorCommand(orientation: 'horizontal' | 'vertical') {
-  const isHorizontal = orientation === 'horizontal'
-
-  const displayOrientation = isHorizontal ? 0 : 1
-  const width = isHorizontal ? 1920 : 1080
-  const height = isHorizontal ? 1080 : 1920
-
-  let positionX: number
-  let positionY: number
-
-  if (isHorizontal) {
-    positionX = -1920
-    positionY = -120
-  } else {
-    positionX = -1080
-    positionY = -580
-  }
-
-  return String.raw`
-Add-Type -TypeDefinition @'
+const monitorDisplayHelperDefinition = String.raw`
 using System;
 using System.Runtime.InteropServices;
 public class DisplayHelper2 {
@@ -596,27 +1436,100 @@ public class DisplayHelper2 {
         public uint dmDisplayFrequency;
     }
 }
+`
+
+function getMonitorPowerShellPreamble() {
+  return String.raw`
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -TypeDefinition @'
+${monitorDisplayHelperDefinition}
 '@
 
-$dm = New-Object DisplayHelper2+DEVMODE2
-$dm.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf($dm)
-$ok = [DisplayHelper2]::EnumDisplaySettings("\\.\DISPLAY2", -1, [ref]$dm)
+function New-DisplayMode {
+  $mode = New-Object DisplayHelper2+DEVMODE2
+  $mode.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf($mode)
+  return $mode
+}
 
-if (-not $ok) {
-  Write-Host "DISPLAY2 설정 읽기 실패"
+function Get-SecondaryDisplayName {
+  $secondaryScreen = [System.Windows.Forms.Screen]::AllScreens |
+    Where-Object { -not $_.Primary } |
+    Sort-Object { $_.Bounds.X }, { $_.Bounds.Y } |
+    Select-Object -First 1
+
+  if (-not $secondaryScreen) {
+    return $null
+  }
+
+  $mode = New-DisplayMode
+
+  if ([DisplayHelper2]::EnumDisplaySettings($secondaryScreen.DeviceName, -1, [ref]$mode)) {
+    return $secondaryScreen.DeviceName
+  }
+
+  return $null
+}
+`
+}
+
+function getMonitorCommand(orientation: 'horizontal' | 'vertical') {
+  const displayOrientation = orientation === 'horizontal' ? 0 : 1
+
+  return String.raw`
+${getMonitorPowerShellPreamble()}
+
+$targetDisplayName = Get-SecondaryDisplayName
+
+if (-not $targetDisplayName) {
+  Write-Host "보조 모니터를 찾지 못했습니다."
   exit 1
 }
 
-$dm.dmDisplayOrientation = ${displayOrientation}
-$dm.dmPelsWidth = ${width}
-$dm.dmPelsHeight = ${height}
-$dm.dmPositionX = ${positionX}
-$dm.dmPositionY = ${positionY}
+$dm = New-DisplayMode
+$ok = [DisplayHelper2]::EnumDisplaySettings($targetDisplayName, -1, [ref]$dm)
+
+if (-not $ok) {
+  Write-Host "$targetDisplayName 설정 읽기 실패"
+  exit 1
+}
+
+$targetOrientation = [uint32]${displayOrientation}
+$width = [uint32]$dm.dmPelsWidth
+$height = [uint32]$dm.dmPelsHeight
+
+if ($targetOrientation -eq 1 -and $width -gt $height) {
+  $temp = $width
+  $width = $height
+  $height = $temp
+}
+
+if ($targetOrientation -eq 0 -and $width -lt $height) {
+  $temp = $width
+  $width = $height
+  $height = $temp
+}
+
+$dm.dmDisplayOrientation = $targetOrientation
+$dm.dmPelsWidth = $width
+$dm.dmPelsHeight = $height
+
+if ($targetOrientation -eq 1) {
+  $dm.dmPositionX = -1080
+  $dm.dmPositionY = -580
+} else {
+  $dm.dmPositionX = -1920
+  $dm.dmPositionY = -120
+}
+
+# DM_DISPLAYORIENTATION + DM_POSITION + DM_PELSWIDTH + DM_PELSHEIGHT.
+# The target display is the non-primary monitor, so this restores the fixed
+# secondary-monitor position without rotating or moving the primary monitor.
 $dm.dmFields = 0x001800A0
 
 $flags = 0x00000001
-$result = [DisplayHelper2]::ChangeDisplaySettingsEx("\\.\DISPLAY2", [ref]$dm, [IntPtr]::Zero, $flags, [IntPtr]::Zero)
-Write-Host "결과: $result"
+$result = [DisplayHelper2]::ChangeDisplaySettingsEx($targetDisplayName, [ref]$dm, [IntPtr]::Zero, $flags, [IntPtr]::Zero)
+
+Write-Host "$targetDisplayName 결과: $result"
 
 if ($result -ne 0) {
   exit 1
@@ -626,46 +1539,20 @@ if ($result -ne 0) {
 
 function getCurrentMonitorCommand() {
   return String.raw`
-Add-Type -TypeDefinition @'
-using System;
-using System.Runtime.InteropServices;
-public class DisplayHelper2 {
-    [DllImport("user32.dll", CharSet = CharSet.Ansi)]
-    public static extern bool EnumDisplaySettings(string deviceName, int modeNum, ref DEVMODE2 devMode);
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
-    public struct DEVMODE2 {
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
-        public ushort dmSpecVersion;
-        public ushort dmDriverVersion;
-        public ushort dmSize;
-        public ushort dmDriverExtra;
-        public uint dmFields;
-        public int dmPositionX;
-        public int dmPositionY;
-        public uint dmDisplayOrientation;
-        public uint dmDisplayFixedOutput;
-        public short dmColor;
-        public short dmDuplex;
-        public short dmYResolution;
-        public short dmTTOption;
-        public short dmCollate;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
-        public ushort dmLogPixels;
-        public uint dmBitsPerPel;
-        public uint dmPelsWidth;
-        public uint dmPelsHeight;
-        public uint dmDisplayFlags;
-        public uint dmDisplayFrequency;
-    }
-}
-'@
+${getMonitorPowerShellPreamble()}
 
-$dm = New-Object DisplayHelper2+DEVMODE2
-$dm.dmSize = [System.Runtime.InteropServices.Marshal]::SizeOf($dm)
-$ok = [DisplayHelper2]::EnumDisplaySettings("\\.\DISPLAY2", -1, [ref]$dm)
+$targetDisplayName = Get-SecondaryDisplayName
+
+if (-not $targetDisplayName) {
+  Write-Host "보조 모니터를 찾지 못했습니다."
+  exit 1
+}
+
+$dm = New-DisplayMode
+$ok = [DisplayHelper2]::EnumDisplaySettings($targetDisplayName, -1, [ref]$dm)
 
 if (-not $ok) {
-  Write-Host "DISPLAY2 설정 읽기 실패"
+  Write-Host "$targetDisplayName 설정 읽기 실패"
   exit 1
 }
 
@@ -959,6 +1846,55 @@ ipcMain.handle('diaries:save', async (_event, diaries: unknown) => {
   }
 })
 
+ipcMain.handle('calendar-schedules:load', async () => {
+  return await readJsonFile(getCalendarSchedulesFilePath())
+})
+
+ipcMain.handle('calendar-schedules:save', async (_event, schedules: unknown) => {
+  try {
+    await writeJsonFile(getCalendarSchedulesFilePath(), schedules)
+
+    return true
+  } catch (error) {
+    console.error('Failed to save calendar schedules:', error)
+    return false
+  }
+})
+
+ipcMain.handle('todo-tasks:load', async () => {
+  return await readJsonFile(getTodoTasksFilePath())
+})
+
+ipcMain.handle('todo-tasks:save', async (_event, tasks: unknown) => {
+  try {
+    await writeJsonFile(getTodoTasksFilePath(), tasks)
+
+    return true
+  } catch (error) {
+    console.error('Failed to save to-do tasks:', error)
+    return false
+  }
+})
+
+ipcMain.handle('notifications:show', async (_event, options: { title?: unknown; body?: unknown }) => {
+  try {
+    const title = typeof options?.title === 'string' && options.title.trim() ? options.title : 'MN Workspace'
+    const body = typeof options?.body === 'string' ? options.body : ''
+
+    if (!Notification.isSupported()) {
+      console.warn('Desktop notifications are not supported in this environment.')
+      return false
+    }
+
+    const notification = new Notification({ title, body })
+    notification.show()
+    return true
+  } catch (error) {
+    console.error('Failed to show notification:', error)
+    return false
+  }
+})
+
 ipcMain.handle('liked-tracks:load', async () => {
   const likedTracks = await readJsonFile(getLikedTracksFilePath())
 
@@ -981,6 +1917,8 @@ ipcMain.handle('liked-tracks:save', async (_event, trackIds: unknown) => {
     return false
   }
 })
+
+
 
 // ─── YouTube IPC 핸들러 ────────────────────────────────────────────────────
 
@@ -1433,7 +2371,7 @@ ipcMain.handle('device:get-monitor', async () => {
 
     const orientation = Number(result.stdout.trim())
 
-    return orientation === 1 ? 'vertical' : 'horizontal'
+    return orientation === 1 || orientation === 3 ? 'vertical' : 'horizontal'
   } catch (error) {
     console.error('Failed to get monitor orientation:', error)
     return null

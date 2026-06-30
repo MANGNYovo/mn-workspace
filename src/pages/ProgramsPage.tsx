@@ -76,7 +76,7 @@ export function ProgramsPage({
             items={presetPrograms.map((p) => p.id)}
             strategy={verticalListSortingStrategy}
           >
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               {presetPrograms.map((program, index) => (
                 <motion.div
                   key={`${selectedPreset}-${program.id}`}

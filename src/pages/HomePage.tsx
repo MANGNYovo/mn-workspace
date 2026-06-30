@@ -1,4 +1,5 @@
-import { type CSSProperties, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
+import { useLikeBurst } from '../components'
 import { motion } from 'framer-motion'
 import type { HomeMusicPlaylist, PlaylistTrack, AudioDevice, MonitorOrientation, AccentColor } from '../types'
 import { rocketMap, iconMap, playbackIconMap } from '../constants'
@@ -29,7 +30,7 @@ type Props = {
   homeMusicPlaylistTitleRefs: React.MutableRefObject<Record<string, HTMLElement | null>>
   onSetSelectedHomeMusicPlaylistId: (id: string) => void
   onMoveHomeMusicPlaylist: (direction: -1 | 1) => void
-  onHomeMusicPlaylistWheel: (event: React.WheelEvent<HTMLDivElement>) => void
+  onHomeMusicPlaylistWheel: (event: WheelEvent) => void
   onPlaylistPlay: (id: string) => void
   // player
   currentTrack: PlaylistTrack | null
@@ -81,19 +82,20 @@ export function HomePage({
   const [isListButtonHovered, setIsListButtonHovered] = useState(false)
   const [isShuffleButtonHovered, setIsShuffleButtonHovered] = useState(false)
   const [isLikeButtonHovered, setIsLikeButtonHovered] = useState(false)
-  const [isLikeButtonBursting, setIsLikeButtonBursting] = useState(false)
+  const { isBursting: isLikeButtonBursting, triggerBurst: triggerLikeBurst } = useLikeBurst()
 
-  const playLikeBurst = () => {
-    setIsLikeButtonBursting(false)
-    window.requestAnimationFrame(() => setIsLikeButtonBursting(true))
-    window.setTimeout(() => setIsLikeButtonBursting(false), 760)
-  }
+  const homeMusicPlaylistWindowRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const playlistWindow = homeMusicPlaylistWindowRef.current
+    if (!playlistWindow) return
+
+    playlistWindow.addEventListener('wheel', onHomeMusicPlaylistWheel, { passive: false })
+    return () => playlistWindow.removeEventListener('wheel', onHomeMusicPlaylistWheel)
+  }, [onHomeMusicPlaylistWheel, homeMusicPlaylists.length, homeMusicPlaylistPage])
 
   const handleLikeButtonClick = () => {
-    const willLike = Boolean(currentTrack?.id && !isTrackLiked(currentTrack.id))
-
-    if (willLike) playLikeBurst()
-
+    if (currentTrack?.id && !isTrackLiked(currentTrack.id)) triggerLikeBurst()
     onToggleTrackLike(currentTrack?.id)
   }
 
@@ -189,7 +191,7 @@ export function HomePage({
         <div className="home-music-playlist-row">
           <button className="home-music-arrow" onClick={() => onMoveHomeMusicPlaylist(-1)}>‹</button>
 
-          <div className="home-music-playlist-window" onWheel={onHomeMusicPlaylistWheel}>
+          <div ref={homeMusicPlaylistWindowRef} className="home-music-playlist-window">
             <motion.div
               className="home-music-playlist-scroll"
               animate={{ x: `calc(${homeMusicPlaylistPage} * -25% - ${homeMusicPlaylistPage} * 3.5px)` }}

@@ -16,13 +16,18 @@
 }
 
 .sidebar {
-  width: clamp(200px, 13vw, 210px);
+  --sidebar-expanded-width: clamp(200px, 13vw, 210px);
+  --sidebar-collapsed-width: 76px;
+  width: var(--sidebar-expanded-width);
+  min-width: var(--sidebar-expanded-width);
+  max-width: var(--sidebar-expanded-width);
   flex-shrink: 0;
   padding: calc(clamp(28px, 4vw, 48px) + 34px) 18px clamp(28px, 4vw, 48px);
   border-right: 1px solid rgba(130, 140, 170, 0.22);
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
 }
 
 .content {
@@ -206,6 +211,15 @@
   transform: translateX(-4px);
 }
 
+.menu-label {
+  display: block;
+  max-width: 120px;
+  overflow: hidden;
+  white-space: nowrap;
+  opacity: 1;
+  transform: translateX(0);
+}
+
 .menu-symbol-icon {
   width: 20px;
   height: 20px;
@@ -306,7 +320,6 @@
   transform: translate(-50%, -50%);
 }
 
-
 /* ========================= */
 /* 접히는 사이드바 */
 /* ========================= */
@@ -318,23 +331,28 @@
 .menu-item,
 .menu-label,
 .menu-icon,
-.sidebar-accent-picker {
+.sidebar-accent-picker,
+.sidebar-expanded-controls,
+.sidebar-expand-toggle {
   transition:
-    width 0.22s ease,
-    min-width 0.22s ease,
-    max-width 0.22s ease,
-    padding 0.22s ease,
-    margin 0.22s ease,
-    transform 0.22s ease,
-    opacity 0.18s ease,
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    min-width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    left 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    right 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    padding 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    margin 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    gap 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
     background 0.18s ease,
     border-color 0.18s ease;
 }
 
 .sidebar.collapsed {
-  width: 76px;
-  min-width: 76px;
-  max-width: 76px;
+  width: var(--sidebar-collapsed-width);
+  min-width: var(--sidebar-collapsed-width);
+  max-width: var(--sidebar-collapsed-width);
   padding-left: 10px;
   padding-right: 10px;
   align-items: center;
@@ -377,6 +395,7 @@
   opacity: 0;
   overflow: hidden;
   white-space: nowrap;
+  transform: translateX(-6px);
   pointer-events: none;
 }
 
@@ -384,6 +403,45 @@
   width: 23px;
   height: 23px;
   transform: none;
+}
+
+.sidebar-expanded-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 190px;
+  opacity: 1;
+  overflow: hidden;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.sidebar.collapsed .sidebar-expanded-controls {
+  max-width: 0;
+  gap: 0;
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+}
+
+.sidebar-collapse-button.sidebar-expand-toggle {
+  width: 0;
+  min-width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateX(8px);
+  pointer-events: none;
+}
+
+.sidebar.collapsed .sidebar-collapse-button.sidebar-expand-toggle {
+  width: 24px;
+  min-width: 24px;
+  max-width: 24px;
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
 }
 
 .sidebar-collapse-button {
@@ -405,7 +463,13 @@
   align-items: center;
   justify-content: center;
   -webkit-app-region: no-drag;
-  transition: transform 0.16s ease, color 0.16s ease;
+  transition:
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    min-width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    max-width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    transform 0.16s ease,
+    color 0.16s ease;
 }
 
 .sidebar-collapse-button:hover {
@@ -435,8 +499,12 @@
   justify-content: flex-start;
 }
 
-.sidebar:not(.collapsed) .sidebar-collapse-button {
+.sidebar:not(.collapsed) .sidebar-collapse-toggle {
   margin-left: auto;
+}
+
+.sidebar-collapse-button.sidebar-expand-toggle {
+  margin-left: 0;
 }
 
 .sidebar.collapsed .sidebar-accent-picker {
@@ -444,4 +512,128 @@
   right: 7px;
   transform: none;
   justify-content: flex-end;
+}
+
+/* ========================= */
+/* In-app reminder notification */
+/* ========================= */
+
+.app-notification-toast {
+  position: fixed;
+  right: 34px;
+  bottom: 34px;
+  z-index: 10080;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  width: min(340px, calc(100vw - 68px));
+  min-height: 82px;
+  border-radius: 20px;
+  padding: 18px 48px 18px 20px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(130, 140, 170, 0.22);
+  box-shadow: 0 22px 54px rgba(20, 28, 58, 0.20);
+  backdrop-filter: blur(18px) saturate(1.08);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  color: #4b5563;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+  animation: appNotificationIn 0.22s ease-out;
+}
+
+.app-notification-toast strong {
+  color: #424a5f;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.app-notification-toast span {
+  color: #5f687a;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.app-notification-toast button {
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(31, 36, 48, 0.48);
+  box-shadow: none;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.app-notification-toast button:hover {
+  color: var(--accent-color, #705bff);
+}
+
+.app[data-theme='dark'] .app-notification-toast {
+  background: rgba(43, 43, 43, 0.88);
+  border-color: rgba(255, 255, 255, 0.10);
+  color: #ffffff;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.24);
+}
+
+.app[data-theme='dark'] .app-notification-toast span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.app[data-theme='dark'] .app-notification-toast button {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.app[data-wallpaper='true'] .app-notification-toast {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.30);
+  box-shadow: none;
+  color: #ffffff;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.28);
+}
+
+.app[data-wallpaper='true'] .app-notification-toast span {
+  color: rgba(255, 255, 255, 0.80);
+}
+
+.app[data-wallpaper='true'] .app-notification-toast button {
+  color: rgba(255, 255, 255, 0.74);
+}
+
+@keyframes appNotificationIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ========================= */
+/* 사이드바 접기/펼치기 */
+/* ========================= */
+.sidebar,
+.sidebar *,
+.sidebar-accent-picker,
+.sidebar-accent-picker *,
+.sidebar-theme-toggle,
+.sidebar-accent-dot {
+  -webkit-app-region: no-drag !important;
+}.sidebar {
+  z-index: 10002;
+}.sidebar-accent-picker {
+  z-index: 10006 !important;
+  pointer-events: auto !important;
+}.app[data-sidebar-collapsed='true'] .menu-item:not(.active):hover .menu-icon {
+  opacity: 1 !important;
+  filter: drop-shadow(0 1px 8px color-mix(in srgb, var(--accent-color, #705bff) 34%, transparent)) !important;
 }

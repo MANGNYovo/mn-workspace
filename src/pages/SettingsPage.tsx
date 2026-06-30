@@ -19,7 +19,6 @@ type Props = {
   onReloadYoutubeMusicData: () => void
   onLoginYoutubeMusic: () => void
   onLogoutYoutubeMusic: () => void
-  getThemeIcon: (name: keyof typeof iconMap, isActive?: boolean) => string
 }
 
 export function SettingsPage({

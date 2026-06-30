@@ -1,4 +1,5 @@
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from 'react'
+import { useLikeBurst } from './useLikeBurst'
 import type { AccentColor, FloatingPlayerMode, FloatingPlayerPosition, PlaylistTrack } from '../types'
 import { playbackIconMap } from '../constants'
 
@@ -181,18 +182,11 @@ export function FloatingMusicPlayer({
   const [isListButtonHovered, setIsListButtonHovered] = useState(false)
   const [isShuffleButtonHovered, setIsShuffleButtonHovered] = useState(false)
   const [isLikeButtonHovered, setIsLikeButtonHovered] = useState(false)
-  const [isLikeButtonBursting, setIsLikeButtonBursting] = useState(false)
   const [isExpandButtonHovered, setIsExpandButtonHovered] = useState(false)
-
-  const playLikeBurst = () => {
-    setIsLikeButtonBursting(false)
-    window.requestAnimationFrame(() => setIsLikeButtonBursting(true))
-    window.setTimeout(() => setIsLikeButtonBursting(false), 760)
-  }
+  const { isBursting: isLikeButtonBursting, triggerBurst: triggerLikeBurst } = useLikeBurst()
 
   const handleLikeButtonClick = () => {
-    if (!isLiked) playLikeBurst()
-
+    if (!isLiked) triggerLikeBurst()
     onToggleLike()
   }
 
