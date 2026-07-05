@@ -539,6 +539,7 @@
 .app[data-theme='light'][data-wallpaper='true'] .settings-card,
 .app[data-theme='light'][data-wallpaper='true'] .status-card,
 .app[data-theme='light'][data-wallpaper='true'] .home-card,
+.app[data-theme='light'][data-wallpaper='true'] .ai-chat-modal,
 .app[data-theme='light'][data-wallpaper='true'] .home-music-card,
 .app[data-theme='light'][data-wallpaper='true'] .home-music-playlist-card,
 .app[data-theme='light'][data-wallpaper='true'] .diary-card,
@@ -1180,6 +1181,7 @@
 .app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .settings-card,
 .app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .status-card,
 .app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .home-card,
+.app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .ai-chat-modal,
 .app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .home-music-card,
 .app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .home-music-playlist-card,
 .app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .diary-card,
@@ -1710,13 +1712,12 @@
   color: var(--wallpaper-light-readable-muted) !important;
 }
 
-/* AI Chat input should keep dark readable text in custom wallpaper light mode.
-   This must come after the global wallpaper textarea override above. */
-.app[data-theme='light'][data-wallpaper='true'] .ai-chat-input {
+/* AI Assistant modal input should keep dark readable text in custom wallpaper light mode. */
+.app[data-theme='light'][data-wallpaper='true'] .ai-chat-modal-input {
   color: #202838 !important;
 }
 
-.app[data-theme='light'][data-wallpaper='true'] .ai-chat-input::placeholder {
+.app[data-theme='light'][data-wallpaper='true'] .ai-chat-modal-input::placeholder {
   color: #6f778a !important;
 }
 
@@ -2035,48 +2036,6 @@
 .app[data-theme='light'][data-wallpaper='true'][data-sidebar-collapsed='true'] .menu-item:not(.active):hover .menu-icon {
   opacity: 1 !important;
   filter: drop-shadow(0 1px 8px rgba(0, 0, 0, 0.24)) !important;
-}
-
-/* ========================= */
-/* AI Chat custom wallpaper corrections */
-/* ========================= */
-
-.app[data-theme='light'][data-wallpaper='true'] .ai-chat-header h1,
-.app[data-theme='light'][data-wallpaper='true'] .ai-chat-header p {
-  color: #ffffff !important;
-  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
-}
-
-.app[data-theme='light'][data-wallpaper='true'] .ai-chat-header {
-  border-bottom-color: rgba(255, 255, 255, 0.35);
-}
-
-.app[data-theme='light'][data-wallpaper='true'] .ai-chat-panel {
-  background: rgba(255, 255, 255, 0.18);
-  border-color: rgba(255, 255, 255, 0.38);
-  box-shadow: none;
-  backdrop-filter: blur(12px) saturate(1.12);
-  -webkit-backdrop-filter: blur(12px) saturate(1.12);
-}
-
-.app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .ai-chat-panel {
-  background: rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.app[data-theme='dark'][data-wallpaper='true'] .ai-chat-panel {
-  background: rgba(43, 43, 43, 0.055);
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: none;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-.app[data-theme='dark'][data-wallpaper='true'][data-wallpaper-animated='true'] .ai-chat-panel {
-  background: rgba(255, 255, 255, 0.010);
-  backdrop-filter: blur(5px) saturate(1.02);
-  -webkit-backdrop-filter: blur(5px) saturate(1.02);
 }
 
 /* ========================= */
@@ -3396,3 +3355,126 @@
   background: color-mix(in srgb, var(--accent-color, #705bff) 42%, rgba(255, 255, 255, 0.18)) !important;
   color: rgba(255, 255, 255, 0.98) !important;
 }
+
+/* ========================= */
+/* Vocabulary light/dark custom wallpaper final override */
+/* ========================= */
+
+/* Match the To-Do card and the app's existing light custom-wallpaper modals. */
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-page-card,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-test-card,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-modal {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.38) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(12px) saturate(1.12) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.12) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-page-title-wrap h1,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-page-title-wrap p {
+  color: #ffffff !important;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Light custom wallpaper keeps the vocabulary UI in the same soft dark text palette as other light-mode screens. */
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-test-heading h1,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-question-word-wrap h2,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-answer-option,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-answer-option strong,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-modal h2,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-format-help strong,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-test-complete h2,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-pause-overlay strong {
+  color: #3f485f !important;
+  text-shadow: none !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-test-heading span,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-question-meta,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-test-back,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-timer-button,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-modal-title-wrap p,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-format-help,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-status,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-test-complete p,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-pause-overlay span {
+  color: #6f7890 !important;
+  text-shadow: none !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-modal-close {
+  color: #596177 !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-test-back-icon,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-timer-button,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-test-sound-button,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-answer-option,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-skip-button,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-format-help,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-textarea,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-modal-cancel,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-pause-overlay > div {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.34) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(10px) saturate(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-textarea {
+  color: rgba(31, 36, 48, 0.74) !important;
+  font-weight: 500 !important;
+  text-shadow: none !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-add-textarea::placeholder {
+  color: rgba(72, 82, 108, 0.52) !important;
+  text-shadow: none !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-modal-cancel,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-skip-button,
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-answer-letter {
+  color: #6b748b !important;
+  text-shadow: none !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-answer-option.selected {
+  background: color-mix(in srgb, var(--accent-color, #705bff) 14%, rgba(255, 255, 255, 0.28)) !important;
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 45%, rgba(255, 255, 255, 0.38)) !important;
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .vocabulary-answer-option.selected .vocabulary-answer-letter {
+  color: #ffffff !important;
+}
+
+/* Keep dark custom wallpaper separate, matching the app's existing dark glass cards/modals. */
+.app[data-theme='dark'][data-wallpaper='true'] .vocabulary-page-card,
+.app[data-theme='dark'][data-wallpaper='true'] .vocabulary-test-card,
+.app[data-theme='dark'][data-wallpaper='true'] .vocabulary-add-modal {
+  background: rgba(255, 255, 255, 0.012) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(16px) saturate(1.05) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.05) !important;
+}
+
+/* Animated wallpapers use the same lighter blur strength as the rest of the app. */
+.app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .vocabulary-page-card,
+.app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .vocabulary-test-card,
+.app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .vocabulary-add-modal {
+  background: rgba(255, 255, 255, 0.22) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+.app[data-theme='dark'][data-wallpaper='true'][data-wallpaper-animated='true'] .vocabulary-page-card,
+.app[data-theme='dark'][data-wallpaper='true'][data-wallpaper-animated='true'] .vocabulary-test-card,
+.app[data-theme='dark'][data-wallpaper='true'][data-wallpaper-animated='true'] .vocabulary-add-modal {
+  background: rgba(255, 255, 255, 0.010) !important;
+  backdrop-filter: blur(5px) saturate(1.02) !important;
+  -webkit-backdrop-filter: blur(5px) saturate(1.02) !important;
+}
+

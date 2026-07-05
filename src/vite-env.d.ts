@@ -31,8 +31,6 @@ type PlaylistCoverChangeResult = {
 }
 
 
-type AIChatCharacterId = 'cheong' | 'noah'
-type AIEmotion = 'default' | 'smile' | 'joy' | 'sleepy' | 'surprised' | 'shy' | 'pout' | 'sad' | 'soft-sad' | 'gloomy' | 'angry-small' | 'done'
 type TodoPriority = 'high' | 'medium' | 'low'
 type AICommandTargetHint = 'latest' | 'matched' | 'selected' | 'today'
 type AICommand =
@@ -163,6 +161,9 @@ interface Window {
     saveCalendarSchedules: (schedules: unknown) => Promise<boolean>
     loadTodoTasks: () => Promise<unknown | null>
     saveTodoTasks: (tasks: unknown) => Promise<boolean>
+    listVocabularyDates: () => Promise<string[]>
+    loadVocabularyDate: (dateKey: string) => Promise<unknown | null>
+    saveVocabularyDate: (dateKey: string, words: unknown) => Promise<boolean>
     showSystemNotification: (options: { title: string; body?: string }) => Promise<boolean>
     loadLikedTracks: () => Promise<string[] | null>
     saveLikedTracks: (trackIds: string[]) => Promise<boolean>
@@ -179,45 +180,30 @@ interface Window {
     loadYoutubeMusicPlaylistCovers: () => Promise<Record<string, string | PlaylistCoverOverride> | null>
     changeYoutubeMusicPlaylistCover: (playlistId: string, theme: PlaylistCoverTheme) => Promise<PlaylistCoverChangeResult | null>
 
-    loadAIChatHistory: (characterId?: AIChatCharacterId) => Promise<{
+    loadAIChatHistory: () => Promise<{
       messages: Array<{
         id: string
         sender: 'user' | 'ai'
         text: string
         timestamp: number
-        characterId?: AIChatCharacterId
-        emotion?: AIEmotion
-        speaker?: AIChatCharacterId
       }>
-      emotion: AIEmotion
     }>
-    saveAIChatHistory: (characterId: AIChatCharacterId, history: {
+    saveAIChatHistory: (history: {
       messages: Array<{
         id: string
         sender: 'user' | 'ai'
         text: string
         timestamp: number
-        characterId?: AIChatCharacterId
-        emotion?: AIEmotion
-        speaker?: AIChatCharacterId
       }>
-      emotion: AIEmotion
     }) => Promise<boolean>
-    clearAIChatHistory: (characterId?: AIChatCharacterId) => Promise<boolean>
+    clearAIChatHistory: () => Promise<boolean>
     sendAIChatMessage: (
-      characterId: AIChatCharacterId,
       messages: Array<{ role: 'user' | 'assistant'; content: string }>,
       context?: AIChatContext,
     ) => Promise<{
       success: true
-      emotion: AIEmotion
       message: string
-      messages: Array<{
-        speaker: AIChatCharacterId
-        emotion?: AIEmotion | null
-        message: string
-      }>
-      action?: 'ask' | 'execute' | 'error'
+      action?: 'ask' | 'execute' | 'answer' | 'error'
       commands?: AICommand[]
       missingFields?: string[]
     } | {

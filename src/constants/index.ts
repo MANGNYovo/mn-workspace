@@ -1,6 +1,6 @@
 import type {
   AccentColor, ProgramItem, ProgramType, HomeMusicPlaylist, PlaylistTrack, DiaryEntry, AppSettings,
-  PlaylistCoverOverrideMap, ResolvedTheme, CalendarSchedule, TodoTask,
+  PlaylistCoverOverrideMap, ResolvedTheme, CalendarSchedule, TodoTask, VocabularyWord,
 } from '../types'
 
 // ─── 이미지 imports ───────────────────────────────────────────────────────────
@@ -99,6 +99,14 @@ import checkRed from '../assets/check-red.png'
 import checkGray from '../assets/check-gray.png'
 import checkWhite from '../assets/check-white.png'
 
+import todoPurple from '../assets/todo-purple.png'
+import todoBlue from '../assets/todo-blue.png'
+import todoGreen from '../assets/todo-green.png'
+import todoOrange from '../assets/todo-orange.png'
+import todoRed from '../assets/todo-red.png'
+import todoGray from '../assets/todo-gray.png'
+import todoWhite from '../assets/todo-white.png'
+
 import datePurple from '../assets/date-purple.png'
 import dateBlue from '../assets/date-blue.png'
 import dateGreen from '../assets/date-green.png'
@@ -106,6 +114,21 @@ import dateOrange from '../assets/date-orange.png'
 import dateRed from '../assets/date-red.png'
 import dateGray from '../assets/date-gray.png'
 import dateWhite from '../assets/date-white.png'
+
+import vocabularyPurple from '../assets/vocabulary-purple.png'
+import vocabularyBlue from '../assets/vocabulary-blue.png'
+import vocabularyGreen from '../assets/vocabulary-green.png'
+import vocabularyOrange from '../assets/vocabulary-orange.png'
+import vocabularyRed from '../assets/vocabulary-red.png'
+import vocabularyGray from '../assets/vocabulary-gray.png'
+
+import vocabularySoundPurple from '../assets/vocabulary-sound-purple.png'
+import vocabularySoundBlue from '../assets/vocabulary-sound-blue.png'
+import vocabularySoundGreen from '../assets/vocabulary-sound-green.png'
+import vocabularySoundOrange from '../assets/vocabulary-sound-orange.png'
+import vocabularySoundRed from '../assets/vocabulary-sound-red.png'
+import vocabularySoundGray from '../assets/vocabulary-sound-gray.png'
+import vocabularySoundWhite from '../assets/vocabulary-sound-white.png'
 
 import searchPurple from '../assets/search-purple.png'
 import searchBlue from '../assets/search-blue.png'
@@ -259,7 +282,9 @@ export const iconMap = {
   hmonitor:  { purple: hmonitorPurple,  blue: hmonitorBlue,  green: hmonitorGreen,  orange: hmonitorOrange,  red: hmonitorRed,  gray: hmonitorGray,  white: hmonitorWhite  },
   vmonitor:  { purple: vmonitorPurple,  blue: vmonitorBlue,  green: vmonitorGreen,  orange: vmonitorOrange,  red: vmonitorRed,  gray: vmonitorGray,  white: vmonitorWhite  },
   check:     { purple: checkPurple,     blue: checkBlue,     green: checkGreen,     orange: checkOrange,     red: checkRed,     gray: checkGray,     white: checkWhite     },
+  todo:      { purple: todoPurple,      blue: todoBlue,      green: todoGreen,      orange: todoOrange,      red: todoRed,      gray: todoGray,      white: todoWhite      },
   date:      { purple: datePurple,      blue: dateBlue,      green: dateGreen,      orange: dateOrange,      red: dateRed,      gray: dateGray,      white: dateWhite      },
+  vocabulary:{ purple: vocabularyPurple,blue: vocabularyBlue,green: vocabularyGreen,orange: vocabularyOrange,red: vocabularyRed,gray: vocabularyGray,white: vocabularyGray },
 } as const
 
 export const musicControlIconMap = {
@@ -268,6 +293,16 @@ export const musicControlIconMap = {
   grid:     { purple: gridPurple,     blue: gridBlue,     green: gridGreen,     orange: gridOrange,     red: gridRed,     gray: gridGray,     white: gridWhite     },
   playlist: { purple: playlistPurple, blue: playlistBlue, green: playlistGreen, orange: playlistOrange, red: playlistRed, gray: playlistGray, white: playlistWhite },
   shuffle:  { purple: shufflePurple,  blue: shuffleBlue,  green: shuffleGreen,  orange: shuffleOrange,  red: shuffleRed,  gray: shuffleGray,  white: shuffleWhite  },
+} as const
+
+export const vocabularySoundIconMap = {
+  purple: vocabularySoundPurple,
+  blue: vocabularySoundBlue,
+  green: vocabularySoundGreen,
+  orange: vocabularySoundOrange,
+  red: vocabularySoundRed,
+  gray: vocabularySoundGray,
+  white: vocabularySoundWhite,
 } as const
 
 export const likedIconMap = {
@@ -355,6 +390,7 @@ export const calendarWeekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'
 export const initialDiaryEntries: Record<string, DiaryEntry> = {}
 export const initialCalendarSchedules: Record<string, CalendarSchedule[]> = {}
 export const initialTodoTasks: TodoTask[] = []
+export const initialVocabularyByDate: Record<string, VocabularyWord[]> = {}
 
 // ─── 헬퍼 함수 ───────────────────────────────────────────────────────────────
 
@@ -475,6 +511,28 @@ export function isDiaryEntries(value: unknown): value is Record<string, DiaryEnt
     const d = item as DiaryEntry
     return typeof d.date === 'string' && typeof d.content === 'string' &&
       typeof d.createdAt === 'string' && typeof d.updatedAt === 'string'
+  })
+}
+
+export function isVocabularyWordList(value: unknown): value is VocabularyWord[] {
+  if (!Array.isArray(value)) return false
+
+  return value.every((item) => {
+    if (!item || typeof item !== 'object') return false
+    const word = item as VocabularyWord
+
+    return typeof word.id === 'string' &&
+      typeof word.word === 'string' &&
+      typeof word.correctMeaning === 'string' &&
+      Array.isArray(word.wrongMeanings) &&
+      word.wrongMeanings.length === 2 &&
+      word.wrongMeanings.every((meaning) => typeof meaning === 'string') &&
+      typeof word.example === 'string' &&
+      typeof word.mistakeCount === 'number' &&
+      Number.isFinite(word.mistakeCount) &&
+      word.mistakeCount >= 0 &&
+      typeof word.createdAt === 'string' &&
+      typeof word.updatedAt === 'string'
   })
 }
 

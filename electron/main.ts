@@ -88,29 +88,6 @@ const YOUTUBE_SCOPES = [
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim() ?? ''
 const OPENAI_MODEL = process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini'
 
-const AI_EMOTIONS = [
-  'default',
-  'smile',
-  'joy',
-  'sleepy',
-  'surprised',
-  'shy',
-  'pout',
-  'sad',
-  'soft-sad',
-  'gloomy',
-  'angry-small',
-  'done',
-] as const
-
-type AIEmotion = typeof AI_EMOTIONS[number]
-
-const AI_CHAT_MAIN_CHARACTERS = ['cheong', 'noah'] as const
-type AIChatCharacterId = typeof AI_CHAT_MAIN_CHARACTERS[number]
-
-const AI_CHAT_SPEAKERS = ['cheong', 'noah'] as const
-type AIChatSpeaker = typeof AI_CHAT_SPEAKERS[number]
-
 type AIPriority = 'high' | 'medium' | 'low'
 type AICommandTargetHint = 'latest' | 'matched' | 'selected' | 'today'
 
@@ -194,12 +171,6 @@ type AIChatContext = {
   todos?: unknown
 }
 
-type AIChatResponseMessage = {
-  speaker: AIChatSpeaker
-  message: string
-  emotion?: AIEmotion
-}
-
 type AIChatRole = 'user' | 'assistant'
 
 type AIChatRequestMessage = {
@@ -209,10 +180,8 @@ type AIChatRequestMessage = {
 
 type AIChatResponsePayload = {
   success: true
-  emotion: AIEmotion
   message: string
-  messages: AIChatResponseMessage[]
-  action?: 'ask' | 'execute' | 'error'
+  action?: 'ask' | 'execute' | 'answer' | 'error'
   commands?: AICommand[]
   missingFields?: string[]
 } | {
@@ -225,14 +194,10 @@ type AIChatStoredMessage = {
   sender: 'user' | 'ai'
   text: string
   timestamp: number
-  characterId?: AIChatCharacterId
-  emotion?: AIEmotion
-  speaker?: AIChatSpeaker
 }
 
 type AIChatHistoryPayload = {
   messages: AIChatStoredMessage[]
-  emotion: AIEmotion
 }
 
 let openAIClient: OpenAI | null = null
@@ -274,41 +239,7 @@ function normalizeAIChatMessages(messages: unknown): AIChatRequestMessage[] {
     .slice(-10)
 }
 
-function normalizeAIChatCharacterId(value: unknown): AIChatCharacterId {
-  return (AI_CHAT_MAIN_CHARACTERS as readonly unknown[]).includes(value) ? value as AIChatCharacterId : 'cheong'
-}
-
-function getDefaultAIEmotion(characterId: AIChatCharacterId = 'cheong'): AIEmotion {
-  return characterId === 'noah' ? 'default' : 'default'
-}
-
-function normalizeAIEmotion(value: unknown, characterId: AIChatCharacterId = 'cheong'): AIEmotion {
-  if (typeof value === 'string' && (AI_EMOTIONS as readonly string[]).includes(value)) {
-    if (characterId === 'noah' && value === 'smile') return 'done'
-    if (characterId === 'noah' && value !== 'default' && value !== 'done') return getDefaultAIEmotion(characterId)
-    if (characterId === 'cheong' && value === 'done') return 'smile'
-    return value as AIEmotion
-  }
-
-  return getDefaultAIEmotion(characterId)
-}
-
-function normalizeAIChatSpeaker(value: unknown, fallback: AIChatCharacterId = 'cheong'): AIChatSpeaker {
-  return (AI_CHAT_SPEAKERS as readonly unknown[]).includes(value) ? value as AIChatSpeaker : fallback
-}
-
-function getStoredAIMessageCharacterId(item: Partial<AIChatStoredMessage>, requestedCharacterId: AIChatCharacterId): AIChatCharacterId | null {
-  if (normalizeAIChatCharacterId(item.characterId) === item.characterId) return item.characterId
-
-  if (item.sender === 'ai') {
-    if (normalizeAIChatCharacterId(item.speaker) === item.speaker) return item.speaker
-    return requestedCharacterId === 'cheong' ? 'cheong' : null
-  }
-
-  return requestedCharacterId === 'cheong' ? 'cheong' : null
-}
-
-function normalizeAIChatStoredMessage(value: unknown, characterId: AIChatCharacterId): AIChatStoredMessage | null {
+function normalizeAIChatStoredMessage(value: unknown): AIChatStoredMessage | null {
   if (!value || typeof value !== 'object') return null
 
   const item = value as Partial<AIChatStoredMessage>
@@ -322,69 +253,30 @@ function normalizeAIChatStoredMessage(value: unknown, characterId: AIChatCharact
     return null
   }
 
-  const messageCharacterId = getStoredAIMessageCharacterId(item, characterId)
-  if (messageCharacterId !== characterId) return null
-
   return {
     id: item.id,
     sender: item.sender,
     text: item.text,
     timestamp: item.timestamp,
-    characterId: messageCharacterId,
-    emotion: item.emotion ? normalizeAIEmotion(item.emotion, characterId) : undefined,
-    speaker: item.sender === 'ai' ? normalizeAIChatSpeaker(item.speaker, characterId) : undefined,
   }
 }
 
-function normalizeAIChatHistoryPayload(payload: unknown, characterId: AIChatCharacterId): AIChatHistoryPayload {
-  if (!payload || typeof payload !== 'object') {
-    return {
-      messages: [],
-      emotion: getDefaultAIEmotion(characterId),
-    }
-  }
+function normalizeAIChatHistoryPayload(payload: unknown): AIChatHistoryPayload {
+  if (!payload || typeof payload !== 'object') return { messages: [] }
 
   const item = payload as Partial<AIChatHistoryPayload>
 
   return {
     messages: Array.isArray(item.messages)
       ? item.messages
-        .map((message) => normalizeAIChatStoredMessage(message, characterId))
+        .map(normalizeAIChatStoredMessage)
         .filter((message): message is AIChatStoredMessage => Boolean(message))
       : [],
-    emotion: normalizeAIEmotion(item.emotion, characterId),
   }
 }
 
 function sanitizeAIMessageText(message: string) {
   return message
-    .replace(/(^|\n)\s*(오|아)(?:[,，]+|[.?!！？~…]+)\s+/g, '$1')
-    .replace(/^\s*승연아[,，]\s*(?=.{12,})/, '')
-    .replace(/승연아는/g, '승연이는')
-    .replace(/승연아가/g, '승연이가')
-    .replace(/승연아를/g, '승연이를')
-    .replace(/승연아도/g, '승연이도')
-    .replace(/승연아의/g, '승연이의')
-    .replace(/승연아랑/g, '승연이랑')
-    .replace(/승연아한테/g, '승연이한테')
-    .replace(/승연아에게/g, '승연이한테')
-    .replace(/청명이가/g, '내가')
-    .replace(/청명은/g, '나는')
-    .replace(/청명이는/g, '나는')
-    .replace(/청명도/g, '나도')
-    .replace(/청명을/g, '나를')
-    .replace(/청명에게/g, '나한테')
-    .replace(/청명한테/g, '나한테')
-    .replace(/청명의/g, '내')
-    .replace(/노아가/g, '내가')
-    .replace(/노아는/g, '나는')
-    .replace(/노아도/g, '나도')
-    .replace(/노아를/g, '나를')
-    .replace(/노아에게/g, '나한테')
-    .replace(/노아한테/g, '나한테')
-    .replace(/노아의/g, '내')
-    .replace(/유청명은/g, '나는')
-    .replace(/유청명도/g, '나도')
     .replace(/[ \t]{2,}/g, ' ')
     .trim()
 }
@@ -441,9 +333,7 @@ function parseAIResponseJSON(rawText: string) {
 
   try {
     return JSON.parse(trimmedText) as {
-      emotion?: unknown
       message?: unknown
-      messages?: unknown
       action?: unknown
       commands?: unknown
       missingFields?: unknown
@@ -453,9 +343,7 @@ function parseAIResponseJSON(rawText: string) {
 
     if (firstJSONObjectText && firstJSONObjectText !== trimmedText) {
       return JSON.parse(firstJSONObjectText) as {
-        emotion?: unknown
         message?: unknown
-        messages?: unknown
         action?: unknown
         commands?: unknown
         missingFields?: unknown
@@ -623,65 +511,27 @@ function normalizeMissingFields(value: unknown) {
   return fields.length > 0 ? fields : undefined
 }
 
-function normalizeAIAction(value: unknown): 'ask' | 'execute' | 'error' | undefined {
-  if (value === 'ask' || value === 'execute' || value === 'error') return value
+function normalizeAIAction(value: unknown): 'ask' | 'execute' | 'answer' | 'error' | undefined {
+  if (value === 'ask' || value === 'execute' || value === 'answer' || value === 'error') return value
   return undefined
 }
 
-function parseAIResponsePayload(rawText: string, characterId: AIChatCharacterId = 'cheong'): {
-  emotion: AIEmotion
+function parseAIResponsePayload(rawText: string): {
   message: string
-  messages: AIChatResponseMessage[]
-  action?: 'ask' | 'execute' | 'error'
+  action?: 'ask' | 'execute' | 'answer' | 'error'
   commands?: AICommand[]
   missingFields?: string[]
 } {
   const parsed = parseAIResponseJSON(rawText)
-  const fallbackEmotion = normalizeAIEmotion(parsed.emotion, characterId)
-  const fallbackMessage = typeof parsed.message === 'string'
+  const message = typeof parsed.message === 'string'
     ? sanitizeAIMessageText(parsed.message)
     : ''
-
-  const firstMessage = Array.isArray(parsed.messages)
-    ? parsed.messages
-      .map((item): AIChatResponseMessage | null => {
-        if (!item || typeof item !== 'object') return null
-
-        const candidate = item as {
-          speaker?: unknown
-          emotion?: unknown
-          message?: unknown
-        }
-        const message = typeof candidate.message === 'string'
-          ? sanitizeAIMessageText(candidate.message)
-          : ''
-
-        if (!message) return null
-
-        return {
-          speaker: normalizeAIChatSpeaker(candidate.speaker, characterId),
-          message,
-          emotion: normalizeAIEmotion(candidate.emotion ?? fallbackEmotion, characterId),
-        }
-      })
-      .filter((item): item is AIChatResponseMessage => Boolean(item))
-      .at(0)
-    : null
-
-  const mainMessage = firstMessage ?? {
-    speaker: characterId,
-    message: fallbackMessage || '잠깐, 방금 신호가 좀 비었어. 다시 한 번 말해줄래?',
-    emotion: fallbackEmotion,
-  }
-
   const commands = normalizeAICommands(parsed.commands)
   const missingFields = normalizeMissingFields(parsed.missingFields)
 
   return {
-    emotion: mainMessage.emotion ?? fallbackEmotion,
-    message: mainMessage.message,
-    messages: [mainMessage],
-    action: normalizeAIAction(parsed.action) ?? (commands.length > 0 ? 'execute' : missingFields ? 'ask' : undefined),
+    message: message || '요청을 처리하지 못했습니다. 다시 한 번 말씀해 주세요.',
+    action: normalizeAIAction(parsed.action) ?? (commands.length > 0 ? 'execute' : missingFields ? 'ask' : 'answer'),
     commands: commands.length > 0 ? commands : undefined,
     missingFields,
   }
@@ -736,76 +586,30 @@ function normalizeAIChatContext(context: unknown): AIChatContext {
   }
 }
 
-// ─── Lore 파일 경로 ──────────────────────────────────────────────────────────
-function getCheongLoreFilePath() {
-  // 개발환경: electron/ 폴더 옆, 빌드: exe 옆 (package.json extraFiles 설정)
-  return [
-    path.join(process.env.APP_ROOT ?? '', 'electron', 'cheong-lore.json'),
-    path.join(path.dirname(app.getPath('exe')), 'cheong-lore.json'),
-  ]
-}
-
-// lore 파일에서 캐릭터 설정을 읽어 시스템 프롬프트 생성
-async function createCheongDeveloperPrompt(): Promise<string> {
-  // lore 파일 로드 시도 (개발/빌드 환경 순서로)
-  let loreItems: Array<{ section: string; content: string }> = []
-
-  for (const lorePath of getCheongLoreFilePath()) {
-    try {
-      const raw = await readJsonFile(lorePath)
-      if (Array.isArray(raw) && raw.length > 0) {
-        loreItems = raw
-        break
-      }
-    } catch {
-      // 다음 경로 시도
-    }
-  }
-
-  // lore에서 읽은 캐릭터 설명 조합
-  const loreContent = loreItems.length > 0
-    ? loreItems.map((item) => item.content).join(' ')
-    : ''
-
-  // AI 응답 형식 규칙 (캐릭터와 무관한 기술적 지시사항 — lore에 넣지 않음)
-  const systemRules = [
-    '너는 "청명"이라는 이름의 AI 캐릭터다. 사용자 이름은 "승연"이다.',
-    loreContent,
-    '청명은 자신을 3인칭으로 부르지 않는다. 자신은 "나", "내", "내가", "나한테", "나도"라고 말한다.',
-    '승연이 이름을 억지로 자주 부르지 않는다. 이름을 불러야 자연스러운 상황에서만 "승연 씨"라고 부른다.',
-    '현재 대화 중인 캐릭터가 청명일 때는 노아처럼 일정이나 투두를 직접 실행하지 않는다. 비서 기능이 필요하면 노아에게 말하라고 짧게 안내할 수 있다.',
-    'messages 배열에도 speaker는 반드시 "cheong"만 사용한다.',
-    '사용자의 말에 상담사나 비서처럼 과하게 정리해서 답하지 않는다. 짧고 자연스럽게 반응한다.',
-    '답변은 반드시 JSON 하나로만 출력한다.',
-    '스키마: {"emotion":"default|smile|joy|sleepy|surprised|shy|pout|sad|soft-sad|gloomy|angry-small","message":"청명의 답변","messages":[{"speaker":"cheong","emotion":"same emotion","message":"청명의 답변"}]}',
-    'emotion 규칙: default는 평온함, smile은 작은 미소/기분 좋음, joy는 조용한 즐거움, sleepy는 나른함/졸림, surprised는 놀람, shy는 부끄러움, pout은 삐짐, sad는 슬픔, soft-sad는 약간 슬픔, gloomy는 우울/무기력, angry-small은 작게 화남/차가운 짜증에 쓴다.',
-    'JSON 외의 문장, 설명, 마크다운, 코드블록은 절대 출력하지 않는다.',
-  ].filter(Boolean).join(' ')
-
-  return systemRules
-}
-
-function createNoahDeveloperPrompt(context: AIChatContext): string {
+function createAIChatDeveloperPrompt(context: AIChatContext): string {
   const safeContext = normalizeAIChatContext(context)
   const contextText = JSON.stringify(safeContext)
 
   return [
-    '너는 "노아"라는 이름의 일정/할 일 관리 전용 AI 비서다. 사용자 이름은 "승연"이다. 필요할 때만 자연스럽게 "승연님"이라고 부른다.',
-    '노아는 차분하고 부드러운 비서 말투로 말한다. 답변은 너무 짧게 끊지 말고 1~2문장 정도로 자연스럽게 말하되, 장황하게 설명하지 않는다. 모든 실제 앱 조작은 네가 직접 하는 것이 아니라 commands 배열로 앱에 전달한다.',
+    '너는 "노아"라는 이름의 일정과 할 일 관리 전용 업무 AI 비서다. 이름 외에는 캐릭터 연기, 감정 표현, 이미지 묘사, 잡담용 성격 설정이 없다.',
+    '사용자가 쓴 언어와 같은 언어로 짧고 명확하게 답한다. 결과와 필요한 질문만 말하고 장황한 설명은 하지 않는다.',
+    '지원 기능은 일정 추가/수정/삭제/조회와 할 일 추가/수정/삭제/조회다.',
+    '일정이나 할 일을 조회하는 요청은 APP_CONTEXT의 schedules와 todos를 읽어서 바로 답한다. 조회 요청에는 commands를 만들지 않고 action:"answer"를 사용한다.',
+    '일정/할 일 추가, 수정, 삭제 요청만 commands 배열로 앱에 전달한다. 실제 앱 조작을 했다고 가정하지 말고 commands에 정확히 표현한다.',
     '현재 날짜와 시간 기준은 Asia/Seoul이다. 상대 날짜는 APP_CONTEXT.currentDate/currentDateTime을 기준으로 ISO 날짜 YYYY-MM-DD로 해석한다.',
     '월이 생략된 "19일" 같은 표현은 현재 월의 해당 일이 아직 지나지 않았으면 현재 월, 이미 지났으면 다음 달로 해석한다.',
-    '일정 생성 최소 조건은 title과 date다. time은 선택값이다. 제목과 날짜가 있으면 시간이 없어도 바로 calendar.create 명령을 만든다.',
-    '할 일 생성 최소 조건은 title이다. dueDate, priority, reminderEnabled는 선택값이다. 제목이 있으면 마감기한/중요도가 없어도 바로 todo.create 명령을 만든다.',
-    '필수 정보가 부족할 때만 action:"ask"로 질문하고 commands는 비운다. 선택값만 부족한 경우에는 되묻지 않는다.',
-    '호칭은 매 답변마다 반복하지 않는다. 인사, 확인, 되묻기, 조금 더 정중하게 말해야 하는 상황에서만 "승연님"을 자연스럽게 사용한다. 예: "승연님, 어떤 할 일을 삭제할까요?" / 단순 완료는 "일정 추가해둘게요."처럼 호칭 없이 말해도 된다.',
-    '수정 요청은 APP_CONTEXT.schedules와 APP_CONTEXT.todos에서 가장 잘 맞는 항목을 고른다. id를 알 수 있으면 targetId 또는 id를 넣는다. "방금", "최근"은 targetHint:"latest"를 쓴다.',
+    '일정 생성 최소 조건은 title과 date다. time은 선택값이다. 제목과 날짜가 있으면 시간이 없어도 calendar.create를 만든다.',
+    '할 일 생성 최소 조건은 title이다. dueDate, priority, reminderEnabled는 선택값이다. 제목이 있으면 바로 todo.create를 만든다.',
+    '필수 정보가 부족할 때만 action:"ask"로 한 번에 필요한 정보만 질문하고 commands는 비운다. 선택값이 부족한 경우에는 되묻지 않는다.',
+    '수정/삭제 요청은 APP_CONTEXT에서 가장 잘 맞는 항목을 고른다. id를 알 수 있으면 targetId 또는 id를 넣는다. "방금", "최근"은 targetHint:"latest"를 쓴다.',
     '일정 수정은 calendar.update를 사용한다. 변경값은 newTitle/newDate/newTime에 넣고, 찾을 조건은 targetId/targetTitle/targetDate/targetHint에 넣는다.',
-    '일정 삭제 요청은 calendar.delete를 사용한다. APP_CONTEXT.schedules에서 가장 잘 맞는 항목을 골라 targetId 또는 targetTitle/targetDate/targetHint를 넣는다. 찾을 수 있으면 지원하지 않는다고 말하지 말고 calendar.delete 명령을 만든다. 삭제할 항목이 전혀 특정되지 않으면 action:"ask"로 어떤 일정을 삭제할지 묻고 commands는 비운다.',
+    '일정 삭제는 calendar.delete를 사용한다. 항목을 특정할 수 없을 때만 action:"ask"로 어떤 일정을 삭제할지 묻는다.',
     '할 일 수정은 todo.update를 사용한다. 변경값은 newTitle/dueDate/priority/description/reminderEnabled/completed에 넣고, 찾을 조건은 targetId/targetTitle/targetDueDate/targetHint에 넣는다.',
-    '할 일 삭제 요청은 todo.delete를 사용한다. APP_CONTEXT.todos에서 가장 잘 맞는 항목을 골라 targetId 또는 targetTitle/targetDueDate/targetHint를 넣는다. 찾을 수 있으면 지원하지 않는다고 말하지 말고 todo.delete 명령을 만든다. 삭제할 항목이 전혀 특정되지 않으면 action:"ask"로 어떤 할 일을 삭제할지 묻고 commands는 비운다.',
-    '완료 답변을 할 때 emotion은 "done"을 사용한다. 추가/수정 명령을 실행할 때 action은 "execute"를 사용한다.',
+    '할 일 삭제는 todo.delete를 사용한다. 항목을 특정할 수 없을 때만 action:"ask"로 어떤 할 일을 삭제할지 묻는다.',
+    '조회 답변은 날짜와 시간이 있으면 보기 쉽게 정리한다. 일정이나 할 일이 없으면 없다고 명확하게 말한다.',
     '답변은 반드시 JSON 하나로만 출력한다. JSON 외 문장, 설명, 마크다운, 코드블록은 절대 출력하지 않는다.',
-    '스키마: {"emotion":"default|done","action":"ask|execute|error","message":"사용자에게 보여줄 짧은 답변","messages":[{"speaker":"noah","emotion":"default|done","message":"같은 답변"}],"commands":[{"type":"calendar.create|calendar.update|calendar.delete|todo.create|todo.update|todo.delete","payload":{}}],"missingFields":["필요한 필드"]}',
+    '스키마: {"action":"ask|execute|answer|error","message":"사용자에게 보여줄 짧은 답변","commands":[{"type":"calendar.create|calendar.update|calendar.delete|todo.create|todo.update|todo.delete","payload":{}}],"missingFields":["필요한 필드"]}',
+    '조회 요청 예시: {"action":"answer","message":"오늘 일정은 2개입니다.\n• 10:00 Team Meeting\n• 15:30 Dentist"}',
     'calendar.create payload 예시: {"title":"치과예약","date":"2026-07-19","time":null}',
     'calendar.update payload 예시: {"targetTitle":"치과예약","targetHint":"latest","newTime":"15:00"}',
     'calendar.delete payload 예시: {"targetTitle":"치과예약","targetHint":"matched"}',
@@ -816,38 +620,21 @@ function createNoahDeveloperPrompt(context: AIChatContext): string {
   ].join(' ')
 }
 
-async function createAIChatDeveloperPrompt(characterId: AIChatCharacterId, context: AIChatContext): Promise<string> {
-  if (characterId === 'noah') return createNoahDeveloperPrompt(context)
-  return createCheongDeveloperPrompt()
-}
-
 // ─── AI Chat IPC 핸들러 ─────────────────────────────────────────────────────
 
-ipcMain.handle('ai-chat:load-history', async (_event, characterIdPayload?: unknown): Promise<AIChatHistoryPayload> => {
-  const characterId = normalizeAIChatCharacterId(characterIdPayload)
-
+ipcMain.handle('ai-chat:load-history', async (): Promise<AIChatHistoryPayload> => {
   try {
-    const characterHistory = await readJsonFile(getAIChatHistoryFilePath(characterId))
-
-    if (characterHistory) {
-      return normalizeAIChatHistoryPayload(characterHistory, characterId)
-    }
-
-    return normalizeAIChatHistoryPayload(null, characterId)
+    const history = await readJsonFile(getAIChatHistoryFilePath())
+    return normalizeAIChatHistoryPayload(history)
   } catch (error) {
     console.error('Failed to load AI chat history:', error)
-    return {
-      messages: [],
-      emotion: getDefaultAIEmotion(characterId),
-    }
+    return { messages: [] }
   }
 })
 
-ipcMain.handle('ai-chat:save-history', async (_event, characterIdPayload: unknown, payload: unknown): Promise<boolean> => {
-  const characterId = normalizeAIChatCharacterId(characterIdPayload)
-
+ipcMain.handle('ai-chat:save-history', async (_event, payload: unknown): Promise<boolean> => {
   try {
-    await writeJsonFile(getAIChatHistoryFilePath(characterId), normalizeAIChatHistoryPayload(payload, characterId))
+    await writeJsonFile(getAIChatHistoryFilePath(), normalizeAIChatHistoryPayload(payload))
     return true
   } catch (error) {
     console.error('Failed to save AI chat history:', error)
@@ -855,14 +642,9 @@ ipcMain.handle('ai-chat:save-history', async (_event, characterIdPayload: unknow
   }
 })
 
-ipcMain.handle('ai-chat:clear-history', async (_event, characterIdPayload?: unknown): Promise<boolean> => {
-  const characterId = normalizeAIChatCharacterId(characterIdPayload)
-
+ipcMain.handle('ai-chat:clear-history', async (): Promise<boolean> => {
   try {
-    await writeJsonFile(getAIChatHistoryFilePath(characterId), {
-      messages: [],
-      emotion: getDefaultAIEmotion(characterId),
-    })
+    await writeJsonFile(getAIChatHistoryFilePath(), { messages: [] })
     return true
   } catch (error) {
     console.error('Failed to clear AI chat history:', error)
@@ -870,10 +652,9 @@ ipcMain.handle('ai-chat:clear-history', async (_event, characterIdPayload?: unkn
   }
 })
 
-ipcMain.handle('ai-chat:send', async (_event, payload: { characterId?: unknown; messages?: unknown; context?: unknown }): Promise<AIChatResponsePayload> => {
+ipcMain.handle('ai-chat:send', async (_event, payload: { messages?: unknown; context?: unknown }): Promise<AIChatResponsePayload> => {
   try {
     const client = getOpenAIClient()
-    const characterId = normalizeAIChatCharacterId(payload?.characterId)
     const messages = normalizeAIChatMessages(payload?.messages)
     const context = normalizeAIChatContext(payload?.context)
 
@@ -889,7 +670,7 @@ ipcMain.handle('ai-chat:send', async (_event, payload: { characterId?: unknown; 
       input: [
         {
           role: 'developer',
-          content: await createAIChatDeveloperPrompt(characterId, context),
+          content: createAIChatDeveloperPrompt(context),
         },
         ...messages,
       ],
@@ -898,14 +679,14 @@ ipcMain.handle('ai-chat:send', async (_event, payload: { characterId?: unknown; 
           type: 'json_object',
         },
       },
-      temperature: characterId === 'noah' ? 0.2 : 0.85,
-      max_output_tokens: characterId === 'noah' ? 650 : 500,
+      temperature: 0.2,
+      max_output_tokens: 700,
     })
 
     const rawText = response.output_text?.trim() ?? ''
     return {
       success: true,
-      ...parseAIResponsePayload(rawText, characterId),
+      ...parseAIResponsePayload(rawText),
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'unknown-error'
@@ -1248,12 +1029,26 @@ function getTodoTasksFilePath() {
   return path.join(app.getPath('userData'), 'todo-tasks.json')
 }
 
+function getVocabularyDirectoryPath() {
+  return path.join(app.getPath('userData'), 'vocabulary')
+}
+
+const VOCABULARY_DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+function getVocabularyFilePath(dateKey: string) {
+  if (!VOCABULARY_DATE_KEY_PATTERN.test(dateKey)) {
+    throw new Error('Invalid vocabulary date key')
+  }
+
+  return path.join(getVocabularyDirectoryPath(), `${dateKey}.json`)
+}
+
 function getLikedTracksFilePath() {
   return path.join(app.getPath('userData'), 'liked-tracks.json')
 }
 
-function getAIChatHistoryFilePath(characterId: AIChatCharacterId = 'cheong') {
-  return path.join(app.getPath('userData'), `ai-chat-history-${characterId}.json`)
+function getAIChatHistoryFilePath() {
+  return path.join(app.getPath('userData'), 'ai-chat-history-noah.json')
 }
 
 async function readJsonFile(filePath: string) {
@@ -1872,6 +1667,39 @@ ipcMain.handle('todo-tasks:save', async (_event, tasks: unknown) => {
     return true
   } catch (error) {
     console.error('Failed to save to-do tasks:', error)
+    return false
+  }
+})
+
+ipcMain.handle('vocabulary:list-dates', async () => {
+  try {
+    await fs.mkdir(getVocabularyDirectoryPath(), { recursive: true })
+    const files = await fs.readdir(getVocabularyDirectoryPath())
+
+    return files
+      .filter((fileName) => fileName.endsWith('.json'))
+      .map((fileName) => fileName.slice(0, -5))
+      .filter((dateKey) => VOCABULARY_DATE_KEY_PATTERN.test(dateKey))
+      .sort((a, b) => b.localeCompare(a))
+  } catch (error) {
+    console.error('Failed to list vocabulary dates:', error)
+    return []
+  }
+})
+
+ipcMain.handle('vocabulary:load-date', async (_event, dateKey: unknown) => {
+  if (typeof dateKey !== 'string' || !VOCABULARY_DATE_KEY_PATTERN.test(dateKey)) return null
+  return await readJsonFile(getVocabularyFilePath(dateKey))
+})
+
+ipcMain.handle('vocabulary:save-date', async (_event, dateKey: unknown, words: unknown) => {
+  if (typeof dateKey !== 'string' || !VOCABULARY_DATE_KEY_PATTERN.test(dateKey)) return false
+
+  try {
+    await writeJsonFile(getVocabularyFilePath(dateKey), words)
+    return true
+  } catch (error) {
+    console.error('Failed to save vocabulary date:', error)
     return false
   }
 })

@@ -1,4 +1,4 @@
-export type Page = 'home' | 'dashboard' | 'programs' | 'diary' | 'writeDiary' | 'todo' | 'playlist' | 'settings' | 'aiChat'
+export type Page = 'home' | 'dashboard' | 'programs' | 'diary' | 'writeDiary' | 'todo' | 'vocabulary' | 'vocabularyTest' | 'playlist' | 'settings'
 export type ProgramType = 'Program' | 'Folder' | 'URL'
 export type LaunchDelay = '1 second' | '2 seconds' | '3 seconds' | '5 seconds'
 export type LaunchBehavior = 'Launch in order' | 'Launch all at once'
@@ -107,6 +107,24 @@ export type DiaryEntry = {
   updatedAt: string
 }
 
+export type VocabularyWord = {
+  id: string
+  word: string
+  correctMeaning: string
+  wrongMeanings: [string, string]
+  example: string
+  mistakeCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type VocabularyWordDraft = Pick<
+  VocabularyWord,
+  'word' | 'correctMeaning' | 'wrongMeanings' | 'example'
+>
+
+export type VocabularyByDate = Record<string, VocabularyWord[]>
+
 export type CalendarSchedule = {
   id: string
   date: string
@@ -135,24 +153,6 @@ export type TodoTask = {
 }
 
 
-export type AIChatCharacterId = 'cheong' | 'noah'
-
-export type AIEmotion =
-  | 'default'
-  | 'smile'
-  | 'joy'
-  | 'sleepy'
-  | 'surprised'
-  | 'shy'
-  | 'pout'
-  | 'sad'
-  | 'soft-sad'
-  | 'gloomy'
-  | 'angry-small'
-  | 'done'
-
-export type AIChatSpeaker = AIChatCharacterId
-
 export type AIChatRequestMessage = {
   role: 'user' | 'assistant'
   content: string
@@ -163,14 +163,10 @@ export type AIChatStoredMessage = {
   sender: 'user' | 'ai'
   text: string
   timestamp: number
-  characterId?: AIChatCharacterId
-  emotion?: AIEmotion
-  speaker?: AIChatSpeaker
 }
 
 export type AIChatHistoryPayload = {
   messages: AIChatStoredMessage[]
-  emotion: AIEmotion
 }
 
 export type AICommandTargetHint = 'latest' | 'matched' | 'selected' | 'today'
@@ -291,14 +287,8 @@ export type AIChatContext = {
 
 export type AIChatAPIResult = {
   success: true
-  emotion: AIEmotion
   message: string
-  messages: Array<{
-    speaker: AIChatSpeaker
-    emotion?: AIEmotion | null
-    message: string
-  }>
-  action?: 'ask' | 'execute' | 'error'
+  action?: 'ask' | 'execute' | 'answer' | 'error'
   commands?: AICommand[]
   missingFields?: string[]
 } | {

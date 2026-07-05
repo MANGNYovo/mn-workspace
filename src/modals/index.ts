@@ -9,3 +9,5 @@ export { AddProgramModal } from './AddProgramModal'
 export { ScheduleTimePickerModal } from './ScheduleTimePickerModal'
 export { AddTodoTaskModal } from './AddTodoTaskModal'
 export { TodoDueDatePickerModal } from './TodoDueDatePickerModal'
+
+export { AddVocabularyModal } from './AddVocabularyModal'

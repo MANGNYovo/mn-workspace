@@ -12,6 +12,7 @@ import './styles/programs.css'
 import './styles/settings.css'
 import './styles/diary.css'
 import './styles/todo.css'
+import './styles/vocabulary.css'
 import './styles/modal.css'
 import './styles/animations.css'
 import './styles/floating-player.css'
@@ -31,7 +32,7 @@ import type {
   Page, AudioDevice, MonitorOrientation, HomeMusicPlaylist, PlaylistTrack,
   ProgramItem, AppSettings, DiaryEntry, CalendarSchedule, TodoTask, TodoFilter, LaunchStatus, ResolvedTheme, PlaylistViewMode,
   YoutubeMusicAccount, PlaylistCoverOverrideMap, PlaylistCoverChangeResult,
-  AIChatCharacterId, AIChatContext, AICommand, TodoPriority,
+  AIChatContext, AICommand, TodoPriority, VocabularyByDate, VocabularyWord, VocabularyWordDraft,
 } from './types'
 
 // constants & helpers
@@ -39,9 +40,9 @@ import {
   iconMap, musicControlIconMap, logoMap, accentColorMap, accentRingMap,
   likedIconMap, prelikedIconMap, themeIconMap,
   fallbackHomeMusicPlaylists, fallbackPlaylistTracks, initialPrograms, defaultSettings,
-  initialDiaryEntries, initialCalendarSchedules, initialTodoTasks, formatDateKey, createMonthDate, parseDurationToSeconds,
+  initialDiaryEntries, initialCalendarSchedules, initialTodoTasks, initialVocabularyByDate, formatDateKey, createMonthDate, parseDurationToSeconds,
   getProgramIcon, getNameFromPath, createId, getProgramPresets,
-  isProgramList, isSettings, isDiaryEntries, isCalendarSchedules, isTodoTasks, isHomeMusicPlaylistList,
+  isProgramList, isSettings, isDiaryEntries, isCalendarSchedules, isTodoTasks, isVocabularyWordList, isHomeMusicPlaylistList,
   applyHomeMusicPlaylistOrder, refreshHomeMusicPlaylistThumbnails,
   filterHiddenHomeMusicPlaylists, applyHomeMusicPlaylistCoverOverrides, getPlaylistCoverForTheme,
 } from './constants'
@@ -49,32 +50,20 @@ import {
 // pages
 import {
   HomePage, DashboardPage, PlaylistPage,
-  DiaryPage, WriteDiaryPage, ToDoPage, ProgramsPage, SettingsPage, AIChatPage,
+  DiaryPage, WriteDiaryPage, ToDoPage, VocabularyPage, VocabularyTestPage, ProgramsPage, SettingsPage,
 } from './pages'
-import type { AIChatNotification } from './pages/AIChatPage'
-
 // components
-import { FloatingMusicPlayer } from './components'
+import { AIChatModal, FloatingMusicPlayer } from './components'
 
 // modals
 import {
   DiaryPickerModal, DiaryViewModal, DiaryDeleteModal,
   ScheduleTimePickerModal, AddTodoTaskModal,
-  UpdateModal, YoutubeLoginModal, FullPlaylistModal, AddProgramModal,
+  UpdateModal, YoutubeLoginModal, FullPlaylistModal, AddProgramModal, AddVocabularyModal,
 } from './modals'
 
 const YOUTUBE_TRACK_SWITCH_DELAY_MS = 700
 const LIKED_PLAYLIST_ID = 'mn-liked-tracks'
-
-type AIToastNotification = AIChatNotification & {
-  id: string
-}
-
-const MINI_CHAT_EXPRESSION_IMAGES = import.meta.glob('./assets/minichat-*.png', {
-  eager: true,
-  query: '?url',
-  import: 'default',
-}) as Record<string, string>
 
 const aiShortcutIconMap = {
   blue: aiBlueIcon,
@@ -85,12 +74,6 @@ const aiShortcutIconMap = {
   red: aiRedIcon,
   white: aiWhiteIcon,
 } as const
-
-const getMiniChatCharacterImage = (characterId: AIChatNotification['characterId']) => (
-  MINI_CHAT_EXPRESSION_IMAGES[`./assets/minichat-${characterId}.png`]
-    ?? MINI_CHAT_EXPRESSION_IMAGES['./assets/minichat-cheong.png']
-    ?? ''
-)
 
 const scheduleAccentColors: CalendarSchedule['color'][] = ['red', 'blue', 'green', 'orange', 'purple', 'gray']
 
@@ -107,6 +90,19 @@ const normalizeScheduleTime = (value: string) => {
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return undefined
 
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+const getTodoTaskRetentionDateKey = (task: TodoTask) => {
+  if (task.dueDate) return task.dueDate
+
+  const createdDate = new Date(task.createdAt)
+  if (Number.isNaN(createdDate.getTime())) return null
+  return formatDateKey(createdDate)
+}
+
+const isTodoTaskExpired = (task: TodoTask, todayKey: string) => {
+  const retentionDateKey = getTodoTaskRetentionDateKey(task)
+  return retentionDateKey ? retentionDateKey < todayKey : false
 }
 
 const parseScheduleInput = (value: string) => {
@@ -241,9 +237,8 @@ declare global {
 function App() {
   // ─── State ────────────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState<Page>('home')
-  const [aiToastNotification, setAiToastNotification] = useState<AIToastNotification | null>(null)
-  const [isAiToastVisible, setIsAiToastVisible] = useState(false)
-  const aiToastTimerRef = useRef<number | null>(null)
+  const [isAIChatModalOpen, setIsAIChatModalOpen] = useState(false)
+  const [isAIChatModalMinimized, setIsAIChatModalMinimized] = useState(false)
   const [selectedPreset, setSelectedPreset] = useState(1)
   const [selectedAudioDevice, setSelectedAudioDevice] = useState<AudioDevice>('speaker')
   const [selectedMonitorOrientation, setSelectedMonitorOrientation] = useState<MonitorOrientation>('horizontal')
@@ -322,6 +317,7 @@ function App() {
   const [isDiariesLoaded, setIsDiariesLoaded] = useState(false)
   const [isCalendarSchedulesLoaded, setIsCalendarSchedulesLoaded] = useState(false)
   const [isTodoTasksLoaded, setIsTodoTasksLoaded] = useState(false)
+  const [isVocabularyLoaded, setIsVocabularyLoaded] = useState(false)
   const [inAppNotification, setInAppNotification] = useState<{ title: string; body?: string } | null>(null)
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -336,10 +332,16 @@ function App() {
   const [diaryEntries, setDiaryEntries] = useState<Record<string, DiaryEntry>>(initialDiaryEntries)
   const [calendarSchedules, setCalendarSchedules] = useState<Record<string, CalendarSchedule[]>>(initialCalendarSchedules)
   const [todoTasks, setTodoTasks] = useState<TodoTask[]>(initialTodoTasks)
+  const [vocabularyByDate, setVocabularyByDate] = useState<VocabularyByDate>(initialVocabularyByDate)
+  const [selectedVocabularyDate, setSelectedVocabularyDate] = useState<string | null>(null)
+  const [isAddVocabularyModalOpen, setIsAddVocabularyModalOpen] = useState(false)
   const [todoFilter, setTodoFilter] = useState<TodoFilter>('all')
   const [isAddTodoTaskModalOpen, setIsAddTodoTaskModalOpen] = useState(false)
   const [editingTodoTask, setEditingTodoTask] = useState<TodoTask | null>(null)
-  const [diaryDisplayDate, setDiaryDisplayDate] = useState(new Date(2026, 5, 1))
+  const [diaryDisplayDate, setDiaryDisplayDate] = useState(() => {
+    const now = new Date()
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  })
   const [isDiaryPickerOpen, setIsDiaryPickerOpen] = useState(false)
   const [selectedDiaryDate, setSelectedDiaryDate] = useState<Date | null>(null)
   const [selectedScheduleDate, setSelectedScheduleDate] = useState<Date>(currentDate)
@@ -363,29 +365,6 @@ function App() {
       notifiedCalendarScheduleIdsRef.current.delete(getCalendarScheduleReminderKey(scheduleId, minutesBefore))
     })
   }
-
-  const showAIToastNotification = (notification: AIChatNotification) => {
-    if (aiToastTimerRef.current) {
-      window.clearTimeout(aiToastTimerRef.current)
-    }
-
-    setAiToastNotification({
-      ...notification,
-      id: `ai-toast-${Date.now()}-${Math.random().toString(16).slice(2)}`,
-    })
-    setIsAiToastVisible(true)
-
-    aiToastTimerRef.current = window.setTimeout(() => {
-      setIsAiToastVisible(false)
-      aiToastTimerRef.current = null
-    }, 4200)
-  }
-
-  useEffect(() => {
-    return () => {
-      if (aiToastTimerRef.current) window.clearTimeout(aiToastTimerRef.current)
-    }
-  }, [])
 
   // ─── Computed values ──────────────────────────────────────────────────────
   const presetPrograms = programs.filter((p) => getProgramPresets(p).includes(selectedPreset))
@@ -558,7 +537,8 @@ function App() {
   const shouldShowFloatingMusicPlayer =
     Boolean(currentVideoId && currentTrack) &&
     activePage !== 'home' &&
-    activePage !== 'playlist'
+    activePage !== 'playlist' &&
+    activePage !== 'vocabularyTest'
   // ─── Helper functions ─────────────────────────────────────────────────────
   const getPlaybackTracks = (playlistId?: string | null) => {
     if (playlistId) {
@@ -654,7 +634,7 @@ function App() {
   const getHasModal = () =>
     isDiaryPickerOpen || Boolean(selectedDiaryDate) || isDeleteDiaryConfirmOpen ||
     isFullPlaylistModalOpen || isYoutubeLoginModalOpen || Boolean(updateModalType) ||
-    isAddModalOpen || isAddTodoTaskModalOpen
+    isAddModalOpen || isAddTodoTaskModalOpen || (isAIChatModalOpen && !isAIChatModalMinimized)
 
     const updateSettings = (partial: Partial<AppSettings>) =>
     setSettings((prev) => ({ ...prev, ...partial }))
@@ -1681,8 +1661,8 @@ function App() {
     })
   }
 
-  const handleExecuteAICommands = (commands: AICommand[], characterId: AIChatCharacterId) => {
-    if (characterId !== 'noah' || commands.length === 0) return
+  const handleExecuteAICommands = (commands: AICommand[]) => {
+    if (commands.length === 0) return
 
     const commandNotifications: Array<{ title: string; body: string }> = []
 
@@ -1798,6 +1778,128 @@ function App() {
 
   const handleDeleteTodoTask = (taskId: string) => {
     setTodoTasks((prev) => prev.filter((task) => task.id !== taskId))
+  }
+
+  const handleAddVocabularyWords = async (drafts: VocabularyWordDraft[]) => {
+    if (drafts.length === 0) return false
+
+    const dateKey = formatDateKey(new Date())
+    const now = new Date().toISOString()
+    const newWords: VocabularyWord[] = drafts.map((draft) => ({
+      ...draft,
+      id: createId(),
+      mistakeCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    }))
+    const nextWords = [...(vocabularyByDate[dateKey] ?? []), ...newWords]
+
+    try {
+      const saved = await window.mnAPI.saveVocabularyDate(dateKey, nextWords)
+      if (!saved) return false
+
+      setVocabularyByDate((previous) => ({ ...previous, [dateKey]: nextWords }))
+      setSelectedVocabularyDate(dateKey)
+      setActivePage('vocabulary')
+      return true
+    } catch (error) {
+      console.error('Failed to save vocabulary words:', error)
+      return false
+    }
+  }
+
+  const handleUpdateVocabularyDate = async (dateKey: string, drafts: VocabularyWordDraft[]) => {
+    if (drafts.length === 0) return false
+
+    const currentWords = vocabularyByDate[dateKey] ?? []
+    const now = new Date().toISOString()
+    const usedWordIds = new Set<string>()
+    const nextWords: VocabularyWord[] = drafts.map((draft, index) => {
+      const normalizedDraftWord = draft.word.trim().toLocaleLowerCase()
+      const exactMatch = currentWords.find((word) => (
+        !usedWordIds.has(word.id)
+        && word.word.trim().toLocaleLowerCase() === normalizedDraftWord
+      ))
+      const samePosition = currentWords[index]
+      const existingWord = exactMatch
+        ?? (samePosition && !usedWordIds.has(samePosition.id) ? samePosition : undefined)
+
+      if (existingWord) {
+        usedWordIds.add(existingWord.id)
+        return {
+          ...existingWord,
+          ...draft,
+          updatedAt: now,
+        }
+      }
+
+      return {
+        ...draft,
+        id: createId(),
+        mistakeCount: 0,
+        createdAt: now,
+        updatedAt: now,
+      }
+    })
+
+    try {
+      const saved = await window.mnAPI.saveVocabularyDate(dateKey, nextWords)
+      if (!saved) return false
+
+      setVocabularyByDate((previous) => ({ ...previous, [dateKey]: nextWords }))
+      return true
+    } catch (error) {
+      console.error('Failed to update vocabulary date:', error)
+      return false
+    }
+  }
+
+  const handleDeleteVocabularyDate = async (dateKey: string) => {
+    try {
+      const saved = await window.mnAPI.saveVocabularyDate(dateKey, [])
+      if (!saved) return false
+
+      setVocabularyByDate((previous) => {
+        const next = { ...previous }
+        delete next[dateKey]
+        return next
+      })
+      setSelectedVocabularyDate((current) => current === dateKey ? null : current)
+      return true
+    } catch (error) {
+      console.error('Failed to delete vocabulary date:', error)
+      return false
+    }
+  }
+
+  const handleStartVocabularyTest = (dateKey: string) => {
+    if ((vocabularyByDate[dateKey] ?? []).length === 0) return
+    setSelectedVocabularyDate(dateKey)
+    setActivePage('vocabularyTest')
+  }
+
+  const handleRecordVocabularyMistake = (dateKey: string, wordId: string) => {
+    setVocabularyByDate((previous) => {
+      const currentWords = previous[dateKey] ?? []
+      let didChange = false
+      const now = new Date().toISOString()
+      const nextWords = currentWords.map((word) => {
+        if (word.id !== wordId) return word
+        didChange = true
+        return {
+          ...word,
+          mistakeCount: word.mistakeCount + 1,
+          updatedAt: now,
+        }
+      })
+
+      if (!didChange) return previous
+      window.mnAPI.saveVocabularyDate(dateKey, nextWords).catch((error) => {
+        console.error('Failed to save vocabulary mistake count:', error)
+      })
+
+      return { ...previous, [dateKey]: nextWords }
+    })
   }
 
   const handleOpenTodoFromDiary = () => {
@@ -2075,6 +2177,14 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (activePage !== 'diary') return
+
+    const now = new Date()
+    setDiaryDisplayDate(new Date(now.getFullYear(), now.getMonth(), 1))
+    setSelectedScheduleDate(now)
+  }, [activePage])
+
+  useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
     setSystemTheme(mq.matches ? 'dark' : 'light')
     const onChange = (e: MediaQueryListEvent) => setSystemTheme(e.matches ? 'dark' : 'light')
@@ -2125,9 +2235,34 @@ function App() {
       finally { setIsCalendarSchedulesLoaded(true) }
 
       // 투두
-      try { const tasks = await window.mnAPI.loadTodoTasks(); if (isTodoTasks(tasks)) setTodoTasks(tasks) }
+      try {
+        const tasks = await window.mnAPI.loadTodoTasks()
+        if (isTodoTasks(tasks)) {
+          const todayKey = formatDateKey(new Date())
+          setTodoTasks(tasks.filter((task) => !isTodoTaskExpired(task, todayKey)))
+        }
+      }
       catch (e) { console.error(e) }
       finally { setIsTodoTasksLoaded(true) }
+
+      // 영어 단어 (날짜별 JSON 파일)
+      try {
+        const dateKeys = await window.mnAPI.listVocabularyDates()
+        if (Array.isArray(dateKeys)) {
+          const loadedEntries = await Promise.all(
+            dateKeys
+              .filter((dateKey): dateKey is string => typeof dateKey === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateKey))
+              .map(async (dateKey) => [dateKey, await window.mnAPI.loadVocabularyDate(dateKey)] as const),
+          )
+
+          const nextVocabulary: VocabularyByDate = {}
+          loadedEntries.forEach(([dateKey, words]) => {
+            if (isVocabularyWordList(words)) nextVocabulary[dateKey] = words
+          })
+          setVocabularyByDate(nextVocabulary)
+        }
+      } catch (e) { console.error(e) }
+      finally { setIsVocabularyLoaded(true) }
 
       // 좋아요 트랙
       try {
@@ -2148,6 +2283,15 @@ function App() {
   useEffect(() => { if (isCalendarSchedulesLoaded) window.mnAPI.saveCalendarSchedules(calendarSchedules).catch(console.error) }, [calendarSchedules, isCalendarSchedulesLoaded])
   useEffect(() => { if (isTodoTasksLoaded)         window.mnAPI.saveTodoTasks(todoTasks).catch(console.error) }, [todoTasks, isTodoTasksLoaded])
   useEffect(() => { if (isLikedTracksLoaded)       window.mnAPI.saveLikedTracks(likedTrackIds).catch(console.error) }, [likedTrackIds, isLikedTracksLoaded])
+
+  useEffect(() => {
+    if (!isTodoTasksLoaded) return
+
+    setTodoTasks((prev) => {
+      const next = prev.filter((task) => !isTodoTaskExpired(task, todayDateKey))
+      return next.length === prev.length ? prev : next
+    })
+  }, [todayDateKey, isTodoTasksLoaded])
 
 
   const showInAppNotification = (title: string, body?: string) => {
@@ -2230,12 +2374,13 @@ function App() {
       if (isFullPlaylistModalOpen) { setIsFullPlaylistModalOpen(false); return }
       if (isYoutubeLoginModalOpen) { setIsYoutubeLoginModalOpen(false); return }
       if (updateModalType) { setUpdateModalType(null); return }
-      if (isAddModalOpen) closeAddModal()
-      if (isAddTodoTaskModalOpen) setIsAddTodoTaskModalOpen(false)
+      if (isAddModalOpen) { closeAddModal(); return }
+      if (isAddTodoTaskModalOpen) { setIsAddTodoTaskModalOpen(false); return }
+      if (isAIChatModalOpen && !isAIChatModalMinimized) setIsAIChatModalOpen(false)
     }
     window.addEventListener('keydown', onEsc)
     return () => window.removeEventListener('keydown', onEsc)
-  }, [isDiaryPickerOpen, selectedDiaryDate, isDeleteDiaryConfirmOpen, isFullPlaylistModalOpen, isYoutubeLoginModalOpen, updateModalType, isAddModalOpen, isAddTodoTaskModalOpen])
+  }, [isDiaryPickerOpen, selectedDiaryDate, isDeleteDiaryConfirmOpen, isFullPlaylistModalOpen, isYoutubeLoginModalOpen, updateModalType, isAddModalOpen, isAddTodoTaskModalOpen, isAIChatModalOpen, isAIChatModalMinimized])
 
   useEffect(() => {
     const isMusicShortcutPage = activePage === 'home' || activePage === 'playlist'
@@ -2298,6 +2443,8 @@ function App() {
     isYoutubeLoginModalOpen,
     updateModalType,
     isAddModalOpen,
+    isAIChatModalOpen,
+    isAIChatModalMinimized,
     isHomeMusicPlaying,
   ])
 
@@ -2443,11 +2590,26 @@ function App() {
             onClick={() => setActivePage('todo')}
           >
             <img
-              src={getCollapsedSidebarIcon('check', activePage === 'todo', hoveredCollapsedSidebarPage === 'todo')}
+              src={getCollapsedSidebarIcon('todo', activePage === 'todo', hoveredCollapsedSidebarPage === 'todo')}
               alt=""
               className="menu-icon"
             />
             <span className="menu-label">To-Do</span>
+          </button>
+          <button
+            className={`menu-item ${activePage === 'vocabulary' || activePage === 'vocabularyTest' ? 'active' : ''}`}
+            aria-label="Vocabulary"
+            title={isSidebarCollapsed ? 'Vocabulary' : undefined}
+            onMouseEnter={() => setHoveredCollapsedSidebarPage('vocabulary')}
+            onMouseLeave={() => setHoveredCollapsedSidebarPage(null)}
+            onClick={() => setActivePage('vocabulary')}
+          >
+            <img
+              src={getCollapsedSidebarIcon('vocabulary', activePage === 'vocabulary' || activePage === 'vocabularyTest', hoveredCollapsedSidebarPage === 'vocabulary')}
+              alt=""
+              className="menu-icon"
+            />
+            <span className="menu-label">Vocabulary</span>
           </button>
           <button
             className={`menu-item ${activePage === 'playlist' ? 'active' : ''}`}
@@ -2539,17 +2701,25 @@ function App() {
         </div>
         <button
           type="button"
-          className={`sidebar-ai-shortcut ${activePage === 'aiChat' ? 'active' : ''}`}
-          aria-label="AI Chat"
-          title="AI Chat"
+          className={`sidebar-ai-shortcut ${isAIChatModalOpen ? 'active' : ''}`}
+          aria-label="AI Assistant"
+          title="AI Assistant"
           onMouseEnter={() => setIsAIShortcutHovered(true)}
           onMouseLeave={() => setIsAIShortcutHovered(false)}
           onFocus={() => setIsAIShortcutHovered(true)}
           onBlur={() => setIsAIShortcutHovered(false)}
-          onClick={() => setActivePage('aiChat')}
+          onClick={() => {
+            if (isAIChatModalOpen && !isAIChatModalMinimized) {
+              setIsAIChatModalOpen(false)
+              return
+            }
+
+            setIsAIChatModalOpen(true)
+            setIsAIChatModalMinimized(false)
+          }}
         >
           <img
-            src={getAIShortcutIcon(activePage === 'aiChat', isAIShortcutHovered)}
+            src={getAIShortcutIcon(isAIChatModalOpen, isAIShortcutHovered)}
             alt=""
             className="sidebar-ai-shortcut-icon"
             draggable={false}
@@ -2676,6 +2846,31 @@ function App() {
           />
         )}
 
+        {activePage === 'vocabulary' && (
+          <VocabularyPage
+            isLoaded={isVocabularyLoaded}
+            vocabularyByDate={vocabularyByDate}
+            onOpenAddWords={() => setIsAddVocabularyModalOpen(true)}
+            onStartTest={handleStartVocabularyTest}
+            onUpdateDate={handleUpdateVocabularyDate}
+            onDeleteDate={handleDeleteVocabularyDate}
+            accentColor={settings.accentColor}
+            resolvedTheme={activeTheme}
+          />
+        )}
+
+        {activePage === 'vocabularyTest' && selectedVocabularyDate && (
+          <VocabularyTestPage
+            key={selectedVocabularyDate}
+            dateKey={selectedVocabularyDate}
+            words={vocabularyByDate[selectedVocabularyDate] ?? []}
+            onBack={() => setActivePage('vocabulary')}
+            onRecordMistake={(wordId) => handleRecordVocabularyMistake(selectedVocabularyDate, wordId)}
+            accentColor={settings.accentColor}
+            resolvedTheme={activeTheme}
+          />
+        )}
+
         {activePage === 'writeDiary' && (
           <WriteDiaryPage
             currentDate={currentDate} diaryText={diaryText}
@@ -2708,14 +2903,18 @@ function App() {
           />
         )}
 
-        <div className={`ai-chat-keepalive ${activePage === 'aiChat' ? 'active' : ''}`} aria-hidden={activePage !== 'aiChat'}>
-          <AIChatPage
-            isActive={activePage === 'aiChat'}
-            aiContext={aiChatContext}
-            onNotify={showAIToastNotification}
-            onExecuteCommands={handleExecuteAICommands}
-          />
-        </div>
+        <AIChatModal
+          isOpen={isAIChatModalOpen}
+          isMinimized={isAIChatModalMinimized}
+          accentColor={settings.accentColor}
+          aiContext={aiChatContext}
+          onClose={() => {
+            setIsAIChatModalOpen(false)
+            setIsAIChatModalMinimized(false)
+          }}
+          onToggleMinimized={() => setIsAIChatModalMinimized((prev) => !prev)}
+          onExecuteCommands={handleExecuteAICommands}
+        />
 
         {/* 모달들 */}
         {isDiaryPickerOpen && (
@@ -2748,6 +2947,14 @@ function App() {
             onClose={() => { setIsAddTodoTaskModalOpen(false); setEditingTodoTask(null) }}
             onAddTask={handleAddTodoTask}
             onUpdateTask={handleUpdateTodoTask}
+          />
+        )}
+
+        {isAddVocabularyModalOpen && (
+          <AddVocabularyModal
+            dateLabel={currentDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            onClose={() => setIsAddVocabularyModalOpen(false)}
+            onAddWords={handleAddVocabularyWords}
           />
         )}
 
@@ -2836,38 +3043,6 @@ function App() {
             ×
           </button>
         </div>
-      )}
-
-      {aiToastNotification && (
-        <button
-          type="button"
-          className={`ai-notification-toast ${isAiToastVisible ? 'show' : ''}`}
-          data-character={aiToastNotification.characterId}
-          aria-label={`Open AI Chat from ${aiToastNotification.characterName}`}
-          onClick={() => {
-            setActivePage('aiChat')
-            setIsAiToastVisible(false)
-          }}
-        >
-          <span className="ai-notification-face" aria-hidden="true">
-            {getMiniChatCharacterImage(aiToastNotification.characterId) ? (
-              <img
-                src={getMiniChatCharacterImage(aiToastNotification.characterId)}
-                alt=""
-                className="ai-notification-image"
-                draggable={false}
-              />
-            ) : (
-              <span className="ai-notification-screen">
-                <span className="ai-notification-eye ai-notification-eye-left" />
-                <span className="ai-notification-eye ai-notification-eye-right" />
-                <span className="ai-notification-mouth" />
-              </span>
-            )}
-          </span>
-          <span className="ai-notification-meta">{aiToastNotification.characterName}</span>
-          <span className="ai-notification-message">{aiToastNotification.text}</span>
-        </button>
       )}
 
       {shouldShowFloatingMusicPlayer && currentTrack && (

@@ -3,6 +3,7 @@ import type { CalendarSchedule, TodoFilter, TodoTask } from '../types'
 import { formatDiaryMonthTitle, formatDateKey } from '../constants'
 import gridIcon from '../assets/grid-gray.png'
 import timeIcon from '../assets/time-gray.png'
+import saveIcon from '../assets/save.png'
 
 type Props = {
   currentDate: Date
@@ -74,7 +75,35 @@ export function ToDoPage({
   })
 
   const [openTaskMenuId, setOpenTaskMenuId] = useState<string | null>(null)
+  const [animatingTaskIds, setAnimatingTaskIds] = useState<string[]>([])
   const taskMenuRef = useRef<HTMLDivElement | null>(null)
+  const checkAnimationTimersRef = useRef<Record<string, number>>({})
+
+  useEffect(() => {
+    return () => {
+      Object.values(checkAnimationTimersRef.current).forEach((timerId) => window.clearTimeout(timerId))
+    }
+  }, [])
+
+  const handleToggleTask = (task: TodoTask) => {
+    const existingTimer = checkAnimationTimersRef.current[task.id]
+    if (existingTimer) {
+      window.clearTimeout(existingTimer)
+      delete checkAnimationTimersRef.current[task.id]
+    }
+
+    if (!task.completed) {
+      setAnimatingTaskIds((prev) => prev.includes(task.id) ? prev : [...prev, task.id])
+      checkAnimationTimersRef.current[task.id] = window.setTimeout(() => {
+        setAnimatingTaskIds((prev) => prev.filter((id) => id !== task.id))
+        delete checkAnimationTimersRef.current[task.id]
+      }, 620)
+    } else {
+      setAnimatingTaskIds((prev) => prev.filter((id) => id !== task.id))
+    }
+
+    onToggleTask(task.id)
+  }
 
   useEffect(() => {
     if (!openTaskMenuId) return
@@ -145,10 +174,12 @@ export function ToDoPage({
                 <article key={task.id} className={`todo-task-item ${task.completed ? 'completed' : ''}`}>
                   <button
                     type="button"
-                    className="todo-task-check"
+                    className={`todo-task-check ${task.completed ? 'is-completed' : ''} ${animatingTaskIds.includes(task.id) ? 'is-animating' : ''}`}
                     aria-label={task.completed ? 'Mark as incomplete' : 'Mark as complete'}
-                    onClick={() => onToggleTask(task.id)}
-                  />
+                    onClick={() => handleToggleTask(task)}
+                  >
+                    {task.completed && <img src={saveIcon} alt="" className="todo-task-check-icon" />}
+                  </button>
 
                   <div className="todo-task-text">
                     <strong>{task.title}</strong>

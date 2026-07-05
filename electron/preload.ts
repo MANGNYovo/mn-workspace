@@ -42,6 +42,9 @@ contextBridge.exposeInMainWorld('mnAPI', {
   saveCalendarSchedules: (schedules: unknown) => ipcRenderer.invoke('calendar-schedules:save', schedules),
   loadTodoTasks: () => ipcRenderer.invoke('todo-tasks:load'),
   saveTodoTasks: (tasks: unknown) => ipcRenderer.invoke('todo-tasks:save', tasks),
+  listVocabularyDates: () => ipcRenderer.invoke('vocabulary:list-dates'),
+  loadVocabularyDate: (dateKey: string) => ipcRenderer.invoke('vocabulary:load-date', dateKey),
+  saveVocabularyDate: (dateKey: string, words: unknown) => ipcRenderer.invoke('vocabulary:save-date', dateKey, words),
   showSystemNotification: (options: { title: string; body?: string }) =>
     ipcRenderer.invoke('notifications:show', options),
   loadLikedTracks: () => ipcRenderer.invoke('liked-tracks:load'),
@@ -65,18 +68,17 @@ contextBridge.exposeInMainWorld('mnAPI', {
   changeYoutubeMusicPlaylistCover: (playlistId: string, theme: 'light' | 'dark') =>
     ipcRenderer.invoke('youtube-music:change-playlist-cover', playlistId, theme),
 
-  loadAIChatHistory: (characterId?: 'cheong' | 'noah') =>
-    ipcRenderer.invoke('ai-chat:load-history', characterId),
-  saveAIChatHistory: (characterId: 'cheong' | 'noah', history: unknown) =>
-    ipcRenderer.invoke('ai-chat:save-history', characterId, history),
-  clearAIChatHistory: (characterId?: 'cheong' | 'noah') =>
-    ipcRenderer.invoke('ai-chat:clear-history', characterId),
+  loadAIChatHistory: () =>
+    ipcRenderer.invoke('ai-chat:load-history'),
+  saveAIChatHistory: (history: unknown) =>
+    ipcRenderer.invoke('ai-chat:save-history', history),
+  clearAIChatHistory: () =>
+    ipcRenderer.invoke('ai-chat:clear-history'),
   sendAIChatMessage: (
-    characterId: 'cheong' | 'noah',
     messages: { role: 'user' | 'assistant'; content: string }[],
     context?: unknown,
   ) =>
-    ipcRenderer.invoke('ai-chat:send', { characterId, messages, context }),
+    ipcRenderer.invoke('ai-chat:send', { messages, context }),
 
   setStartWithWindows: (enabled: boolean) =>
     ipcRenderer.invoke('settings:set-start-with-windows', enabled),
