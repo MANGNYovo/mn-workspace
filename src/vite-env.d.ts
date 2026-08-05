@@ -164,6 +164,17 @@ interface Window {
     listVocabularyDates: () => Promise<string[]>
     loadVocabularyDate: (dateKey: string) => Promise<unknown | null>
     saveVocabularyDate: (dateKey: string, words: unknown) => Promise<boolean>
+    checkVocabularyMeaning: (payload: {
+      word: string
+      correctMeaning: string
+      answer: string
+    }) => Promise<{
+      success: true
+      isCorrect: boolean
+    } | {
+      success: false
+      error: string
+    }>
     showSystemNotification: (options: { title: string; body?: string }) => Promise<boolean>
     loadLikedTracks: () => Promise<string[] | null>
     saveLikedTracks: (trackIds: string[]) => Promise<boolean>
@@ -220,6 +231,12 @@ interface Window {
       stderr: string
       error?: string
     }>
+    onAudioDeviceChanged: (
+      callback: (device: 'speaker' | 'headphone') => void,
+    ) => () => void
+    onSettingsChanged: (
+      callback: (settings: unknown) => void,
+    ) => () => void
     getMonitorOrientation: () => Promise<'horizontal' | 'vertical' | null>
     setMonitorOrientation: (orientation: 'horizontal' | 'vertical') => Promise<{
       success: boolean

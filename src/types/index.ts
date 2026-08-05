@@ -74,6 +74,7 @@ export type ProgramItem = {
 export type AppSettings = {
   startWithWindows: boolean
   minimizeToTray: boolean
+  audioOverlayEnabled: boolean
   checkForUpdates: boolean
   launchDelay: LaunchDelay
   launchBehavior: LaunchBehavior
@@ -124,6 +125,8 @@ export type VocabularyWordDraft = Pick<
 >
 
 export type VocabularyByDate = Record<string, VocabularyWord[]>
+
+export type VocabularyTestMode = 'multipleChoice' | 'written' | 'writtenBatch'
 
 export type CalendarSchedule = {
   id: string

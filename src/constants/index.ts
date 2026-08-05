@@ -360,6 +360,7 @@ export const initialPrograms: ProgramItem[] = [
 export const defaultSettings: AppSettings = {
   startWithWindows: false,
   minimizeToTray: false,
+  audioOverlayEnabled: true,
   checkForUpdates: true,
   launchDelay: '1 second',
   launchBehavior: 'Launch in order',
@@ -488,6 +489,7 @@ export function isSettings(value: unknown): value is AppSettings {
   const s = value as AppSettings
   return typeof s.startWithWindows === 'boolean' &&
     typeof s.minimizeToTray === 'boolean' &&
+    (s.audioOverlayEnabled === undefined || typeof s.audioOverlayEnabled === 'boolean') &&
     typeof s.checkForUpdates === 'boolean' &&
     typeof s.launchDelay === 'string' &&
     typeof s.launchBehavior === 'string' &&

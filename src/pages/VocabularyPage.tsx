@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type MouseEvent as ReactMouseEvent } from 'react'
-import type { AccentColor, ResolvedTheme, VocabularyByDate, VocabularyWord, VocabularyWordDraft } from '../types'
+import type { AccentColor, ResolvedTheme, VocabularyByDate, VocabularyTestMode, VocabularyWord, VocabularyWordDraft } from '../types'
 import { vocabularySoundIconMap } from '../constants'
 import { speakEnglishWord, stopEnglishSpeech } from '../utils/englishTts'
 
@@ -7,7 +7,9 @@ type Props = {
   isLoaded: boolean
   vocabularyByDate: VocabularyByDate
   onOpenAddWords: () => void
-  onStartTest: (dateKey: string) => void
+  testMode: VocabularyTestMode
+  onChangeTestMode: (mode: VocabularyTestMode) => void
+  onStartTest: (dateKey: string, mode: VocabularyTestMode) => void
   onUpdateDate: (dateKey: string, words: VocabularyWordDraft[]) => Promise<boolean>
   onDeleteDate: (dateKey: string) => Promise<boolean>
   accentColor: AccentColor
@@ -97,6 +99,8 @@ export function VocabularyPage({
   isLoaded,
   vocabularyByDate,
   onOpenAddWords,
+  testMode,
+  onChangeTestMode,
   onStartTest,
   onUpdateDate,
   onDeleteDate,
@@ -109,7 +113,7 @@ export function VocabularyPage({
       .sort((a, b) => b.localeCompare(a)),
     [vocabularyByDate],
   )
-  const [expandedDates, setExpandedDates] = useState<Set<string>>(() => new Set(dateKeys))
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(() => new Set<string>())
   const [actionMenuDateKey, setActionMenuDateKey] = useState<string | null>(null)
   const [managedDateKey, setManagedDateKey] = useState<string | null>(null)
   const [manageMode, setManageMode] = useState<ManageMode>('edit')
@@ -126,8 +130,13 @@ export function VocabularyPage({
 
   useEffect(() => {
     setExpandedDates((previous) => {
-      const next = new Set(previous)
-      dateKeys.forEach((dateKey) => next.add(dateKey))
+      const availableDates = new Set(dateKeys)
+      const next = new Set([...previous].filter((dateKey) => availableDates.has(dateKey)))
+
+      if (next.size === previous.size && [...next].every((dateKey) => previous.has(dateKey))) {
+        return previous
+      }
+
       return next
     })
   }, [dateKeys])
@@ -248,9 +257,38 @@ export function VocabularyPage({
             </div>
           </div>
 
-          <button type="button" className="vocabulary-add-button" disabled={!isLoaded} onClick={onOpenAddWords}>
-            <span>Add Word</span>
-          </button>
+          <div className="vocabulary-page-header-actions">
+            <div className="vocabulary-test-mode-toggle" role="group" aria-label="Vocabulary test mode">
+              <button
+                type="button"
+                className={testMode === 'multipleChoice' ? 'active' : ''}
+                aria-pressed={testMode === 'multipleChoice'}
+                onClick={() => onChangeTestMode('multipleChoice')}
+              >
+                Multiple Choice
+              </button>
+              <button
+                type="button"
+                className={testMode === 'written' ? 'active' : ''}
+                aria-pressed={testMode === 'written'}
+                onClick={() => onChangeTestMode('written')}
+              >
+                Written
+              </button>
+              <button
+                type="button"
+                className={testMode === 'writtenBatch' ? 'active' : ''}
+                aria-pressed={testMode === 'writtenBatch'}
+                onClick={() => onChangeTestMode('writtenBatch')}
+              >
+                Random Written
+              </button>
+            </div>
+
+            <button type="button" className="vocabulary-add-button" disabled={!isLoaded} onClick={onOpenAddWords}>
+              <span>Add Word</span>
+            </button>
+          </div>
         </header>
 
         <div className="vocabulary-date-list">
@@ -296,8 +334,14 @@ export function VocabularyPage({
                       className="vocabulary-test-button"
                       disabled={words.length === 0}
                       aria-label={`Start vocabulary test for ${formatVocabularyDate(dateKey)}`}
-                      title="Start test"
-                      onClick={() => onStartTest(dateKey)}
+                      title={`Start ${
+                        testMode === 'writtenBatch'
+                          ? 'random written'
+                          : testMode === 'written'
+                            ? 'written'
+                            : 'multiple choice'
+                      } test`}
+                      onClick={() => onStartTest(dateKey, testMode)}
                     >
                       <span className="vocabulary-test-play-icon" aria-hidden="true" />
                     </button>

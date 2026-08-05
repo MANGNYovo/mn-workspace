@@ -32,7 +32,7 @@ import type {
   Page, AudioDevice, MonitorOrientation, HomeMusicPlaylist, PlaylistTrack,
   ProgramItem, AppSettings, DiaryEntry, CalendarSchedule, TodoTask, TodoFilter, LaunchStatus, ResolvedTheme, PlaylistViewMode,
   YoutubeMusicAccount, PlaylistCoverOverrideMap, PlaylistCoverChangeResult,
-  AIChatContext, AICommand, TodoPriority, VocabularyByDate, VocabularyWord, VocabularyWordDraft,
+  AIChatContext, AICommand, TodoPriority, VocabularyByDate, VocabularyWord, VocabularyWordDraft, VocabularyTestMode,
 } from './types'
 
 // constants & helpers
@@ -334,6 +334,7 @@ function App() {
   const [todoTasks, setTodoTasks] = useState<TodoTask[]>(initialTodoTasks)
   const [vocabularyByDate, setVocabularyByDate] = useState<VocabularyByDate>(initialVocabularyByDate)
   const [selectedVocabularyDate, setSelectedVocabularyDate] = useState<string | null>(null)
+  const [vocabularyTestMode, setVocabularyTestMode] = useState<VocabularyTestMode>('multipleChoice')
   const [isAddVocabularyModalOpen, setIsAddVocabularyModalOpen] = useState(false)
   const [todoFilter, setTodoFilter] = useState<TodoFilter>('all')
   const [isAddTodoTaskModalOpen, setIsAddTodoTaskModalOpen] = useState(false)
@@ -1872,8 +1873,9 @@ function App() {
     }
   }
 
-  const handleStartVocabularyTest = (dateKey: string) => {
+  const handleStartVocabularyTest = (dateKey: string, testMode: VocabularyTestMode) => {
     if ((vocabularyByDate[dateKey] ?? []).length === 0) return
+    setVocabularyTestMode(testMode)
     setSelectedVocabularyDate(dateKey)
     setActivePage('vocabularyTest')
   }
@@ -2156,6 +2158,12 @@ function App() {
   }, [selectedHomeMusicPlaylistId, isYtAuthenticated, likedTrackIds])
 
   useEffect(() => { window.mnAPI.getAppVersion().then(setAppVersion) }, [])
+
+  useEffect(() => {
+    return window.mnAPI.onAudioDeviceChanged((device) => {
+      setSelectedAudioDevice(device)
+    })
+  }, [])
 
   useEffect(() => {
     if (activePage !== 'home') return
@@ -2851,6 +2859,8 @@ function App() {
             isLoaded={isVocabularyLoaded}
             vocabularyByDate={vocabularyByDate}
             onOpenAddWords={() => setIsAddVocabularyModalOpen(true)}
+            testMode={vocabularyTestMode}
+            onChangeTestMode={setVocabularyTestMode}
             onStartTest={handleStartVocabularyTest}
             onUpdateDate={handleUpdateVocabularyDate}
             onDeleteDate={handleDeleteVocabularyDate}
@@ -2861,8 +2871,9 @@ function App() {
 
         {activePage === 'vocabularyTest' && selectedVocabularyDate && (
           <VocabularyTestPage
-            key={selectedVocabularyDate}
+            key={`${selectedVocabularyDate}:${vocabularyTestMode}`}
             dateKey={selectedVocabularyDate}
+            testMode={vocabularyTestMode}
             words={vocabularyByDate[selectedVocabularyDate] ?? []}
             onBack={() => setActivePage('vocabulary')}
             onRecordMistake={(wordId) => handleRecordVocabularyMistake(selectedVocabularyDate, wordId)}

@@ -121,6 +121,19 @@ export function SettingsPage({
 
         <div className="setting-row">
           <div>
+            <strong>Taskbar audio switcher</strong>
+            <p>Show the draggable speaker and headset controls above the taskbar.</p>
+          </div>
+          <button
+            className={`toggle ${settings.audioOverlayEnabled ? 'on' : ''}`}
+            onClick={() => onUpdateSettings({ audioOverlayEnabled: !settings.audioOverlayEnabled })}
+          >
+            <span></span>
+          </button>
+        </div>
+
+        <div className="setting-row">
+          <div>
             <strong>Check for updates</strong>
             <p>Automatically check for updates on startup.</p>
           </div>

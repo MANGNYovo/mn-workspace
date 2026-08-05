@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol, Notification } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol, Notification, screen } from 'electron'
 import { execFile } from 'node:child_process'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
@@ -55,9 +55,22 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 
 let win: BrowserWindow | null
 let tray: Tray | null = null
+let audioOverlayWindow: BrowserWindow | null = null
+let audioOverlayMoveTimer: NodeJS.Timeout | null = null
+let audioOverlayScreenListenersRegistered = false
+let audioOverlayEnabled = true
 let minimizeToTray = false
 let isQuitting = false
 let startedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin
+
+const AUDIO_OVERLAY_WIDTH = 124
+const AUDIO_OVERLAY_HEIGHT = 56
+
+type AudioDevice = 'speaker' | 'headphone'
+type AudioOverlayPosition = {
+  x: number
+  y: number
+}
 
 autoUpdater.autoDownload = false
 
@@ -198,6 +211,20 @@ type AIChatStoredMessage = {
 
 type AIChatHistoryPayload = {
   messages: AIChatStoredMessage[]
+}
+
+type VocabularyMeaningCheckPayload = {
+  word?: unknown
+  correctMeaning?: unknown
+  answer?: unknown
+}
+
+type VocabularyMeaningCheckResponse = {
+  success: true
+  isCorrect: boolean
+} | {
+  success: false
+  error: string
 }
 
 let openAIClient: OpenAI | null = null
@@ -621,6 +648,77 @@ function createAIChatDeveloperPrompt(context: AIChatContext): string {
 }
 
 // ─── AI Chat IPC 핸들러 ─────────────────────────────────────────────────────
+
+ipcMain.handle('vocabulary:check-meaning', async (
+  _event,
+  payload: VocabularyMeaningCheckPayload,
+): Promise<VocabularyMeaningCheckResponse> => {
+  const word = typeof payload?.word === 'string' ? payload.word.trim().slice(0, 120) : ''
+  const correctMeaning = typeof payload?.correctMeaning === 'string'
+    ? payload.correctMeaning.trim().slice(0, 500)
+    : ''
+  const answer = typeof payload?.answer === 'string' ? payload.answer.trim().slice(0, 500) : ''
+
+  if (!word || !correctMeaning || !answer) {
+    return { success: false, error: 'invalid-vocabulary-answer' }
+  }
+
+  try {
+    const client = getOpenAIClient()
+    const response = await client.responses.create({
+      model: OPENAI_MODEL,
+      input: [
+        {
+          role: 'developer',
+          content: [
+            'You grade Korean answers in an English vocabulary test.',
+            'Decide whether the user answer conveys the same core dictionary meaning as the expected Korean answer for the given English word.',
+            'Judge the lexical head and core action, state, or quality rather than requiring the user to reproduce every word in the expected phrase.',
+            'Accept natural Korean synonyms, equivalent paraphrases, harmless changes in particles or endings, omitted leading ~ particles, spacing differences, and minor typos that do not change the meaning.',
+            'Optional intensity, emphasis, or explanatory manner words may be omitted when the English word still has the same core sense.',
+            'Use the English word to decide whether an omitted modifier is merely explanatory or is essential to the word meaning.',
+            'Positive example: englishWord="reject", expectedKoreanMeaning="~을 단호히 거절하다", userKoreanAnswer="거절하다" => true.',
+            'Positive example: englishWord="notice", expectedKoreanMeaning="~을 알아채다", userKoreanAnswer="눈치채다" => true.',
+            'Negative example: englishWord="reject", expectedKoreanMeaning="~을 단호히 거절하다", userKoreanAnswer="미루다" => false.',
+            'Negative example: englishWord="whisper", expectedKoreanMeaning="조용히 말하다", userKoreanAnswer="말하다" => false because quietness is essential to whisper.',
+            'When the expected answer lists multiple meanings separated by commas, slashes, semicolons, 또는, or 혹은, matching one complete listed sense is enough.',
+            'Reject answers that are merely related, broader or narrower in a meaning-changing way, opposite, or for a different sense of the English word.',
+            'When uncertain between true and false, prefer true only if a Korean dictionary could reasonably list the user answer as a meaning of that exact English word.',
+            'Return only JSON in this exact shape: {"isCorrect": true} or {"isCorrect": false}.',
+          ].join(' '),
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            englishWord: word,
+            expectedKoreanMeaning: correctMeaning,
+            userKoreanAnswer: answer,
+          }),
+        },
+      ],
+      text: {
+        format: {
+          type: 'json_object',
+        },
+      },
+      temperature: 0,
+      max_output_tokens: 60,
+    })
+
+    const rawText = response.output_text?.trim() ?? ''
+    const parsed = JSON.parse(rawText) as { isCorrect?: unknown }
+
+    if (typeof parsed.isCorrect !== 'boolean') {
+      return { success: false, error: 'invalid-vocabulary-check-response' }
+    }
+
+    return { success: true, isCorrect: parsed.isCorrect }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown-error'
+    console.error('Vocabulary meaning check failed:', error)
+    return { success: false, error: message || 'vocabulary-meaning-check-failed' }
+  }
+})
 
 ipcMain.handle('ai-chat:load-history', async (): Promise<AIChatHistoryPayload> => {
   try {
@@ -1387,6 +1485,476 @@ function createTray() {
 }
 
 
+function getAudioOverlayPositionFilePath() {
+  return path.join(app.getPath('userData'), 'audio-overlay-position.json')
+}
+
+function isAudioOverlayPosition(value: unknown): value is AudioOverlayPosition {
+  if (!value || typeof value !== 'object') return false
+
+  const position = value as Partial<AudioOverlayPosition>
+
+  return (
+    typeof position.x === 'number' &&
+    Number.isFinite(position.x) &&
+    typeof position.y === 'number' &&
+    Number.isFinite(position.y)
+  )
+}
+
+function getDefaultAudioOverlayPosition() {
+  const { workArea } = screen.getPrimaryDisplay()
+
+  return {
+    x: Math.round(workArea.x + workArea.width - AUDIO_OVERLAY_WIDTH - 14),
+    y: Math.round(workArea.y + workArea.height - AUDIO_OVERLAY_HEIGHT - 12),
+  }
+}
+
+function isAudioOverlayPositionVisible(position: AudioOverlayPosition) {
+  const minimumVisibleSize = 24
+  const overlayRight = position.x + AUDIO_OVERLAY_WIDTH
+  const overlayBottom = position.y + AUDIO_OVERLAY_HEIGHT
+
+  return screen.getAllDisplays().some(({ bounds }) => {
+    const visibleWidth = Math.min(overlayRight, bounds.x + bounds.width) - Math.max(position.x, bounds.x)
+    const visibleHeight = Math.min(overlayBottom, bounds.y + bounds.height) - Math.max(position.y, bounds.y)
+
+    return visibleWidth >= minimumVisibleSize && visibleHeight >= minimumVisibleSize
+  })
+}
+
+async function loadAudioOverlayPosition() {
+  const savedPosition = await readJsonFile(getAudioOverlayPositionFilePath())
+
+  if (isAudioOverlayPosition(savedPosition) && isAudioOverlayPositionVisible(savedPosition)) {
+    return {
+      x: Math.round(savedPosition.x),
+      y: Math.round(savedPosition.y),
+    }
+  }
+
+  return getDefaultAudioOverlayPosition()
+}
+
+function scheduleAudioOverlayPositionSave() {
+  if (!audioOverlayWindow || audioOverlayWindow.isDestroyed()) return
+
+  if (audioOverlayMoveTimer) {
+    clearTimeout(audioOverlayMoveTimer)
+  }
+
+  audioOverlayMoveTimer = setTimeout(() => {
+    audioOverlayMoveTimer = null
+
+    if (!audioOverlayWindow || audioOverlayWindow.isDestroyed()) return
+
+    const { x, y } = audioOverlayWindow.getBounds()
+    void writeJsonFile(getAudioOverlayPositionFilePath(), { x, y }).catch((error) => {
+      console.error('Failed to save audio overlay position:', error)
+    })
+  }, 220)
+}
+
+function keepAudioOverlayOnScreen() {
+  if (!audioOverlayWindow || audioOverlayWindow.isDestroyed()) return
+
+  const { x, y } = audioOverlayWindow.getBounds()
+
+  if (!isAudioOverlayPositionVisible({ x, y })) {
+    const defaultPosition = getDefaultAudioOverlayPosition()
+    audioOverlayWindow.setPosition(defaultPosition.x, defaultPosition.y, false)
+    scheduleAudioOverlayPositionSave()
+  }
+}
+
+function registerAudioOverlayScreenListeners() {
+  if (audioOverlayScreenListenersRegistered) return
+  audioOverlayScreenListenersRegistered = true
+
+  screen.on('display-added', keepAudioOverlayOnScreen)
+  screen.on('display-removed', keepAudioOverlayOnScreen)
+  screen.on('display-metrics-changed', keepAudioOverlayOnScreen)
+}
+
+function broadcastAudioDeviceChanged(device: AudioDevice) {
+  BrowserWindow.getAllWindows().forEach((browserWindow) => {
+    if (!browserWindow.isDestroyed()) {
+      browserWindow.webContents.send('device:audio-changed', device)
+    }
+  })
+}
+
+function broadcastSettingsChanged(settings: unknown) {
+  BrowserWindow.getAllWindows().forEach((browserWindow) => {
+    if (!browserWindow.isDestroyed()) {
+      browserWindow.webContents.send('settings:changed', settings)
+    }
+  })
+}
+
+function getAudioOverlayHtml() {
+  return String.raw`<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Switcher</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --accent: #9b7cff;
+      --surface: rgba(26, 27, 37, 0.28);
+      --border: rgba(255, 255, 255, 0.12);
+      --button: rgba(255, 255, 255, 0.05);
+      --button-hover: rgba(255, 255, 255, 0.12);
+      --icon: rgba(255, 255, 255, 0.82);
+    }
+
+    :root[data-theme='light'] {
+      color-scheme: light;
+      --surface: rgba(247, 247, 252, 0.34);
+      --border: rgba(48, 48, 58, 0.10);
+      --button: rgba(255, 255, 255, 0.24);
+      --button-hover: rgba(255, 255, 255, 0.42);
+      --icon: rgba(58, 58, 70, 0.76);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: transparent;
+      font-family: Arial, sans-serif;
+      user-select: none;
+    }
+
+    body {
+      padding: 4px;
+    }
+
+    .audio-switcher {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 6px 5px 7px;
+      border: 1px solid var(--border);
+      border-radius: 17px;
+      background: var(--surface);
+      box-shadow: none;
+      backdrop-filter: blur(14px) saturate(138%);
+      -webkit-backdrop-filter: blur(14px) saturate(138%);
+      -webkit-app-region: drag;
+      cursor: grab;
+    }
+
+    .grip {
+      width: 5px;
+      height: 22px;
+      flex: 0 0 5px;
+      opacity: 0.42;
+      background:
+        radial-gradient(circle, var(--icon) 1.15px, transparent 1.35px) 0 0 / 5px 7px;
+      pointer-events: none;
+    }
+
+    button {
+      width: 43px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 43px;
+      padding: 0;
+      border: 0;
+      border-radius: 12px;
+      outline: none;
+      color: var(--icon);
+      background: var(--button);
+      cursor: pointer;
+      transition: transform 150ms ease, background 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+      -webkit-app-region: no-drag;
+    }
+
+    button:hover {
+      color: var(--accent);
+      background: var(--button-hover);
+      transform: translateY(-1px);
+    }
+
+    button:active {
+      transform: scale(0.92);
+    }
+
+    button.active {
+      color: #ffffff;
+      background: color-mix(in srgb, var(--accent) 82%, transparent);
+      box-shadow: none;
+    }
+
+    button.busy {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    svg {
+      width: 21px;
+      height: 21px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+    }
+
+    .error {
+      animation: shake 280ms ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      30% { transform: translateX(-3px); }
+      70% { transform: translateX(3px); }
+    }
+  </style>
+</head>
+<body>
+  <main id="switcher" class="audio-switcher" title="Drag to move">
+    <span class="grip" aria-hidden="true"></span>
+
+    <button type="button" data-device="speaker" aria-label="Switch to speaker" title="Speaker">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 9.2v5.6h3.2l4.8 3.8V5.4L7.7 9.2H4.5Z" />
+        <path d="M15.2 9.1a4.1 4.1 0 0 1 0 5.8" />
+        <path d="M17.8 6.8a7.3 7.3 0 0 1 0 10.4" />
+      </svg>
+    </button>
+
+    <button type="button" data-device="headphone" aria-label="Switch to headset" title="Headset">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 13v-1a8 8 0 0 1 16 0v1" />
+        <path d="M4 13.2h2.8v6H5.5A1.5 1.5 0 0 1 4 17.7v-4.5Z" />
+        <path d="M20 13.2h-2.8v6h1.3a1.5 1.5 0 0 0 1.5-1.5v-4.5Z" />
+      </svg>
+    </button>
+  </main>
+
+  <script>
+    const api = window.mnAPI
+    const switcher = document.getElementById('switcher')
+    const buttons = Array.from(document.querySelectorAll('button[data-device]'))
+    const accentColors = {
+      purple: '#9b7cff',
+      blue: '#6f9cff',
+      green: '#62c997',
+      orange: '#f2a36b',
+      red: '#ef747c',
+      gray: '#8c91a2',
+    }
+
+    let currentDevice = null
+    let busy = false
+
+    function resolveTheme(settings) {
+      if (!settings || typeof settings !== 'object') return 'light'
+      if (settings.theme === 'Light') return 'light'
+      if (settings.theme === 'Dark') return 'dark'
+      if (settings.theme === 'Custom Wallpaper') {
+        return settings.customWallpaperTheme === 'light' ? 'light' : 'dark'
+      }
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    }
+
+    function applySettings(settings) {
+      const accent = settings && accentColors[settings.accentColor]
+        ? accentColors[settings.accentColor]
+        : accentColors.purple
+
+      document.documentElement.style.setProperty('--accent', accent)
+      document.documentElement.dataset.theme = resolveTheme(settings)
+    }
+
+    function renderDevice(device) {
+      currentDevice = device
+      buttons.forEach((button) => {
+        button.classList.toggle('active', button.dataset.device === device)
+      })
+    }
+
+    function renderBusy(nextBusy) {
+      busy = nextBusy
+      buttons.forEach((button) => button.classList.toggle('busy', nextBusy))
+    }
+
+    function showError() {
+      switcher.classList.remove('error')
+      void switcher.offsetWidth
+      switcher.classList.add('error')
+      window.setTimeout(() => switcher.classList.remove('error'), 320)
+    }
+
+    async function refreshDevice() {
+      try {
+        const device = await api.getAudioDevice()
+        if (device) renderDevice(device)
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    async function selectDevice(device) {
+      if (busy || currentDevice === device) return
+
+      renderBusy(true)
+
+      try {
+        const result = await api.setAudioDevice(device)
+
+        if (!result || !result.success) {
+          showError()
+          return
+        }
+
+        const actualDevice = await api.getAudioDevice()
+        renderDevice(actualDevice || device)
+      } catch (error) {
+        console.error(error)
+        showError()
+      } finally {
+        renderBusy(false)
+      }
+    }
+
+    buttons.forEach((button) => {
+      button.addEventListener('click', () => selectDevice(button.dataset.device))
+    })
+
+    api.loadSettings().then(applySettings).catch(console.error)
+    refreshDevice()
+
+    const removeAudioListener = api.onAudioDeviceChanged((device) => renderDevice(device))
+    const removeSettingsListener = api.onSettingsChanged((settings) => applySettings(settings))
+    const refreshTimer = window.setInterval(refreshDevice, 3000)
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      api.loadSettings().then(applySettings).catch(console.error)
+    })
+
+    window.addEventListener('beforeunload', () => {
+      window.clearInterval(refreshTimer)
+      removeAudioListener()
+      removeSettingsListener()
+    })
+  </script>
+</body>
+</html>`
+}
+
+function getAudioOverlayEnabledFromSettings(settings: unknown) {
+  if (!settings || typeof settings !== 'object') return true
+
+  return (settings as { audioOverlayEnabled?: unknown }).audioOverlayEnabled !== false
+}
+
+async function syncAudioOverlayVisibility(settings?: unknown) {
+  if (process.platform !== 'win32') return
+
+  const resolvedSettings = settings === undefined
+    ? await readJsonFile(getSettingsFilePath())
+    : settings
+
+  audioOverlayEnabled = getAudioOverlayEnabledFromSettings(resolvedSettings)
+
+  if (audioOverlayEnabled) {
+    await createAudioOverlayWindow()
+    return
+  }
+
+  if (audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
+    audioOverlayWindow.hide()
+  }
+}
+
+async function createAudioOverlayWindow() {
+  if (process.platform !== 'win32' || !audioOverlayEnabled) return
+
+  if (audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
+    audioOverlayWindow.showInactive()
+    return
+  }
+
+  const position = await loadAudioOverlayPosition()
+
+  audioOverlayWindow = new BrowserWindow({
+    width: AUDIO_OVERLAY_WIDTH,
+    height: AUDIO_OVERLAY_HEIGHT,
+    x: position.x,
+    y: position.y,
+    show: false,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    resizable: false,
+    maximizable: false,
+    minimizable: false,
+    fullscreenable: false,
+    movable: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.mjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      backgroundThrottling: false,
+    },
+  })
+
+  audioOverlayWindow.setAlwaysOnTop(true, 'floating')
+  audioOverlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+
+  audioOverlayWindow.once('ready-to-show', () => {
+    if (audioOverlayEnabled) {
+      audioOverlayWindow?.showInactive()
+    }
+  })
+
+  audioOverlayWindow.on('move', scheduleAudioOverlayPositionSave)
+
+  audioOverlayWindow.on('close', (event) => {
+    if (isQuitting) return
+
+    event.preventDefault()
+
+    if (audioOverlayEnabled) {
+      audioOverlayWindow?.showInactive()
+    } else {
+      audioOverlayWindow?.hide()
+    }
+  })
+
+  audioOverlayWindow.on('closed', () => {
+    audioOverlayWindow = null
+
+    if (audioOverlayMoveTimer) {
+      clearTimeout(audioOverlayMoveTimer)
+      audioOverlayMoveTimer = null
+    }
+  })
+
+  const overlayUrl = `data:text/html;charset=UTF-8,${encodeURIComponent(getAudioOverlayHtml())}`
+  await audioOverlayWindow.loadURL(overlayUrl)
+}
+
 function registerCustomWallpaperProtocol() {
   protocol.registerFileProtocol(CUSTOM_WALLPAPER_PROTOCOL, (request, callback) => {
     try {
@@ -1452,6 +2020,17 @@ function createWindow() {
     event.preventDefault()
     win?.hide()
     createTray()
+  })
+
+  win.on('closed', () => {
+    win = null
+
+    // 오디오 오버레이가 별도 BrowserWindow이므로 메인 창을 닫았을 때
+    // 기존처럼 앱 전체가 종료되도록 명시적으로 종료한다.
+    if (!isQuitting && !minimizeToTray) {
+      isQuitting = true
+      app.quit()
+    }
   })
 
   if (VITE_DEV_SERVER_URL) {
@@ -1614,6 +2193,8 @@ ipcMain.handle('settings:save', async (_event, settings: any) => {
     minimizeToTray = Boolean(settings?.minimizeToTray)
 
     await writeJsonFile(getSettingsFilePath(), settings)
+    broadcastSettingsChanged(settings)
+    await syncAudioOverlayVisibility(settings)
 
     if (minimizeToTray) {
       createTray()
@@ -2128,7 +2709,7 @@ ipcMain.handle('settings:set-start-with-windows', async (_event, enabled: boolea
   }
 })
 
-ipcMain.handle('device:get-audio', async () => {
+async function getCurrentAudioDevice(): Promise<AudioDevice | null> {
   try {
     const result = await runPowerShell(String.raw`
 $device = Get-AudioDevice -Playback | Where-Object { $_.Default -eq $true } | Select-Object -First 1
@@ -2167,16 +2748,27 @@ $device | Select-Object Index, Name, Default | ConvertTo-Json -Compress
     console.error('Failed to get audio device:', error)
     return null
   }
+}
+
+ipcMain.handle('device:get-audio', async () => {
+  return await getCurrentAudioDevice()
 })
 
-ipcMain.handle('device:set-audio', async (_event, device: 'speaker' | 'headphone') => {
+ipcMain.handle('device:set-audio', async (_event, device: AudioDevice) => {
   try {
     const command =
       device === 'speaker'
         ? 'Set-AudioDevice -Index 2'
         : 'Set-AudioDevice -Index 1'
 
-    return await runPowerShell(command)
+    const result = await runPowerShell(command)
+
+    if (result.success) {
+      const currentDevice = await getCurrentAudioDevice()
+      broadcastAudioDeviceChanged(currentDevice ?? device)
+    }
+
+    return result
   } catch (error) {
     console.error('Failed to set audio device:', error)
 
@@ -2334,6 +2926,7 @@ autoUpdater.on('update-downloaded', (info) => {
 })
 
 app.on('before-quit', () => {
+  isQuitting = true
   rendererStaticServer?.close()
   rendererStaticServer = null
   rendererStaticServerUrl = ''
@@ -2347,12 +2940,19 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
+  if (!win || win.isDestroyed()) {
     createWindow()
+  } else {
+    win.show()
+    win.focus()
   }
+
+  void syncAudioOverlayVisibility()
 })
 
 app.whenReady().then(() => {
   registerCustomWallpaperProtocol()
+  registerAudioOverlayScreenListeners()
   createWindow()
+  void syncAudioOverlayVisibility()
 })

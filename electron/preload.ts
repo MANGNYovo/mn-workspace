@@ -45,6 +45,8 @@ contextBridge.exposeInMainWorld('mnAPI', {
   listVocabularyDates: () => ipcRenderer.invoke('vocabulary:list-dates'),
   loadVocabularyDate: (dateKey: string) => ipcRenderer.invoke('vocabulary:load-date', dateKey),
   saveVocabularyDate: (dateKey: string, words: unknown) => ipcRenderer.invoke('vocabulary:save-date', dateKey, words),
+  checkVocabularyMeaning: (payload: { word: string; correctMeaning: string; answer: string }) =>
+    ipcRenderer.invoke('vocabulary:check-meaning', payload),
   showSystemNotification: (options: { title: string; body?: string }) =>
     ipcRenderer.invoke('notifications:show', options),
   loadLikedTracks: () => ipcRenderer.invoke('liked-tracks:load'),
@@ -86,6 +88,28 @@ contextBridge.exposeInMainWorld('mnAPI', {
   getAudioDevice: () => ipcRenderer.invoke('device:get-audio'),
   setAudioDevice: (device: 'speaker' | 'headphone') =>
     ipcRenderer.invoke('device:set-audio', device),
+  onAudioDeviceChanged: (callback: (device: 'speaker' | 'headphone') => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, device: 'speaker' | 'headphone') => {
+      callback(device)
+    }
+
+    ipcRenderer.on('device:audio-changed', listener)
+
+    return () => {
+      ipcRenderer.removeListener('device:audio-changed', listener)
+    }
+  },
+  onSettingsChanged: (callback: (settings: unknown) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, settings: unknown) => {
+      callback(settings)
+    }
+
+    ipcRenderer.on('settings:changed', listener)
+
+    return () => {
+      ipcRenderer.removeListener('settings:changed', listener)
+    }
+  },
   getMonitorOrientation: () => ipcRenderer.invoke('device:get-monitor'),
   setMonitorOrientation: (orientation: 'horizontal' | 'vertical') =>
     ipcRenderer.invoke('device:set-monitor', orientation),
