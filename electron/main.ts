@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol, Notification, screen } from 'electron'
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -57,14 +57,20 @@ let win: BrowserWindow | null
 let tray: Tray | null = null
 let audioOverlayWindow: BrowserWindow | null = null
 let audioOverlayMoveTimer: NodeJS.Timeout | null = null
+let audioOverlayTopmostTimer: NodeJS.Timeout | null = null
+let audioOverlayFullscreenProcess: ReturnType<typeof spawn> | null = null
+let audioOverlayFullscreenRestartTimer: NodeJS.Timeout | null = null
 let audioOverlayScreenListenersRegistered = false
 let audioOverlayEnabled = true
+let audioOverlayHideInFullscreen = true
+let audioOverlaySuppressedByFullscreen = false
+let audioOverlayLastFullscreenState: boolean | null = null
 let minimizeToTray = false
 let isQuitting = false
 let startedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin
 
-const AUDIO_OVERLAY_WIDTH = 124
-const AUDIO_OVERLAY_HEIGHT = 56
+const AUDIO_OVERLAY_WIDTH = 88
+const AUDIO_OVERLAY_HEIGHT = 42
 
 type AudioDevice = 'speaker' | 'headphone'
 type AudioOverlayPosition = {
@@ -1604,20 +1610,14 @@ function getAudioOverlayHtml() {
     :root {
       color-scheme: dark;
       --accent: #9b7cff;
-      --surface: rgba(26, 27, 37, 0.28);
-      --border: rgba(255, 255, 255, 0.12);
-      --button: rgba(255, 255, 255, 0.05);
-      --button-hover: rgba(255, 255, 255, 0.12);
-      --icon: rgba(255, 255, 255, 0.82);
+      --icon: rgba(255, 255, 255, 0.66);
+      --icon-hover: rgba(255, 255, 255, 0.96);
     }
 
     :root[data-theme='light'] {
       color-scheme: light;
-      --surface: rgba(247, 247, 252, 0.34);
-      --border: rgba(48, 48, 58, 0.10);
-      --button: rgba(255, 255, 255, 0.24);
-      --button-hover: rgba(255, 255, 255, 0.42);
-      --icon: rgba(58, 58, 70, 0.76);
+      --icon: rgba(58, 58, 70, 0.68);
+      --icon-hover: rgba(58, 58, 70, 0.96);
     }
 
     * {
@@ -1636,7 +1636,7 @@ function getAudioOverlayHtml() {
     }
 
     body {
-      padding: 4px;
+      padding: 2px;
     }
 
     .audio-switcher {
@@ -1644,59 +1644,50 @@ function getAudioOverlayHtml() {
       height: 100%;
       display: flex;
       align-items: center;
-      gap: 5px;
-      padding: 5px 6px 5px 7px;
-      border: 1px solid var(--border);
-      border-radius: 17px;
-      background: var(--surface);
+      justify-content: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
       box-shadow: none;
-      backdrop-filter: blur(14px) saturate(138%);
-      -webkit-backdrop-filter: blur(14px) saturate(138%);
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
       -webkit-app-region: drag;
       cursor: grab;
     }
 
-    .grip {
-      width: 5px;
-      height: 22px;
-      flex: 0 0 5px;
-      opacity: 0.42;
-      background:
-        radial-gradient(circle, var(--icon) 1.15px, transparent 1.35px) 0 0 / 5px 7px;
-      pointer-events: none;
-    }
-
     button {
-      width: 43px;
-      height: 36px;
+      width: 28px;
+      height: 28px;
       display: grid;
       place-items: center;
-      flex: 0 0 43px;
+      flex: 0 0 28px;
       padding: 0;
       border: 0;
-      border-radius: 12px;
+      border-radius: 999px;
       outline: none;
       color: var(--icon);
-      background: var(--button);
+      background: transparent;
       cursor: pointer;
-      transition: transform 150ms ease, background 150ms ease, color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
+      opacity: 0.9;
+      transition: transform 150ms ease, color 150ms ease, opacity 150ms ease;
       -webkit-app-region: no-drag;
     }
 
     button:hover {
-      color: var(--accent);
-      background: var(--button-hover);
+      color: var(--icon-hover);
+      opacity: 1;
       transform: translateY(-1px);
     }
 
     button:active {
-      transform: scale(0.92);
+      transform: scale(0.9);
     }
 
     button.active {
-      color: #ffffff;
-      background: color-mix(in srgb, var(--accent) 82%, transparent);
-      box-shadow: none;
+      color: var(--accent);
+      opacity: 1;
     }
 
     button.busy {
@@ -1705,8 +1696,8 @@ function getAudioOverlayHtml() {
     }
 
     svg {
-      width: 21px;
-      height: 21px;
+      width: 20px;
+      height: 20px;
       fill: none;
       stroke: currentColor;
       stroke-width: 1.9;
@@ -1728,8 +1719,6 @@ function getAudioOverlayHtml() {
 </head>
 <body>
   <main id="switcher" class="audio-switcher" title="Drag to move">
-    <span class="grip" aria-hidden="true"></span>
-
     <button type="button" data-device="speaker" aria-label="Switch to speaker" title="Speaker">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4.5 9.2v5.6h3.2l4.8 3.8V5.4L7.7 9.2H4.5Z" />
@@ -1864,6 +1853,214 @@ function getAudioOverlayEnabledFromSettings(settings: unknown) {
   return (settings as { audioOverlayEnabled?: unknown }).audioOverlayEnabled !== false
 }
 
+function getAudioOverlayHideInFullscreenFromSettings(settings: unknown) {
+  if (!settings || typeof settings !== 'object') return true
+
+  return (settings as { audioOverlayHideInFullscreen?: unknown }).audioOverlayHideInFullscreen !== false
+}
+
+const audioOverlayFullscreenProbeScript = String.raw`
+Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+
+public static class MNFullscreenProbe {
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RECT {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+    public struct MONITORINFO {
+        public int cbSize;
+        public RECT rcMonitor;
+        public RECT rcWork;
+        public uint dwFlags;
+    }
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetShellWindow();
+
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO info);
+
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern int GetClassName(IntPtr hWnd, StringBuilder className, int maxCount);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmGetWindowAttribute(IntPtr hWnd, int attribute, out RECT rect, int size);
+
+    public static bool IsForegroundFullscreen() {
+        IntPtr hWnd = GetForegroundWindow();
+        if (hWnd == IntPtr.Zero || hWnd == GetShellWindow()) return false;
+
+        StringBuilder className = new StringBuilder(256);
+        GetClassName(hWnd, className, className.Capacity);
+        string cls = className.ToString();
+        if (cls == "Progman" || cls == "WorkerW" || cls == "Shell_TrayWnd" || cls == "Shell_SecondaryTrayWnd") {
+            return false;
+        }
+
+        RECT rect;
+        const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
+        int dwmResult = DwmGetWindowAttribute(hWnd, DWMWA_EXTENDED_FRAME_BOUNDS, out rect, Marshal.SizeOf(typeof(RECT)));
+        if (dwmResult != 0 && !GetWindowRect(hWnd, out rect)) return false;
+
+        IntPtr monitor = MonitorFromWindow(hWnd, 2);
+        if (monitor == IntPtr.Zero) return false;
+
+        MONITORINFO info = new MONITORINFO();
+        info.cbSize = Marshal.SizeOf(typeof(MONITORINFO));
+        if (!GetMonitorInfo(monitor, ref info)) return false;
+
+        const int tolerance = 3;
+        return Math.Abs(rect.Left - info.rcMonitor.Left) <= tolerance
+            && Math.Abs(rect.Top - info.rcMonitor.Top) <= tolerance
+            && Math.Abs(rect.Right - info.rcMonitor.Right) <= tolerance
+            && Math.Abs(rect.Bottom - info.rcMonitor.Bottom) <= tolerance;
+    }
+}
+'@
+
+$lastState = $null
+while ($true) {
+  try {
+    $state = if ([MNFullscreenProbe]::IsForegroundFullscreen()) { '1' } else { '0' }
+    if ($state -ne $lastState) {
+      [Console]::Out.WriteLine($state)
+      [Console]::Out.Flush()
+      $lastState = $state
+    }
+  } catch {
+    [Console]::Out.WriteLine('0')
+    [Console]::Out.Flush()
+  }
+
+  Start-Sleep -Milliseconds 250
+}
+`
+
+function applyAudioOverlayFullscreenState(isFullscreen: boolean) {
+  audioOverlayLastFullscreenState = isFullscreen
+  if (!audioOverlayEnabled) return
+
+  const shouldSuppress = audioOverlayHideInFullscreen && isFullscreen
+  if (audioOverlaySuppressedByFullscreen === shouldSuppress) return
+
+  audioOverlaySuppressedByFullscreen = shouldSuppress
+
+  if (shouldSuppress) {
+    if (audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
+      audioOverlayWindow.hide()
+    }
+    return
+  }
+
+  if (audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
+    showAudioOverlayOnTop()
+  } else {
+    void createAudioOverlayWindow()
+  }
+}
+
+function stopAudioOverlayFullscreenMonitor() {
+  audioOverlayLastFullscreenState = null
+
+  if (audioOverlayFullscreenRestartTimer) {
+    clearTimeout(audioOverlayFullscreenRestartTimer)
+    audioOverlayFullscreenRestartTimer = null
+  }
+
+  if (audioOverlayFullscreenProcess) {
+    const processToStop = audioOverlayFullscreenProcess
+    audioOverlayFullscreenProcess = null
+    processToStop.removeAllListeners()
+    processToStop.stdout?.removeAllListeners()
+    processToStop.stderr?.removeAllListeners()
+    processToStop.kill()
+  }
+}
+
+function scheduleAudioOverlayFullscreenMonitorRestart() {
+  if (
+    isQuitting ||
+    !audioOverlayEnabled ||
+    !audioOverlayHideInFullscreen ||
+    audioOverlayFullscreenRestartTimer
+  ) {
+    return
+  }
+
+  audioOverlayFullscreenRestartTimer = setTimeout(() => {
+    audioOverlayFullscreenRestartTimer = null
+    startAudioOverlayFullscreenMonitor()
+  }, 1200)
+}
+
+function startAudioOverlayFullscreenMonitor() {
+  if (
+    process.platform !== 'win32' ||
+    !audioOverlayEnabled ||
+    !audioOverlayHideInFullscreen ||
+    audioOverlayFullscreenProcess
+  ) {
+    return
+  }
+
+  let outputBuffer = ''
+  const probe = spawn(
+    'powershell.exe',
+    ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', audioOverlayFullscreenProbeScript],
+    { windowsHide: true },
+  )
+
+  audioOverlayFullscreenProcess = probe
+
+  probe.stdout?.on('data', (chunk) => {
+    outputBuffer += chunk.toString()
+    const lines = outputBuffer.split(/\r?\n/)
+    outputBuffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      const state = line.trim()
+      if (state === '1') applyAudioOverlayFullscreenState(true)
+      if (state === '0') applyAudioOverlayFullscreenState(false)
+    }
+  })
+
+  probe.on('error', () => {
+    if (audioOverlayFullscreenProcess === probe) {
+      audioOverlayFullscreenProcess = null
+    }
+
+    // If the Windows probe cannot start, fail open rather than leaving the
+    // switcher hidden indefinitely.
+    applyAudioOverlayFullscreenState(false)
+    scheduleAudioOverlayFullscreenMonitorRestart()
+  })
+
+  probe.on('exit', () => {
+    if (audioOverlayFullscreenProcess === probe) {
+      audioOverlayFullscreenProcess = null
+    }
+
+    scheduleAudioOverlayFullscreenMonitorRestart()
+  })
+}
+
 async function syncAudioOverlayVisibility(settings?: unknown) {
   if (process.platform !== 'win32') return
 
@@ -1872,22 +2069,117 @@ async function syncAudioOverlayVisibility(settings?: unknown) {
     : settings
 
   audioOverlayEnabled = getAudioOverlayEnabledFromSettings(resolvedSettings)
+  audioOverlayHideInFullscreen = getAudioOverlayHideInFullscreenFromSettings(resolvedSettings)
 
-  if (audioOverlayEnabled) {
-    await createAudioOverlayWindow()
+  if (!audioOverlayEnabled) {
+    stopAudioOverlayFullscreenMonitor()
+    audioOverlaySuppressedByFullscreen = false
+
+    if (audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
+      audioOverlayWindow.hide()
+    }
     return
   }
 
-  if (audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
-    audioOverlayWindow.hide()
+  if (audioOverlayHideInFullscreen) {
+    // On the first run, keep the overlay hidden until Windows reports the
+    // foreground-window state. On later settings saves, reuse the last known
+    // state so the switcher does not flicker or get stuck hidden.
+    const fullscreenState = audioOverlayLastFullscreenState
+    audioOverlaySuppressedByFullscreen = fullscreenState ?? true
+
+    if (audioOverlaySuppressedByFullscreen && audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
+      audioOverlayWindow.hide()
+    }
+
+    await createAudioOverlayWindow()
+    startAudioOverlayFullscreenMonitor()
+
+    if (fullscreenState === false) {
+      showAudioOverlayOnTop()
+    }
+    return
   }
+
+  stopAudioOverlayFullscreenMonitor()
+  audioOverlaySuppressedByFullscreen = false
+  await createAudioOverlayWindow()
+}
+
+function keepAudioOverlayOnTop() {
+  if (!audioOverlayWindow || audioOverlayWindow.isDestroyed() || audioOverlaySuppressedByFullscreen) return
+
+  // Windows' taskbar is itself a topmost window. Clicking it can reorder the
+  // topmost band and temporarily place it above our overlay. Re-assert TOPMOST
+  // and then move the overlay to the front of that band without activating it.
+  audioOverlayWindow.setAlwaysOnTop(true, 'screen-saver', 1)
+  audioOverlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+
+  if (audioOverlayWindow.isVisible()) {
+    audioOverlayWindow.moveTop()
+  }
+}
+
+function stopAudioOverlayTopmostGuard() {
+  if (!audioOverlayTopmostTimer) return
+
+  clearInterval(audioOverlayTopmostTimer)
+  audioOverlayTopmostTimer = null
+}
+
+function startAudioOverlayTopmostGuard() {
+  stopAudioOverlayTopmostGuard()
+
+  if (
+    process.platform !== 'win32' ||
+    !audioOverlayEnabled ||
+    audioOverlaySuppressedByFullscreen ||
+    !audioOverlayWindow ||
+    audioOverlayWindow.isDestroyed() ||
+    !audioOverlayWindow.isVisible()
+  ) {
+    return
+  }
+
+  // There is no Electron event for "the Windows taskbar just moved above my
+  // topmost window". A lightweight guard keeps our tiny overlay above the
+  // taskbar even after the taskbar itself is clicked, while preserving the
+  // user's freely dragged position (including positions inside taskbar bounds).
+  audioOverlayTopmostTimer = setInterval(() => {
+    if (
+      !audioOverlayEnabled ||
+      audioOverlaySuppressedByFullscreen ||
+      !audioOverlayWindow ||
+      audioOverlayWindow.isDestroyed() ||
+      !audioOverlayWindow.isVisible()
+    ) {
+      stopAudioOverlayTopmostGuard()
+      return
+    }
+
+    keepAudioOverlayOnTop()
+  }, 120)
+}
+
+function showAudioOverlayOnTop() {
+  if (!audioOverlayWindow || audioOverlayWindow.isDestroyed() || !audioOverlayEnabled || audioOverlaySuppressedByFullscreen) return
+
+  keepAudioOverlayOnTop()
+  audioOverlayWindow.showInactive()
+  startAudioOverlayTopmostGuard()
+
+  // showInactive() can change the native Z-order on Windows, so assert TOPMOST
+  // once more immediately after the window is shown.
+  setTimeout(() => {
+    keepAudioOverlayOnTop()
+  }, 0)
 }
 
 async function createAudioOverlayWindow() {
   if (process.platform !== 'win32' || !audioOverlayEnabled) return
 
   if (audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
-    audioOverlayWindow.showInactive()
+    showAudioOverlayOnTop()
     return
   }
 
@@ -1919,13 +2211,25 @@ async function createAudioOverlayWindow() {
     },
   })
 
-  audioOverlayWindow.setAlwaysOnTop(true, 'floating')
-  audioOverlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  keepAudioOverlayOnTop()
 
   audioOverlayWindow.once('ready-to-show', () => {
-    if (audioOverlayEnabled) {
-      audioOverlayWindow?.showInactive()
-    }
+    showAudioOverlayOnTop()
+  })
+
+  audioOverlayWindow.on('show', () => {
+    startAudioOverlayTopmostGuard()
+    setTimeout(() => {
+      keepAudioOverlayOnTop()
+    }, 0)
+  })
+
+  audioOverlayWindow.on('hide', stopAudioOverlayTopmostGuard)
+  audioOverlayWindow.on('focus', keepAudioOverlayOnTop)
+  audioOverlayWindow.on('blur', () => {
+    setTimeout(() => {
+      keepAudioOverlayOnTop()
+    }, 0)
   })
 
   audioOverlayWindow.on('move', scheduleAudioOverlayPositionSave)
@@ -1935,14 +2239,15 @@ async function createAudioOverlayWindow() {
 
     event.preventDefault()
 
-    if (audioOverlayEnabled) {
-      audioOverlayWindow?.showInactive()
+    if (audioOverlayEnabled && !audioOverlaySuppressedByFullscreen) {
+      showAudioOverlayOnTop()
     } else {
       audioOverlayWindow?.hide()
     }
   })
 
   audioOverlayWindow.on('closed', () => {
+    stopAudioOverlayTopmostGuard()
     audioOverlayWindow = null
 
     if (audioOverlayMoveTimer) {
@@ -2892,6 +3197,7 @@ ipcMain.handle('updater:download-update', async () => {
 
 ipcMain.handle('updater:install-update', async () => {
   isQuitting = true
+  stopAudioOverlayFullscreenMonitor()
 
   if (tray) {
     tray.destroy()
@@ -2927,6 +3233,8 @@ autoUpdater.on('update-downloaded', (info) => {
 
 app.on('before-quit', () => {
   isQuitting = true
+  stopAudioOverlayTopmostGuard()
+  stopAudioOverlayFullscreenMonitor()
   rendererStaticServer?.close()
   rendererStaticServer = null
   rendererStaticServerUrl = ''

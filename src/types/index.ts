@@ -75,6 +75,7 @@ export type AppSettings = {
   startWithWindows: boolean
   minimizeToTray: boolean
   audioOverlayEnabled: boolean
+  audioOverlayHideInFullscreen: boolean
   checkForUpdates: boolean
   launchDelay: LaunchDelay
   launchBehavior: LaunchBehavior

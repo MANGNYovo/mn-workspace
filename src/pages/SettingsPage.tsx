@@ -134,6 +134,19 @@ export function SettingsPage({
 
         <div className="setting-row">
           <div>
+            <strong>Hide in fullscreen</strong>
+            <p>Automatically hide the audio switcher while a video, browser, or app is fullscreen.</p>
+          </div>
+          <button
+            className={`toggle ${settings.audioOverlayHideInFullscreen ? 'on' : ''}`}
+            onClick={() => onUpdateSettings({ audioOverlayHideInFullscreen: !settings.audioOverlayHideInFullscreen })}
+          >
+            <span></span>
+          </button>
+        </div>
+
+        <div className="setting-row">
+          <div>
             <strong>Check for updates</strong>
             <p>Automatically check for updates on startup.</p>
           </div>
