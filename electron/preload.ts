@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('mnAPI', {
   selectProgram: () => ipcRenderer.invoke('dialog:select-program'),
   selectFolder: () => ipcRenderer.invoke('dialog:select-folder'),
   selectWallpaper: () => ipcRenderer.invoke('dialog:select-wallpaper'),
+  selectShortcutIcon: () => ipcRenderer.invoke('dialog:select-shortcut-icon'),
   getFileIcon: (filePath: string) => ipcRenderer.invoke('file:get-icon', filePath),
   getAppVersion: () => ipcRenderer.invoke('app:get-version'),
 

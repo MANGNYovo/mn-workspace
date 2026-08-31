@@ -40,6 +40,13 @@ export type LaunchStatus = 'waiting' | 'launching' | 'completed' | 'failed' | 'c
 export type AudioDevice = 'speaker' | 'headphone'
 export type MonitorOrientation = 'horizontal' | 'vertical'
 
+export type HomeShortcut = {
+  name: string
+  path: string
+  type: ProgramType
+  iconImage?: string | null
+}
+
 export type HomeMusicPlaylist = {
   id: string
   name: string
@@ -93,6 +100,10 @@ export type AppSettings = {
   floatingPlayerHidden?: boolean
   floatingPlayerPosition?: FloatingPlayerPosition | null
   sidebarCollapsed?: boolean
+  idleScreenEnabled?: boolean
+  idleScreenTimeoutMinutes?: number
+  homeShortcutSlotCount?: number
+  homeShortcuts?: Array<HomeShortcut | null>
   lastTrack?: {
     videoId: string
     title: string

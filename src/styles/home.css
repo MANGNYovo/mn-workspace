@@ -1179,3 +1179,426 @@
 .home-player-volume .home-player-list-button {
   margin-left: 0;
 }
+
+/* ========================= */
+/* 홈 2:1 정보 카드 + 하단 바로가기 도크 */
+/* ========================= */
+
+.home-page {
+  position: relative;
+  justify-content: center;
+  gap: 0;
+  padding-bottom: 88px;
+}
+
+.home-main-stack {
+  width: min(920px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transform: translateY(-10px);
+}
+
+.home-top-row {
+  width: 100%;
+  height: 320px;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(250px, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.home-top-row .home-card {
+  width: 100%;
+  height: 320px;
+  min-height: 320px;
+  padding: 28px 36px 26px;
+  border-radius: 24px;
+}
+
+.home-top-row .home-preset-section {
+  padding-right: 82px;
+}
+
+.home-top-row .home-preset-track {
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin-top: 22px;
+}
+
+.home-top-row .home-launch-button {
+  top: 14px;
+  right: 0;
+  width: 62px;
+  height: 62px;
+}
+
+.home-top-row .home-launch-icon {
+  width: 31px;
+  height: 31px;
+}
+
+.home-top-row .home-divider {
+  margin: 24px 0 20px;
+}
+
+.home-top-row .home-device-section {
+  gap: 24px;
+  padding-bottom: 0;
+}
+
+.home-top-row .home-device-group {
+  min-width: 0;
+  flex: 1 1 0;
+}
+
+.home-top-row .home-device-title,
+.home-top-row .home-device-title-audio {
+  margin: 0 0 17px;
+  transform: none;
+  justify-content: flex-start;
+  gap: 10px;
+  padding-left: 4px;
+  font-size: 15px;
+}
+
+.home-top-row .home-device-title-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.home-top-row .home-device-buttons {
+  gap: 22px;
+}
+
+.home-top-row .home-device-button {
+  width: 58px;
+  height: 58px;
+}
+
+.home-top-row .home-device-icon {
+  width: 27px;
+  height: 27px;
+}
+
+.home-top-row .home-device-split {
+  height: 92px;
+}
+
+.home-info-card {
+  width: 100%;
+  height: 320px;
+  min-width: 0;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(130, 140, 170, 0.16);
+  box-shadow: none;
+  padding: 28px 28px 24px;
+  color: #65708d;
+  overflow: hidden;
+}
+
+.home-clock-time-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+  min-width: 0;
+}
+
+.home-clock-time {
+  color: #65708d;
+  font-size: 50px;
+  line-height: 0.95;
+  font-weight: 500;
+  letter-spacing: -2.2px;
+  white-space: nowrap;
+}
+
+.home-clock-period {
+  margin-bottom: 5px;
+  color: #7f89a3;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.home-clock-date {
+  margin: 9px 0 0;
+  color: #7f89a3;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.15px;
+}
+
+.home-clock-date span {
+  margin-left: 6px;
+}
+
+.home-info-divider {
+  width: 100%;
+  height: 1px;
+  margin: 20px 0 17px;
+  background: rgba(130, 140, 170, 0.18);
+}
+
+.home-schedule-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #65708d;
+}
+
+.home-schedule-heading img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.home-schedule-heading strong {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.home-schedule-list {
+  margin-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.home-schedule-item {
+  min-width: 0;
+  min-height: 27px;
+  display: grid;
+  grid-template-columns: 43px 14px minmax(0, 1fr);
+  align-items: start;
+  column-gap: 8px;
+}
+
+.home-schedule-item time {
+  color: #8a93ab;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 14px;
+  padding-top: 0;
+}
+
+.home-schedule-marker {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  height: 27px;
+  padding-top: 3px;
+  box-sizing: border-box;
+}
+
+.home-schedule-marker.connected::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  left: 50%;
+  top: 10px;
+  width: 1px;
+  height: 20px;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.home-schedule-dot {
+  position: relative;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: #a9b0c2;
+  box-shadow: 0 0 9px color-mix(in srgb, currentColor 32%, transparent);
+}
+
+.home-schedule-dot.red { background: #ff5b69; }
+.home-schedule-dot.blue { background: #48a5ff; }
+.home-schedule-dot.green { background: #4bcf92; }
+.home-schedule-dot.orange { background: #ff9a55; }
+.home-schedule-dot.purple { background: #9b6dff; }
+.home-schedule-dot.gray { background: #a9b0c2; }
+
+.home-schedule-title {
+  min-width: 0;
+  color: #65708d;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 14px;
+  padding-top: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-schedule-empty {
+  margin: 2px 0 0;
+  color: #9ba3b8;
+  font-size: 11.5px;
+  font-weight: 650;
+}
+
+.home-main-stack .home-music-card {
+  width: 100%;
+  margin: 0;
+}
+
+.home-shortcut-dock {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: max-content;
+  height: 62px;
+  padding: 7px 8px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(130, 140, 170, 0.16);
+  box-shadow: none;
+  z-index: 2;
+  user-select: none;
+}
+
+.home-shortcut-dock:not(.resizing) {
+  transition: width 0.18s cubic-bezier(.2, .8, .25, 1);
+}
+
+.home-shortcut-resize-handle {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 38px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 3;
+}
+
+.home-shortcut-resize-handle.left { left: 0; }
+.home-shortcut-resize-handle.right { right: 0; }
+
+.home-shortcut-resize-handle:focus-visible {
+  outline: none;
+}
+
+.home-shortcut-button {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform 0.14s cubic-bezier(.2, .9, .3, 1.35),
+    background 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.home-shortcut-button.configured {
+  border: 1px solid rgba(130, 140, 170, 0.14);
+  background: rgba(255, 255, 255, 0.46);
+}
+
+.home-shortcut-button.configured img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.home-shortcut-button.empty {
+  border: 1.5px dashed rgba(130, 140, 170, 0.54);
+  background: transparent;
+  color: #8b95ad;
+}
+
+.home-shortcut-add {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 400;
+  transform: translateY(-1px);
+}
+
+.home-shortcut-button:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 50%, rgba(130, 140, 170, 0.25));
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--accent-color, #705bff) 15%, transparent);
+}
+
+.home-shortcut-button:active {
+  transform: scale(0.92);
+}
+
+.home-shortcut-context-menu {
+  position: fixed;
+  z-index: 10050;
+  width: 132px;
+  padding: 5px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(130, 140, 170, 0.18);
+  box-shadow: 0 12px 30px rgba(49, 58, 82, 0.18);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+}
+
+.home-shortcut-context-menu button {
+  width: 100%;
+  min-height: 31px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #59637e;
+  text-align: left;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.home-shortcut-context-menu button:hover,
+.home-shortcut-context-menu button:focus-visible {
+  outline: none;
+  background: rgba(117, 126, 153, 0.10);
+}
+
+.home-shortcut-context-menu button.danger {
+  color: #ee5a68;
+}
+
+@media (max-width: 1120px) {
+  .home-top-row {
+    grid-template-columns: minmax(0, 1.9fr) minmax(240px, 1fr);
+  }
+
+  .home-top-row .home-card {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+
+  .home-info-card {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}

@@ -3478,3 +3478,168 @@
   -webkit-backdrop-filter: blur(5px) saturate(1.02) !important;
 }
 
+
+/* ========================= */
+/* 홈 시간/일정 카드 + 바로가기 도크 테마 */
+/* ========================= */
+
+.app[data-theme='dark'] .home-info-card,
+.app[data-theme='dark'] .home-shortcut-dock {
+  background: #2b2b2b;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24);
+}
+
+.app[data-theme='dark'] .home-clock-time,
+.app[data-theme='dark'] .home-clock-period,
+.app[data-theme='dark'] .home-clock-date,
+.app[data-theme='dark'] .home-schedule-heading,
+.app[data-theme='dark'] .home-schedule-title,
+.app[data-theme='dark'] .home-schedule-item time,
+.app[data-theme='dark'] .home-schedule-empty {
+  color: #eef1ff;
+}
+
+.app[data-theme='dark'] .home-clock-period,
+.app[data-theme='dark'] .home-clock-date,
+.app[data-theme='dark'] .home-schedule-item time,
+.app[data-theme='dark'] .home-schedule-empty {
+  color: #b8bfd1;
+}
+
+.app[data-theme='dark'] .home-info-divider {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.app[data-theme='dark'] .home-shortcut-button.configured {
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.app[data-theme='dark'] .home-shortcut-button.empty {
+  color: rgba(230, 234, 246, 0.78);
+  border-color: rgba(230, 234, 246, 0.36);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-info-card,
+.app[data-theme='light'][data-wallpaper='true'] .home-shortcut-dock {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.38);
+  box-shadow: none;
+  backdrop-filter: blur(12px) saturate(1.12);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-clock-time,
+.app[data-theme='light'][data-wallpaper='true'] .home-clock-period,
+.app[data-theme='light'][data-wallpaper='true'] .home-clock-date,
+.app[data-theme='light'][data-wallpaper='true'] .home-schedule-heading,
+.app[data-theme='light'][data-wallpaper='true'] .home-schedule-title,
+.app[data-theme='light'][data-wallpaper='true'] .home-schedule-item time,
+.app[data-theme='light'][data-wallpaper='true'] .home-schedule-empty {
+  color: rgba(255, 255, 255, 0.96) !important;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.30);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-schedule-heading img {
+  filter: brightness(0) invert(1) drop-shadow(0 1px 7px rgba(0, 0, 0, 0.25));
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-info-divider {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-shortcut-button.configured {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.app[data-theme='light'][data-wallpaper='true'] .home-shortcut-button.empty {
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-info-card,
+.app[data-theme='dark'][data-wallpaper='true'] .home-shortcut-dock {
+  background: rgba(43, 43, 43, 0.055);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-clock-time,
+.app[data-theme='dark'][data-wallpaper='true'] .home-clock-period,
+.app[data-theme='dark'][data-wallpaper='true'] .home-clock-date,
+.app[data-theme='dark'][data-wallpaper='true'] .home-schedule-heading,
+.app[data-theme='dark'][data-wallpaper='true'] .home-schedule-title,
+.app[data-theme='dark'][data-wallpaper='true'] .home-schedule-item time,
+.app[data-theme='dark'][data-wallpaper='true'] .home-schedule-empty {
+  color: rgba(255, 255, 255, 0.94);
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.34);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-clock-period,
+.app[data-theme='dark'][data-wallpaper='true'] .home-clock-date,
+.app[data-theme='dark'][data-wallpaper='true'] .home-schedule-item time,
+.app[data-theme='dark'][data-wallpaper='true'] .home-schedule-empty {
+  color: rgba(236, 239, 248, 0.78);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-schedule-heading img {
+  filter: brightness(0) invert(1) drop-shadow(0 1px 7px rgba(0, 0, 0, 0.28));
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-info-divider {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-shortcut-button.configured {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.20);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-shortcut-button.empty {
+  color: rgba(245, 247, 255, 0.82);
+  border-color: rgba(245, 247, 255, 0.42);
+}
+
+.app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .home-info-card,
+.app[data-theme='light'][data-wallpaper='true'][data-wallpaper-animated='true'] .home-shortcut-dock {
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+
+/* Home shortcut context menu */
+.app[data-theme='dark'] .home-shortcut-context-menu {
+  background: rgba(43, 43, 43, 0.94);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.32);
+}
+
+.app[data-theme='dark'] .home-shortcut-context-menu button {
+  color: rgba(242, 244, 252, 0.92);
+}
+
+.app[data-theme='dark'] .home-shortcut-context-menu button:hover,
+.app[data-theme='dark'] .home-shortcut-context-menu button:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.app[data-theme='dark'] .home-shortcut-context-menu button.danger {
+  color: #ff7883;
+}
+
+.app[data-wallpaper='true'] .home-shortcut-context-menu {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(255, 255, 255, 0.42);
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.app[data-theme='dark'][data-wallpaper='true'] .home-shortcut-context-menu {
+  background: rgba(35, 35, 40, 0.78);
+  border-color: rgba(255, 255, 255, 0.16);
+}

@@ -379,6 +379,10 @@ export const defaultSettings: AppSettings = {
   floatingPlayerHidden: false,
   floatingPlayerPosition: null,
   sidebarCollapsed: false,
+  idleScreenEnabled: true,
+  idleScreenTimeoutMinutes: 10,
+  homeShortcutSlotCount: 4,
+  homeShortcuts: [null, null, null, null, null, null],
   lastTrack: null,
 }
 
@@ -504,6 +508,18 @@ export function isSettings(value: unknown): value is AppSettings {
       if (!item || typeof item !== 'object') return false
       const w = item as { image?: unknown; name?: unknown; savedAt?: unknown }
       return typeof w.image === 'string' && typeof w.name === 'string' && typeof w.savedAt === 'string'
+    }))) &&
+    (s.idleScreenEnabled === undefined || typeof s.idleScreenEnabled === 'boolean') &&
+    (s.idleScreenTimeoutMinutes === undefined || (typeof s.idleScreenTimeoutMinutes === 'number' && Number.isFinite(s.idleScreenTimeoutMinutes) && s.idleScreenTimeoutMinutes > 0)) &&
+    (s.homeShortcutSlotCount === undefined || (typeof s.homeShortcutSlotCount === 'number' && Number.isInteger(s.homeShortcutSlotCount) && s.homeShortcutSlotCount >= 3 && s.homeShortcutSlotCount <= 6)) &&
+    (s.homeShortcuts === undefined || (Array.isArray(s.homeShortcuts) && s.homeShortcuts.length <= 6 && s.homeShortcuts.every((shortcut) => {
+      if (shortcut === null) return true
+      if (!shortcut || typeof shortcut !== 'object') return false
+      const item = shortcut as { name?: unknown; path?: unknown; type?: unknown; iconImage?: unknown }
+      return typeof item.name === 'string' &&
+        typeof item.path === 'string' &&
+        (item.type === 'Program' || item.type === 'Folder' || item.type === 'URL') &&
+        (item.iconImage === undefined || item.iconImage === null || typeof item.iconImage === 'string')
     }))) &&
     typeof s.accentColor === 'string'
 }

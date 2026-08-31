@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol, Notification, screen } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol, Notification, screen, nativeImage } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { fileURLToPath } from 'node:url'
@@ -2394,6 +2394,44 @@ ipcMain.handle('dialog:select-folder', async () => {
   return result.filePaths[0]
 })
 
+
+ipcMain.handle('dialog:select-shortcut-icon', async () => {
+  if (!win) return null
+
+  try {
+    const result = await dialog.showOpenDialog(win, {
+      title: 'Select Shortcut Icon',
+      properties: ['openFile'],
+      filters: [
+        {
+          name: 'Images',
+          extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico'],
+        },
+      ],
+    })
+
+    if (result.canceled || result.filePaths.length === 0) return null
+
+    const selectedPath = result.filePaths[0]
+    const image = nativeImage.createFromPath(selectedPath)
+    if (image.isEmpty()) return null
+
+    const size = image.getSize()
+    const longestSide = Math.max(size.width, size.height)
+    const normalized = longestSide > 128
+      ? image.resize({
+          width: Math.max(1, Math.round(size.width * (128 / longestSide))),
+          height: Math.max(1, Math.round(size.height * (128 / longestSide))),
+          quality: 'best',
+        })
+      : image
+
+    return normalized.toDataURL()
+  } catch (error) {
+    console.error('Failed to select shortcut icon:', error)
+    return null
+  }
+})
 
 ipcMain.handle('dialog:select-wallpaper', async () => {
   if (!win) return null

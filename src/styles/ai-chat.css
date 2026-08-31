@@ -2,10 +2,19 @@
 /* AI Assistant modal */
 /* ========================= */
 
-.sidebar-ai-shortcut {
+.sidebar-shortcut-cluster {
   position: absolute;
   left: 6px;
   bottom: 6px;
+  z-index: 10008;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  -webkit-app-region: no-drag;
+}
+
+.sidebar-ai-shortcut {
+  position: relative;
   width: 50px;
   height: 50px;
   min-width: 50px;
@@ -39,14 +48,80 @@
   user-select: none;
 }
 
-.sidebar.collapsed .sidebar-ai-shortcut {
-  left: 50%;
-  transform: translateX(-50%);
+.sidebar-idle-shortcut {
+  width: 23px;
+  height: 23px;
+  min-width: 23px;
+  min-height: 23px;
+  margin-left: -3px;
+  padding: 0;
+  border: 1px solid rgba(130, 140, 170, 0.24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #8e96ad;
+  box-shadow: none;
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  opacity: 0.58;
+  appearance: none;
+  -webkit-appearance: none;
+  -webkit-app-region: no-drag;
+  transition:
+    opacity 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    transform 0.16s ease;
 }
 
-.sidebar.collapsed .sidebar-ai-shortcut:hover,
-.sidebar.collapsed .sidebar-ai-shortcut.active {
-  transform: translateX(-50%) translateY(-1px);
+.sidebar-idle-shortcut span {
+  display: block;
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 1;
+  transform: translateY(-0.5px);
+}
+
+.sidebar-idle-shortcut:hover {
+  opacity: 1;
+  color: var(--accent-color, #705bff);
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 38%, rgba(130, 140, 170, 0.24));
+  background: color-mix(in srgb, var(--accent-color, #705bff) 7%, rgba(255, 255, 255, 0.22));
+  transform: translateY(-1px);
+}
+
+.app[data-theme='dark'] .sidebar-idle-shortcut,
+.app[data-wallpaper='true'] .sidebar-idle-shortcut {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.app[data-theme='dark'] .sidebar-idle-shortcut:hover,
+.app[data-wallpaper='true'] .sidebar-idle-shortcut:hover {
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--accent-color, #705bff) 52%, rgba(255, 255, 255, 0.18));
+  background: color-mix(in srgb, var(--accent-color, #705bff) 15%, rgba(255, 255, 255, 0.04));
+}
+
+/* The collapsed rail is 76px wide. Keep the original AI icon size and tuck the
+   tiny idle shortcut directly to its right without overlap. */
+.sidebar.collapsed .sidebar-shortcut-cluster {
+  left: 2px;
+  gap: 0;
+}
+
+.sidebar.collapsed .sidebar-idle-shortcut {
+  width: 21px;
+  height: 21px;
+  min-width: 21px;
+  min-height: 21px;
+  margin-left: -1px;
+}
+
+.sidebar.collapsed .sidebar-idle-shortcut span {
+  font-size: 12px;
 }
 
 .ai-chat-modal {

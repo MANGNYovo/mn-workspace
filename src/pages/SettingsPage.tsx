@@ -19,13 +19,14 @@ type Props = {
   onReloadYoutubeMusicData: () => void
   onLoginYoutubeMusic: () => void
   onLogoutYoutubeMusic: () => void
+  onOpenIdleScreen: () => void
 }
 
 export function SettingsPage({
   settings, appVersion, isCheckingUpdates, isPlaylistRefreshing, activeTheme,
   isYtAuthenticated, youtubeMusicAccount, isYoutubeAccountLoading,
   onUpdateSettings, onToggleStartWithWindows, onCheckForUpdates, onReloadYoutubeMusicData,
-  onLoginYoutubeMusic, onLogoutYoutubeMusic,
+  onLoginYoutubeMusic, onLogoutYoutubeMusic, onOpenIdleScreen,
 }: Props) {
   const youtubeAccountLabel = isYoutubeAccountLoading
     ? 'Checking account...'
@@ -171,6 +172,53 @@ export function SettingsPage({
               <span></span>
             </button>
           </div>
+        </div>
+      </div>
+
+      <div className="settings-card">
+        <h3>Idle Screen</h3>
+
+        <div className="setting-row">
+          <div>
+            <strong>Auto idle screen</strong>
+            <p>Show the idle screen automatically when there is no activity in MN WORKSPACE.</p>
+          </div>
+          <button
+            className={`toggle ${settings.idleScreenEnabled ? 'on' : ''}`}
+            onClick={() => onUpdateSettings({ idleScreenEnabled: !settings.idleScreenEnabled })}
+          >
+            <span></span>
+          </button>
+        </div>
+
+        <div className="setting-row">
+          <div>
+            <strong>Start after</strong>
+            <p>Choose how long the workspace can stay inactive before entering idle mode.</p>
+          </div>
+          <select
+            className="setting-select"
+            value={settings.idleScreenTimeoutMinutes ?? 10}
+            disabled={!settings.idleScreenEnabled}
+            onChange={(e) => onUpdateSettings({ idleScreenTimeoutMinutes: Number(e.target.value) })}
+          >
+            <option value={1}>1 minute</option>
+            <option value={3}>3 minutes</option>
+            <option value={5}>5 minutes</option>
+            <option value={10}>10 minutes</option>
+            <option value={15}>15 minutes</option>
+            <option value={30}>30 minutes</option>
+          </select>
+        </div>
+
+        <div className="setting-row">
+          <div>
+            <strong>Preview idle screen</strong>
+            <p>Open the idle screen immediately. Click anywhere on it to return.</p>
+          </div>
+          <button type="button" className="setting-action" onClick={onOpenIdleScreen}>
+            Open
+          </button>
         </div>
       </div>
 

@@ -17,6 +17,7 @@ import './styles/modal.css'
 import './styles/animations.css'
 import './styles/floating-player.css'
 import './styles/ai-chat.css'
+import './styles/idle-screen.css'
 import aiBlueIcon from './assets/ai-blue.png'
 import aiGrayIcon from './assets/ai-gray.png'
 import aiGreenIcon from './assets/ai-green.png'
@@ -30,7 +31,7 @@ import './styles/media.css'
 // types
 import type {
   Page, AudioDevice, MonitorOrientation, HomeMusicPlaylist, PlaylistTrack,
-  ProgramItem, AppSettings, DiaryEntry, CalendarSchedule, TodoTask, TodoFilter, LaunchStatus, ResolvedTheme, PlaylistViewMode,
+  ProgramItem, AppSettings, DiaryEntry, CalendarSchedule, TodoTask, TodoFilter, LaunchStatus, ResolvedTheme, PlaylistViewMode, HomeShortcut,
   YoutubeMusicAccount, PlaylistCoverOverrideMap, PlaylistCoverChangeResult,
   AIChatContext, AICommand, TodoPriority, VocabularyByDate, VocabularyWord, VocabularyWordDraft, VocabularyTestMode,
 } from './types'
@@ -53,7 +54,7 @@ import {
   DiaryPage, WriteDiaryPage, ToDoPage, VocabularyPage, VocabularyTestPage, ProgramsPage, SettingsPage,
 } from './pages'
 // components
-import { AIChatModal, FloatingMusicPlayer } from './components'
+import { AIChatModal, FloatingMusicPlayer, IdleScreen } from './components'
 
 // modals
 import {
@@ -239,6 +240,8 @@ function App() {
   const [activePage, setActivePage] = useState<Page>('home')
   const [isAIChatModalOpen, setIsAIChatModalOpen] = useState(false)
   const [isAIChatModalMinimized, setIsAIChatModalMinimized] = useState(false)
+  const [isIdleScreenActive, setIsIdleScreenActive] = useState(false)
+  const idleScreenTimerRef = useRef<number | null>(null)
   const [selectedPreset, setSelectedPreset] = useState(1)
   const [selectedAudioDevice, setSelectedAudioDevice] = useState<AudioDevice>('speaker')
   const [selectedMonitorOrientation, setSelectedMonitorOrientation] = useState<MonitorOrientation>('horizontal')
@@ -644,6 +647,11 @@ function App() {
     setIsSidebarCollapsed(collapsed)
     setHoveredCollapsedSidebarPage(null)
     updateSettings({ sidebarCollapsed: collapsed })
+  }
+
+  const openIdleScreen = () => {
+    setOpenMenuId(null)
+    setIsIdleScreenActive(true)
   }
 
   const toggleSidebarTheme = () => {
@@ -2007,6 +2015,66 @@ function App() {
     setIsLaunching(false); await resetStatusesAfterDelay()
   }
 
+  // ─── Home shortcut handlers ───────────────────────────────────────────────
+  const getHomeShortcuts = () => Array.from({ length: 6 }, (_, index) => settings.homeShortcuts?.[index] ?? null)
+  const homeShortcutSlotCount = Math.min(6, Math.max(3, settings.homeShortcutSlotCount ?? 4))
+
+  const handleHomeShortcutSlotCountChange = (count: number) => {
+    const nextCount = Math.min(6, Math.max(3, Math.round(count)))
+    if (nextCount === homeShortcutSlotCount) return
+    updateSettings({ homeShortcutSlotCount: nextCount })
+  }
+
+  const handleConfigureHomeShortcut = async (index: number) => {
+    try {
+      const selectedPath = await window.mnAPI.selectProgram()
+      if (!selectedPath) return
+
+      const iconImage = await window.mnAPI.getFileIcon(selectedPath)
+      const next = getHomeShortcuts()
+      next[index] = {
+        name: getNameFromPath(selectedPath),
+        path: selectedPath,
+        type: 'Program',
+        iconImage,
+      }
+      updateSettings({ homeShortcuts: next })
+    } catch (error) {
+      console.error('Failed to configure home shortcut:', error)
+    }
+  }
+
+  const handleLaunchHomeShortcut = async (shortcut: HomeShortcut) => {
+    try {
+      const result = await window.mnAPI.launchProgram({ path: shortcut.path, type: shortcut.type })
+      if (!result.success) console.error('Failed to launch home shortcut:', result.error)
+    } catch (error) {
+      console.error('Failed to launch home shortcut:', error)
+    }
+  }
+
+  const handleChangeHomeShortcutIcon = async (index: number) => {
+    try {
+      const shortcut = getHomeShortcuts()[index]
+      if (!shortcut) return
+
+      const iconImage = await window.mnAPI.selectShortcutIcon()
+      if (!iconImage) return
+
+      const next = getHomeShortcuts()
+      next[index] = { ...shortcut, iconImage }
+      updateSettings({ homeShortcuts: next })
+    } catch (error) {
+      console.error('Failed to change home shortcut icon:', error)
+    }
+  }
+
+  const handleRemoveHomeShortcut = (index: number) => {
+    const next = getHomeShortcuts()
+    next[index] = null
+    updateSettings({ homeShortcuts: next })
+  }
+
   // ─── Settings handlers ────────────────────────────────────────────────────
   const handleToggleStartWithWindows = async () => {
     const next = !settings.startWithWindows
@@ -2283,6 +2351,52 @@ function App() {
     }
     loadAll()
   }, [])
+
+  // ─── Idle screen ──────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (idleScreenTimerRef.current !== null) {
+      window.clearTimeout(idleScreenTimerRef.current)
+      idleScreenTimerRef.current = null
+    }
+
+    if (!isSettingsLoaded || isIdleScreenActive || settings.idleScreenEnabled === false) return
+
+    const timeoutMinutes = Number.isFinite(settings.idleScreenTimeoutMinutes)
+      ? Math.max(1, settings.idleScreenTimeoutMinutes ?? 10)
+      : 10
+    const timeoutMs = timeoutMinutes * 60_000
+    let lastResetAt = 0
+
+    const scheduleIdleScreen = () => {
+      if (idleScreenTimerRef.current !== null) {
+        window.clearTimeout(idleScreenTimerRef.current)
+      }
+
+      idleScreenTimerRef.current = window.setTimeout(() => {
+        idleScreenTimerRef.current = null
+        setIsIdleScreenActive(true)
+      }, timeoutMs)
+    }
+
+    const handleActivity = () => {
+      const now = Date.now()
+      if (now - lastResetAt < 400) return
+      lastResetAt = now
+      scheduleIdleScreen()
+    }
+
+    const activityEvents: (keyof WindowEventMap)[] = ['pointermove', 'pointerdown', 'keydown', 'wheel', 'touchstart']
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, handleActivity, { passive: true }))
+    scheduleIdleScreen()
+
+    return () => {
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, handleActivity))
+      if (idleScreenTimerRef.current !== null) {
+        window.clearTimeout(idleScreenTimerRef.current)
+        idleScreenTimerRef.current = null
+      }
+    }
+  }, [isSettingsLoaded, isIdleScreenActive, settings.idleScreenEnabled, settings.idleScreenTimeoutMinutes])
 
   // ─── 데이터 자동 저장 ──────────────────────────────────────────────────────
   useEffect(() => { if (isProgramsLoaded)         window.mnAPI.savePrograms(programs).catch(console.error) }, [programs, isProgramsLoaded])
@@ -2707,32 +2821,43 @@ function App() {
             &gt;
           </button>
         </div>
-        <button
-          type="button"
-          className={`sidebar-ai-shortcut ${isAIChatModalOpen ? 'active' : ''}`}
-          aria-label="AI Assistant"
-          title="AI Assistant"
-          onMouseEnter={() => setIsAIShortcutHovered(true)}
-          onMouseLeave={() => setIsAIShortcutHovered(false)}
-          onFocus={() => setIsAIShortcutHovered(true)}
-          onBlur={() => setIsAIShortcutHovered(false)}
-          onClick={() => {
-            if (isAIChatModalOpen && !isAIChatModalMinimized) {
-              setIsAIChatModalOpen(false)
-              return
-            }
+        <div className="sidebar-shortcut-cluster">
+          <button
+            type="button"
+            className={`sidebar-ai-shortcut ${isAIChatModalOpen ? 'active' : ''}`}
+            aria-label="AI Assistant"
+            title="AI Assistant"
+            onMouseEnter={() => setIsAIShortcutHovered(true)}
+            onMouseLeave={() => setIsAIShortcutHovered(false)}
+            onFocus={() => setIsAIShortcutHovered(true)}
+            onBlur={() => setIsAIShortcutHovered(false)}
+            onClick={() => {
+              if (isAIChatModalOpen && !isAIChatModalMinimized) {
+                setIsAIChatModalOpen(false)
+                return
+              }
 
-            setIsAIChatModalOpen(true)
-            setIsAIChatModalMinimized(false)
-          }}
-        >
-          <img
-            src={getAIShortcutIcon(isAIChatModalOpen, isAIShortcutHovered)}
-            alt=""
-            className="sidebar-ai-shortcut-icon"
-            draggable={false}
-          />
-        </button>
+              setIsAIChatModalOpen(true)
+              setIsAIChatModalMinimized(false)
+            }}
+          >
+            <img
+              src={getAIShortcutIcon(isAIChatModalOpen, isAIShortcutHovered)}
+              alt=""
+              className="sidebar-ai-shortcut-icon"
+              draggable={false}
+            />
+          </button>
+          <button
+            type="button"
+            className="sidebar-idle-shortcut"
+            aria-label="Open idle screen"
+            title="Idle Screen"
+            onClick={openIdleScreen}
+          >
+            <span aria-hidden="true">✦</span>
+          </button>
+        </div>
       </aside>
 
       {/* 메인 콘텐츠 */}
@@ -2742,6 +2867,14 @@ function App() {
             selectedPreset={selectedPreset} isLaunching={isLaunching} enabledProgramCount={enabledProgramCount}
             accentColor={settings.accentColor}
             isDarkTheme={activeTheme === 'dark'}
+            todaySchedules={calendarSchedules[todayDateKey] ?? []}
+            homeShortcuts={getHomeShortcuts()}
+            homeShortcutSlotCount={homeShortcutSlotCount}
+            onHomeShortcutSlotCountChange={handleHomeShortcutSlotCountChange}
+            onConfigureHomeShortcut={handleConfigureHomeShortcut}
+            onLaunchHomeShortcut={handleLaunchHomeShortcut}
+            onChangeHomeShortcutIcon={handleChangeHomeShortcutIcon}
+            onRemoveHomeShortcut={handleRemoveHomeShortcut}
             onSetSelectedPreset={setSelectedPreset} onLaunchPrograms={handleLaunchPrograms}
             selectedAudioDevice={selectedAudioDevice} selectedMonitorOrientation={selectedMonitorOrientation}
             onSelectAudioDevice={handleSelectAudioDevice} onSelectMonitorOrientation={handleSelectMonitorOrientation}
@@ -2911,6 +3044,7 @@ function App() {
             onCheckForUpdates={handleCheckForUpdates} onReloadYoutubeMusicData={handleReloadYoutubeMusicData}
             onLoginYoutubeMusic={handleLoginYoutubeMusicFromSettings}
             onLogoutYoutubeMusic={handleLogoutYoutubeMusic}
+            onOpenIdleScreen={openIdleScreen}
           />
         )}
 
@@ -3116,6 +3250,15 @@ function App() {
           onProgressPointerMove={handleHomeMusicProgressPointerMove}
           onProgressPointerUp={handleHomeMusicProgressPointerUp}
           formatTime={formatHomeMusicTime}
+        />
+      )}
+
+      {isIdleScreenActive && (
+        <IdleScreen
+          now={currentDate}
+          wallpaper={isCustomWallpaperMode ? settings.customWallpaper : null}
+          wallpaperName={isCustomWallpaperMode ? settings.customWallpaperName : null}
+          onExit={() => setIsIdleScreenActive(false)}
         />
       )}
 
