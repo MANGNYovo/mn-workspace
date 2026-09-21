@@ -3154,6 +3154,8 @@ ipcMain.handle('window:set-minimal-mode', async (_event, enabled: boolean) => {
   if (!win || win.isDestroyed()) return false
 
   if (enabled) {
+    // Keep a way to bring the visible minimal window forward without a taskbar button.
+    createTray()
     if (!isMinimalWindowMode) {
       normalWindowWasMaximized = win.isMaximized()
       if (normalWindowWasMaximized) win.unmaximize()
@@ -3164,6 +3166,7 @@ ipcMain.handle('window:set-minimal-mode', async (_event, enabled: boolean) => {
     win.setMinimumSize(1280, 400)
     win.setMaximumSize(1280, 400)
     win.setSize(1280, 400, true)
+    win.setSkipTaskbar(true)
     return true
   }
 
@@ -3172,6 +3175,7 @@ ipcMain.handle('window:set-minimal-mode', async (_event, enabled: boolean) => {
   win.setMinimumSize(1100, 700)
   if (normalWindowBounds) win.setBounds(normalWindowBounds, true)
   if (normalWindowWasMaximized) win.maximize()
+  win.setSkipTaskbar(false)
   normalWindowBounds = null
   normalWindowWasMaximized = false
   return true
