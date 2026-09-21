@@ -1000,6 +1000,31 @@
   flex-shrink: 0;
 }
 
+.home-player-volume-toggle {
+  position: relative;
+  width: 20px;
+  height: 24px;
+  flex: 0 0 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+.home-player-volume-toggle.muted .home-player-volume-icon {
+  clip-path: inset(0 32% 0 0);
+}
+.home-player-volume-toggle.muted::after {
+  content: '×';
+  position: absolute;
+  top: 50%;
+  right: 1px;
+  transform: translateY(-50%);
+  color: var(--mute-icon-color, var(--accent-color, #705bff));
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .home-player-extra-actions {
   display: flex;
   align-items: center;

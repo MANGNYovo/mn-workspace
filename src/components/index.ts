@@ -7,3 +7,4 @@ export { useLikeBurst } from './useLikeBurst'
 export { AIChatModal } from './AIChatModal'
 
 export { IdleScreen } from './IdleScreen'
+export { MinimalMode } from './MinimalMode'

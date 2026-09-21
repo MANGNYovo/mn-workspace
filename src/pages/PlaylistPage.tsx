@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useLikeBurst } from '../components'
 import {
   DndContext, PointerSensor, closestCenter, useSensor, useSensors,
@@ -10,7 +10,7 @@ import { restrictToParentElement } from '@dnd-kit/modifiers'
 import type {
   HomeMusicPlaylist, PlaylistTrack, AppSettings, AccentColor, ResolvedTheme,
 } from '../types'
-import { iconMap, playbackIconMap } from '../constants'
+import { accentColorMap, iconMap, playbackIconMap } from '../constants'
 import { SortablePlaylistRow } from '../components'
 
 type Props = {
@@ -57,6 +57,7 @@ type Props = {
   onSetIsShuffleEnabled: (v: boolean | ((prev: boolean) => boolean)) => void
   onVolumePointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void
   onVolumePointerMove: (e: React.PointerEvent<HTMLButtonElement>) => void
+  onToggleMute: () => void
   onProgressPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void
   onProgressPointerMove: (e: React.PointerEvent<HTMLButtonElement>) => void
   onProgressPointerUp: (e: React.PointerEvent<HTMLButtonElement>) => void
@@ -80,7 +81,7 @@ export function PlaylistPage({
   onPlaylistPlay, onPlayVideo, onTogglePlayPause, onPlayPrevTrack, onPlayNextTrack,
   onSetPlaylistViewMode, onSetPlaylistSearchQuery, onRefreshPlaylists,
   onOpenYoutubeLogin, onOpenFullPlaylist, onChangeCover, playlistCoverTheme, onSetIsShuffleEnabled,
-  onVolumePointerDown, onVolumePointerMove,
+  onVolumePointerDown, onVolumePointerMove, onToggleMute,
   onProgressPointerDown, onProgressPointerMove, onProgressPointerUp,
   formatHomeMusicTime, getThemeIcon, getMusicControlIcon, getLikeIcon,
   renderMarqueeTitle, isMarqueeTitleOverflowing, marqueeTitleWrapRefs,
@@ -302,7 +303,16 @@ export function PlaylistPage({
           </div>
 
           <div className="playlist-player-volume">
-            <img src={getThemeIcon('speaker')} alt="" className="home-player-volume-icon" />
+            <button
+              type="button"
+              className={`home-player-volume-toggle ${homeMusicVolume <= 0 ? 'muted' : ''}`}
+              style={{ '--mute-icon-color': playlistCoverTheme === 'dark' ? '#fff' : accentColorMap[accentColor] } as CSSProperties}
+              onClick={onToggleMute}
+              aria-label={homeMusicVolume > 0 ? 'Mute' : 'Unmute'}
+              title={homeMusicVolume > 0 ? 'Mute' : 'Unmute'}
+            >
+              <img src={getThemeIcon('speaker')} alt="" className="home-player-volume-icon" />
+            </button>
             <button className="home-player-volume-track" onPointerDown={onVolumePointerDown} onPointerMove={onVolumePointerMove}>
               <i style={{ width: `${homeMusicVolume}%` }}></i>
             </button>

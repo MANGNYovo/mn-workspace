@@ -8,6 +8,16 @@ import dotenv from 'dotenv'
 import OpenAI from 'openai'
 import { google } from 'googleapis'
 import electronUpdater from 'electron-updater'
+import type {
+  AIChatAPIResult,
+  AIChatHistoryPayload,
+  AIChatRequestMessage,
+  AIChatStoredMessage,
+  AICommand,
+  AICommandTargetHint,
+  PlaylistCoverTheme,
+  TodoPriority,
+} from '../src/types'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -54,6 +64,9 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST
 
 let win: BrowserWindow | null
+let normalWindowBounds: Electron.Rectangle | null = null
+let normalWindowWasMaximized = false
+let isMinimalWindowMode = false
 let tray: Tray | null = null
 let audioOverlayWindow: BrowserWindow | null = null
 let audioOverlayMoveTimer: NodeJS.Timeout | null = null
@@ -107,81 +120,6 @@ const YOUTUBE_SCOPES = [
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY?.trim() ?? ''
 const OPENAI_MODEL = process.env.OPENAI_MODEL?.trim() || 'gpt-4.1-mini'
 
-type AIPriority = 'high' | 'medium' | 'low'
-type AICommandTargetHint = 'latest' | 'matched' | 'selected' | 'today'
-
-type AICommand = {
-  type: 'calendar.create'
-  payload: {
-    title: string
-    date: string | null
-    time?: string | null
-    color?: 'red' | 'blue' | 'green' | 'orange' | 'purple' | 'gray' | null
-  }
-} | {
-  type: 'calendar.update'
-  payload: {
-    id?: string | null
-    targetId?: string | null
-    targetTitle?: string | null
-    targetDate?: string | null
-    targetHint?: AICommandTargetHint | null
-    title?: string | null
-    date?: string | null
-    time?: string | null
-    newTitle?: string | null
-    newDate?: string | null
-    newTime?: string | null
-  }
-} | {
-  type: 'calendar.delete'
-  payload: {
-    id?: string | null
-    targetId?: string | null
-    targetTitle?: string | null
-    targetDate?: string | null
-    targetHint?: AICommandTargetHint | null
-    title?: string | null
-    date?: string | null
-  }
-} | {
-  type: 'todo.create'
-  payload: {
-    title: string
-    description?: string | null
-    dueDate?: string | null
-    priority?: AIPriority | null
-    reminderEnabled?: boolean | null
-  }
-} | {
-  type: 'todo.update'
-  payload: {
-    id?: string | null
-    targetId?: string | null
-    targetTitle?: string | null
-    targetDueDate?: string | null
-    targetHint?: AICommandTargetHint | null
-    title?: string | null
-    newTitle?: string | null
-    description?: string | null
-    dueDate?: string | null
-    priority?: AIPriority | null
-    reminderEnabled?: boolean | null
-    completed?: boolean | null
-  }
-} | {
-  type: 'todo.delete'
-  payload: {
-    id?: string | null
-    targetId?: string | null
-    targetTitle?: string | null
-    targetDueDate?: string | null
-    targetHint?: AICommandTargetHint | null
-    title?: string | null
-    dueDate?: string | null
-  }
-}
-
 type AIChatContext = {
   currentDate?: unknown
   currentDateTime?: unknown
@@ -190,34 +128,7 @@ type AIChatContext = {
   todos?: unknown
 }
 
-type AIChatRole = 'user' | 'assistant'
-
-type AIChatRequestMessage = {
-  role: AIChatRole
-  content: string
-}
-
-type AIChatResponsePayload = {
-  success: true
-  message: string
-  action?: 'ask' | 'execute' | 'answer' | 'error'
-  commands?: AICommand[]
-  missingFields?: string[]
-} | {
-  success: false
-  error: string
-}
-
-type AIChatStoredMessage = {
-  id: string
-  sender: 'user' | 'ai'
-  text: string
-  timestamp: number
-}
-
-type AIChatHistoryPayload = {
-  messages: AIChatStoredMessage[]
-}
+type AIChatResponsePayload = AIChatAPIResult
 
 type VocabularyMeaningCheckPayload = {
   word?: unknown
@@ -398,7 +309,7 @@ function normalizeBoolean(value: unknown) {
   return typeof value === 'boolean' ? value : undefined
 }
 
-function normalizePriority(value: unknown): AIPriority | undefined {
+function normalizePriority(value: unknown): TodoPriority | undefined {
   return value === 'high' || value === 'medium' || value === 'low' ? value : undefined
 }
 
@@ -803,7 +714,6 @@ ipcMain.handle('ai-chat:send', async (_event, payload: { messages?: unknown; con
   }
 })
 
-type PlaylistCoverTheme = 'light' | 'dark'
 type PlaylistCoverEntry = string | Partial<Record<PlaylistCoverTheme, string>>
 type PlaylistCoverPathMap = Record<string, PlaylistCoverEntry>
 
@@ -1155,6 +1065,10 @@ function getAIChatHistoryFilePath() {
   return path.join(app.getPath('userData'), 'ai-chat-history-noah.json')
 }
 
+function getNodeErrorCode(error: unknown) {
+  return (error as { code?: string })?.code
+}
+
 async function readJsonFile(filePath: string) {
   try {
     const data = await fs.readFile(filePath, 'utf-8')
@@ -1165,12 +1079,11 @@ async function readJsonFile(filePath: string) {
     }
 
     return JSON.parse(trimmedData)
-  } catch (error: any) {
-    if (error?.code !== 'ENOENT') {
-      console.error(`Failed to read JSON file: ${filePath}`, error)
-    }
+  } catch (error: unknown) {
+    if (getNodeErrorCode(error) === 'ENOENT') return null
 
-    return null
+    console.error(`Failed to read JSON file: ${filePath}`, error)
+    throw error
   }
 }
 
@@ -1233,6 +1146,11 @@ async function writeJsonFileDirect(filePath: string, value: unknown) {
 
   try {
     await fs.writeFile(tempFilePath, data, 'utf-8')
+    try {
+      await fs.copyFile(filePath, `${filePath}.bak`)
+    } catch (error: unknown) {
+      if (getNodeErrorCode(error) !== 'ENOENT') throw error
+    }
     await replaceFileWithRetry(tempFilePath, filePath)
   } catch (error) {
     try {
@@ -2312,9 +2230,23 @@ function createWindow() {
   })
 
   win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', new Date().toLocaleString())
     // 빌드된 앱에서 오디오가 뮤트되는 문제 방지
     if (win) win.webContents.audioMuted = false
+  })
+
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    try {
+      const protocol = new URL(url).protocol
+      if (protocol === 'https:' || protocol === 'http:') void shell.openExternal(url)
+    } catch {
+      // Invalid URLs are denied.
+    }
+    return { action: 'deny' }
+  })
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (url === win?.webContents.getURL()) return
+    event.preventDefault()
   })
 
   win.on('close', (event) => {
@@ -3166,10 +3098,25 @@ ipcMain.handle('program:launch', async (_event, program: { path: string; type: s
     }
 
     if (program.type === 'URL') {
-      await shell.openExternal(program.path)
+      const url = new URL(program.path)
+      if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+        return {
+          success: false,
+          error: 'Only HTTP and HTTPS URLs are allowed',
+        }
+      }
+
+      await shell.openExternal(url.toString())
 
       return {
         success: true,
+      }
+    }
+
+    if (program.type !== 'Program' && program.type !== 'Folder') {
+      return {
+        success: false,
+        error: 'Unsupported program type',
       }
     }
 
@@ -3201,6 +3148,33 @@ ipcMain.handle('window:minimize', async () => {
 
 ipcMain.handle('window:close', async () => {
   win?.close()
+})
+
+ipcMain.handle('window:set-minimal-mode', async (_event, enabled: boolean) => {
+  if (!win || win.isDestroyed()) return false
+
+  if (enabled) {
+    if (!isMinimalWindowMode) {
+      normalWindowWasMaximized = win.isMaximized()
+      if (normalWindowWasMaximized) win.unmaximize()
+      normalWindowBounds = win.getBounds()
+    }
+
+    isMinimalWindowMode = true
+    win.setMinimumSize(1280, 400)
+    win.setMaximumSize(1280, 400)
+    win.setSize(1280, 400, true)
+    return true
+  }
+
+  isMinimalWindowMode = false
+  win.setMaximumSize(0, 0)
+  win.setMinimumSize(1100, 700)
+  if (normalWindowBounds) win.setBounds(normalWindowBounds, true)
+  if (normalWindowWasMaximized) win.maximize()
+  normalWindowBounds = null
+  normalWindowWasMaximized = false
+  return true
 })
 
 ipcMain.handle('updater:check-for-updates', async () => {

@@ -80,8 +80,9 @@ export function ToDoPage({
   const checkAnimationTimersRef = useRef<Record<string, number>>({})
 
   useEffect(() => {
+    const animationTimers = checkAnimationTimersRef.current
     return () => {
-      Object.values(checkAnimationTimersRef.current).forEach((timerId) => window.clearTimeout(timerId))
+      Object.values(animationTimers).forEach((timerId) => window.clearTimeout(timerId))
     }
   }, [])
 
@@ -170,8 +171,14 @@ export function ToDoPage({
                   <strong>No tasks</strong>
                   <span>Add a task or change the filter.</span>
                 </div>
-              ) : visibleTasks.map((task) => (
-                <article key={task.id} className={`todo-task-item ${task.completed ? 'completed' : ''}`}>
+              ) : visibleTasks.map((task) => {
+                const isOverdue = !task.completed && Boolean(task.dueDate && task.dueDate < todayKey)
+
+                return (
+                <article
+                  key={task.id}
+                  className={`todo-task-item ${task.completed ? 'completed' : ''} ${isOverdue ? 'overdue' : ''}`}
+                >
                   <button
                     type="button"
                     className={`todo-task-check ${task.completed ? 'is-completed' : ''} ${animatingTaskIds.includes(task.id) ? 'is-animating' : ''}`}
@@ -188,6 +195,7 @@ export function ToDoPage({
 
                   <div className="todo-task-meta">
                     <span className="todo-task-due">□ {formatDueDate(task.dueDate)}</span>
+                    {isOverdue && <span className="todo-overdue-label">Overdue</span>}
                     <span className={`todo-priority-pill ${task.priority}`}>{priorityLabel[task.priority]}</span>
                     <div
                       className="todo-task-action-menu"
@@ -234,7 +242,8 @@ export function ToDoPage({
                     </div>
                   </div>
                 </article>
-              ))}
+                )
+              })}
             </div>
 
             <div className="todo-completion-line">{completedTasks} of {totalTasks} tasks completed</div>

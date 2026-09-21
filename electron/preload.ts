@@ -1,27 +1,5 @@
 import { ipcRenderer, contextBridge } from 'electron'
 
-contextBridge.exposeInMainWorld('ipcRenderer', {
-  on(...args: Parameters<typeof ipcRenderer.on>) {
-    const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
-  },
-
-  off(...args: Parameters<typeof ipcRenderer.off>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.off(channel, ...omit)
-  },
-
-  send(...args: Parameters<typeof ipcRenderer.send>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.send(channel, ...omit)
-  },
-
-  invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.invoke(channel, ...omit)
-  },
-})
-
 contextBridge.exposeInMainWorld('mnAPI', {
   selectProgram: () => ipcRenderer.invoke('dialog:select-program'),
   selectFolder: () => ipcRenderer.invoke('dialog:select-folder'),
@@ -117,6 +95,7 @@ contextBridge.exposeInMainWorld('mnAPI', {
 
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
+  setMinimalWindowMode: (enabled: boolean) => ipcRenderer.invoke('window:set-minimal-mode', enabled),
 
   checkForUpdates: () => ipcRenderer.invoke('updater:check-for-updates'),
   downloadUpdate: () => ipcRenderer.invoke('updater:download-update'),

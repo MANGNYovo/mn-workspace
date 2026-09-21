@@ -17,6 +17,12 @@ dist-ssr
 .env.*
 !.env.example
 
+# Local backups, generated artwork, and unrelated experiments
+/output/
+/cozy-pixel-game/
+*.bak
+*.tsbuildinfo
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

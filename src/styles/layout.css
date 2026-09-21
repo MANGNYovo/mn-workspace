@@ -17,7 +17,7 @@
 
 .sidebar {
   --sidebar-expanded-width: clamp(200px, 13vw, 210px);
-  --sidebar-collapsed-width: 76px;
+  --sidebar-collapsed-width: 116px;
   width: var(--sidebar-expanded-width);
   min-width: var(--sidebar-expanded-width);
   max-width: var(--sidebar-expanded-width);
@@ -637,5 +637,4 @@
   opacity: 1 !important;
   filter: drop-shadow(0 1px 8px color-mix(in srgb, var(--accent-color, #705bff) 34%, transparent)) !important;
 }
-
 

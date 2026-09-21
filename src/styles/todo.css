@@ -6,6 +6,40 @@
   min-height: 0;
 }
 
+/* Keep unfinished past-due tasks visible while distinguishing them from current work. */
+.app .todo-task-item.overdue:not(.completed) {
+  background: color-mix(in srgb, #dc5b68 4%, transparent);
+}
+
+.app .todo-task-item.overdue:not(.completed) .todo-task-text,
+.app .todo-task-item.overdue:not(.completed) .todo-task-due {
+  opacity: 0.56;
+}
+
+.app .todo-overdue-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 9px;
+  border: 1px solid color-mix(in srgb, #dc5b68 42%, transparent);
+  border-radius: 999px;
+  color: #c84856;
+  background: color-mix(in srgb, #dc5b68 9%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.app[data-theme='dark'] .todo-task-item.overdue:not(.completed) {
+  background: color-mix(in srgb, #ef7b86 7%, transparent);
+}
+
+.app[data-theme='dark'] .todo-overdue-label {
+  color: #f39aa3;
+  border-color: color-mix(in srgb, #ef7b86 48%, transparent);
+  background: color-mix(in srgb, #ef7b86 12%, transparent);
+}
+
 .todo-card {
   width: min(100%, 1240px);
   height: min(100%, 820px);

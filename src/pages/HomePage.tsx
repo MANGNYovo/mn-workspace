@@ -2,7 +2,7 @@ import { type CSSProperties, useEffect, useRef, useState } from 'react'
 import { useLikeBurst } from '../components'
 import { motion } from 'framer-motion'
 import type { HomeMusicPlaylist, PlaylistTrack, AudioDevice, MonitorOrientation, AccentColor, CalendarSchedule, HomeShortcut } from '../types'
-import { rocketMap, iconMap, playbackIconMap } from '../constants'
+import { accentColorMap, rocketMap, iconMap, playbackIconMap } from '../constants'
 import youtubeMusicIcon from '../assets/youtubemusic.png'
 import rocketActive from '../assets/rocket-active.png'
 
@@ -67,6 +67,7 @@ type Props = {
   onPlayVideo: (id: string, fromPlaylistId?: string, trackInfo?: PlaylistTrack) => void
   onVolumePointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void
   onVolumePointerMove: (e: React.PointerEvent<HTMLButtonElement>) => void
+  onToggleMute: () => void
   onProgressPointerDown: (e: React.PointerEvent<HTMLButtonElement>) => void
   onProgressPointerMove: (e: React.PointerEvent<HTMLButtonElement>) => void
   onProgressPointerUp: (e: React.PointerEvent<HTMLButtonElement>) => void
@@ -94,7 +95,7 @@ export function HomePage({
   homeMusicCurrentSeconds, homeMusicDurationSeconds, isShuffleEnabled,
   isTrackLiked, onToggleTrackLike,
   onPlayPrevTrack, onPlayNextTrack, onTogglePlayPause, onPlayVideo,
-  onVolumePointerDown, onVolumePointerMove, onProgressPointerDown, onProgressPointerMove, onProgressPointerUp,
+  onVolumePointerDown, onVolumePointerMove, onToggleMute, onProgressPointerDown, onProgressPointerMove, onProgressPointerUp,
   onSetIsShuffleEnabled, onOpenFullPlaylist, onOpenYoutubeLogin,
   formatHomeMusicTime, getThemeIcon, getMusicControlIcon, getLikeIcon,
   renderMarqueeTitle, isMarqueeTitleOverflowing, marqueeTitleWrapRefs,
@@ -473,7 +474,16 @@ export function HomePage({
           </div>
 
           <div className="home-player-volume">
-            <img src={getThemeIcon('speaker')} alt="" className="home-player-volume-icon" />
+            <button
+              type="button"
+              className={`home-player-volume-toggle ${homeMusicVolume <= 0 ? 'muted' : ''}`}
+              style={{ '--mute-icon-color': isDarkTheme ? '#fff' : accentColorMap[accentColor] } as CSSProperties}
+              onClick={onToggleMute}
+              aria-label={homeMusicVolume > 0 ? 'Mute' : 'Unmute'}
+              title={homeMusicVolume > 0 ? 'Mute' : 'Unmute'}
+            >
+              <img src={getThemeIcon('speaker')} alt="" className="home-player-volume-icon" />
+            </button>
             <button className="home-player-volume-track" onPointerDown={onVolumePointerDown} onPointerMove={onVolumePointerMove}>
               <i style={{ width: `${homeMusicVolume}%` }}></i>
             </button>

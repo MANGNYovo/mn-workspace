@@ -18,6 +18,7 @@ import './styles/animations.css'
 import './styles/floating-player.css'
 import './styles/ai-chat.css'
 import './styles/idle-screen.css'
+import './styles/minimal-mode.css'
 import aiBlueIcon from './assets/ai-blue.png'
 import aiGrayIcon from './assets/ai-gray.png'
 import aiGreenIcon from './assets/ai-green.png'
@@ -25,6 +26,7 @@ import aiOrangeIcon from './assets/ai-orange.png'
 import aiPurpleIcon from './assets/ai-purple.png'
 import aiRedIcon from './assets/ai-red.png'
 import aiWhiteIcon from './assets/ai-white.png'
+import { MinimalModeHandle } from './components/MinimalModeHandle'
 import './styles/dark.css'
 import './styles/media.css'
 
@@ -54,7 +56,8 @@ import {
   DiaryPage, WriteDiaryPage, ToDoPage, VocabularyPage, VocabularyTestPage, ProgramsPage, SettingsPage,
 } from './pages'
 // components
-import { AIChatModal, FloatingMusicPlayer, IdleScreen } from './components'
+import { AIChatModal, FloatingMusicPlayer, IdleScreen, MinimalMode } from './components'
+import { useAutosave } from './hooks/useAutosave'
 
 // modals
 import {
@@ -91,19 +94,6 @@ const normalizeScheduleTime = (value: string) => {
   if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return undefined
 
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
-}
-
-const getTodoTaskRetentionDateKey = (task: TodoTask) => {
-  if (task.dueDate) return task.dueDate
-
-  const createdDate = new Date(task.createdAt)
-  if (Number.isNaN(createdDate.getTime())) return null
-  return formatDateKey(createdDate)
-}
-
-const isTodoTaskExpired = (task: TodoTask, todayKey: string) => {
-  const retentionDateKey = getTodoTaskRetentionDateKey(task)
-  return retentionDateKey ? retentionDateKey < todayKey : false
 }
 
 const parseScheduleInput = (value: string) => {
@@ -241,6 +231,7 @@ function App() {
   const [isAIChatModalOpen, setIsAIChatModalOpen] = useState(false)
   const [isAIChatModalMinimized, setIsAIChatModalMinimized] = useState(false)
   const [isIdleScreenActive, setIsIdleScreenActive] = useState(false)
+  const [isMinimalModeActive, setIsMinimalModeActive] = useState(false)
   const idleScreenTimerRef = useRef<number | null>(null)
   const [selectedPreset, setSelectedPreset] = useState(1)
   const [selectedAudioDevice, setSelectedAudioDevice] = useState<AudioDevice>('speaker')
@@ -291,6 +282,7 @@ function App() {
   const [homeMusicProgress, setHomeMusicProgress] = useState(0)
   const [homeMusicVolume, setHomeMusicVolume] = useState(58)
   const homeMusicVolumeRef = useRef(58)
+  const previousHomeMusicVolumeRef = useRef(58)
   const [isHomeMusicPlaying, setIsHomeMusicPlaying] = useState(false)
   const [isShuffleEnabled, setIsShuffleEnabled] = useState(false)
   const [ytCurrentTime, setYtCurrentTime] = useState(0)
@@ -650,8 +642,38 @@ function App() {
   }
 
   const openIdleScreen = () => {
+    if (isMinimalModeActive) return
     setOpenMenuId(null)
     setIsIdleScreenActive(true)
+  }
+
+  const openMinimalMode = async () => {
+    setOpenMenuId(null)
+    try {
+      if (await window.mnAPI.setMinimalWindowMode(true)) {
+        if (idleScreenTimerRef.current !== null) {
+          window.clearTimeout(idleScreenTimerRef.current)
+          idleScreenTimerRef.current = null
+        }
+        setIsIdleScreenActive(false)
+        setIsMinimalModeActive(true)
+        return true
+      }
+    } catch (error) {
+      console.error('Failed to enter minimal window mode:', error)
+    }
+    return false
+  }
+
+  const closeMinimalMode = async () => {
+    try {
+      if (!await window.mnAPI.setMinimalWindowMode(false)) return false
+      setIsMinimalModeActive(false)
+      return true
+    } catch (error) {
+      console.error('Failed to restore normal window mode:', error)
+      return false
+    }
   }
 
   const toggleSidebarTheme = () => {
@@ -1261,8 +1283,10 @@ function App() {
   }
 
   // ─── Progress / Volume ────────────────────────────────────────────────────
-  const getTrackPercent = (e: React.PointerEvent<HTMLElement>) =>
-    Math.max(0, Math.min(100, (e.nativeEvent.offsetX / e.currentTarget.offsetWidth) * 100))
+  const getTrackPercent = (e: React.PointerEvent<HTMLElement>) => {
+    const bounds = e.currentTarget.getBoundingClientRect()
+    return Math.max(0, Math.min(100, ((e.clientX - bounds.left) / bounds.width) * 100))
+  }
 
   const handleHomeMusicProgressPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -1291,6 +1315,15 @@ function App() {
   const handleHomeMusicVolumePointerMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
     setHomeMusicVolume(getTrackPercent(e))
+  }
+  const handleToggleHomeMusicMute = () => {
+    setHomeMusicVolume((previousVolume) => {
+      if (previousVolume > 0) {
+        previousHomeMusicVolumeRef.current = previousVolume
+        return 0
+      }
+      return Math.max(1, previousHomeMusicVolumeRef.current)
+    })
   }
 
   // ─── Playlist carousel ────────────────────────────────────────────────────
@@ -2272,14 +2305,19 @@ function App() {
   useEffect(() => {
     const loadAll = async () => {
       // 프로그램
-      try { const s = await window.mnAPI.loadPrograms(); if (isProgramList(s)) setPrograms(s) }
+      try {
+        const s = await window.mnAPI.loadPrograms()
+        if (s !== null && !isProgramList(s)) throw new Error('Invalid programs data')
+        if (s !== null) setPrograms(s)
+        setIsProgramsLoaded(true)
+      }
       catch (e) { console.error(e) }
-      finally { setIsProgramsLoaded(true) }
 
       // 설정
       try {
         const s = await window.mnAPI.loadSettings()
-        if (isSettings(s)) {
+        if (s !== null && !isSettings(s)) throw new Error('Invalid settings data')
+        if (s !== null) {
           const loadedSettings = { ...defaultSettings, ...s }
           setSettings(loadedSettings)
           if (typeof loadedSettings.musicVolume === 'number') {
@@ -2297,29 +2335,35 @@ function App() {
             setSelectedHomeMusicPlaylistId(t.playlistId || 'focus')
           }
         }
+        setIsSettingsLoaded(true)
       } catch (e) { console.error(e) }
-      finally { setIsSettingsLoaded(true) }
 
       // 다이어리
-      try { const d = await window.mnAPI.loadDiaries(); if (isDiaryEntries(d)) setDiaryEntries(d) }
+      try {
+        const d = await window.mnAPI.loadDiaries()
+        if (d !== null && !isDiaryEntries(d)) throw new Error('Invalid diary data')
+        if (d !== null) setDiaryEntries(d)
+        setIsDiariesLoaded(true)
+      }
       catch (e) { console.error(e) }
-      finally { setIsDiariesLoaded(true) }
 
       // 캘린더 일정
-      try { const sc = await window.mnAPI.loadCalendarSchedules(); if (isCalendarSchedules(sc)) setCalendarSchedules(sc) }
+      try {
+        const sc = await window.mnAPI.loadCalendarSchedules()
+        if (sc !== null && !isCalendarSchedules(sc)) throw new Error('Invalid calendar schedule data')
+        if (sc !== null) setCalendarSchedules(sc)
+        setIsCalendarSchedulesLoaded(true)
+      }
       catch (e) { console.error(e) }
-      finally { setIsCalendarSchedulesLoaded(true) }
 
       // 투두
       try {
         const tasks = await window.mnAPI.loadTodoTasks()
-        if (isTodoTasks(tasks)) {
-          const todayKey = formatDateKey(new Date())
-          setTodoTasks(tasks.filter((task) => !isTodoTaskExpired(task, todayKey)))
-        }
+        if (tasks !== null && !isTodoTasks(tasks)) throw new Error('Invalid to-do data')
+        if (tasks !== null) setTodoTasks(tasks)
+        setIsTodoTasksLoaded(true)
       }
       catch (e) { console.error(e) }
-      finally { setIsTodoTasksLoaded(true) }
 
       // 영어 단어 (날짜별 JSON 파일)
       try {
@@ -2337,8 +2381,8 @@ function App() {
           })
           setVocabularyByDate(nextVocabulary)
         }
+        setIsVocabularyLoaded(true)
       } catch (e) { console.error(e) }
-      finally { setIsVocabularyLoaded(true) }
 
       // 좋아요 트랙
       try {
@@ -2346,8 +2390,8 @@ function App() {
         if (Array.isArray(loaded)) {
           setLikedTrackIds([...new Set(loaded.filter((id): id is string => typeof id === 'string' && id.trim().length > 0))])
         }
+        setIsLikedTracksLoaded(true)
       } catch (e) { console.error(e) }
-      finally { setIsLikedTracksLoaded(true) }
     }
     loadAll()
   }, [])
@@ -2359,7 +2403,7 @@ function App() {
       idleScreenTimerRef.current = null
     }
 
-    if (!isSettingsLoaded || isIdleScreenActive || settings.idleScreenEnabled === false) return
+    if (!isSettingsLoaded || isIdleScreenActive || isMinimalModeActive || settings.idleScreenEnabled === false) return
 
     const timeoutMinutes = Number.isFinite(settings.idleScreenTimeoutMinutes)
       ? Math.max(1, settings.idleScreenTimeoutMinutes ?? 10)
@@ -2396,25 +2440,15 @@ function App() {
         idleScreenTimerRef.current = null
       }
     }
-  }, [isSettingsLoaded, isIdleScreenActive, settings.idleScreenEnabled, settings.idleScreenTimeoutMinutes])
+  }, [isSettingsLoaded, isIdleScreenActive, isMinimalModeActive, settings.idleScreenEnabled, settings.idleScreenTimeoutMinutes])
 
   // ─── 데이터 자동 저장 ──────────────────────────────────────────────────────
-  useEffect(() => { if (isProgramsLoaded)         window.mnAPI.savePrograms(programs).catch(console.error) }, [programs, isProgramsLoaded])
-  useEffect(() => { if (isSettingsLoaded)          window.mnAPI.saveSettings(settings).catch(console.error) }, [settings, isSettingsLoaded])
-  useEffect(() => { if (isDiariesLoaded)           window.mnAPI.saveDiaries(diaryEntries).catch(console.error) }, [diaryEntries, isDiariesLoaded])
-  useEffect(() => { if (isCalendarSchedulesLoaded) window.mnAPI.saveCalendarSchedules(calendarSchedules).catch(console.error) }, [calendarSchedules, isCalendarSchedulesLoaded])
-  useEffect(() => { if (isTodoTasksLoaded)         window.mnAPI.saveTodoTasks(todoTasks).catch(console.error) }, [todoTasks, isTodoTasksLoaded])
-  useEffect(() => { if (isLikedTracksLoaded)       window.mnAPI.saveLikedTracks(likedTrackIds).catch(console.error) }, [likedTrackIds, isLikedTracksLoaded])
-
-  useEffect(() => {
-    if (!isTodoTasksLoaded) return
-
-    setTodoTasks((prev) => {
-      const next = prev.filter((task) => !isTodoTaskExpired(task, todayDateKey))
-      return next.length === prev.length ? prev : next
-    })
-  }, [todayDateKey, isTodoTasksLoaded])
-
+  useAutosave(programs, isProgramsLoaded, window.mnAPI.savePrograms)
+  useAutosave(settings, isSettingsLoaded, window.mnAPI.saveSettings)
+  useAutosave(diaryEntries, isDiariesLoaded, window.mnAPI.saveDiaries)
+  useAutosave(calendarSchedules, isCalendarSchedulesLoaded, window.mnAPI.saveCalendarSchedules)
+  useAutosave(todoTasks, isTodoTasksLoaded, window.mnAPI.saveTodoTasks)
+  useAutosave(likedTrackIds, isLikedTracksLoaded, window.mnAPI.saveLikedTracks)
 
   const showInAppNotification = (title: string, body?: string) => {
     setInAppNotification({ title, body })
@@ -2604,7 +2638,7 @@ function App() {
       if (!player) return
 
       try {
-        const current = typeof player.getCurrentTime === 'function' ? Math.max(0, Math.floor(player.getCurrentTime() || 0)) : ytCurrentTime
+        const current = typeof player.getCurrentTime === 'function' ? Math.max(0, Math.floor(player.getCurrentTime() || 0)) : 0
         const receivedDuration = typeof player.getDuration === 'function' ? Math.max(0, Math.round(player.getDuration() || 0)) : 0
         const dur = receivedDuration > 0 ? receivedDuration : ytDurationRef.current
 
@@ -2624,7 +2658,7 @@ function App() {
       }
     }, 500)
     return () => window.clearInterval(id)
-  }, [currentVideoId, isHomeMusicPlaying, ytCurrentTime])
+  }, [currentVideoId, isHomeMusicPlaying])
 
   useEffect(() => {
     return () => {
@@ -2647,6 +2681,13 @@ function App() {
       data-wallpaper-animated={isCustomWallpaperMode && settings.customWallpaper && isAnimatedCustomWallpaper ? 'true' : undefined}
       style={appStyle}
     >
+      <MinimalModeHandle
+        active={isMinimalModeActive}
+        disabled={isIdleScreenActive || getHasModal()}
+        onToggle={async () => {
+          return isMinimalModeActive ? await closeMinimalMode() : await openMinimalMode()
+        }}
+      />
       {/* 타이틀바 */}
       <div className="custom-titlebar">
         <div className="custom-titlebar-controls">
@@ -2848,15 +2889,6 @@ function App() {
               draggable={false}
             />
           </button>
-          <button
-            type="button"
-            className="sidebar-idle-shortcut"
-            aria-label="Open idle screen"
-            title="Idle Screen"
-            onClick={openIdleScreen}
-          >
-            <span aria-hidden="true">✦</span>
-          </button>
         </div>
       </aside>
 
@@ -2893,6 +2925,7 @@ function App() {
             onPlayPrevTrack={playPrevTrack} onPlayNextTrack={playNextTrack} onTogglePlayPause={togglePlayPause}
             onPlayVideo={playVideo}
             onVolumePointerDown={handleHomeMusicVolumePointerDown} onVolumePointerMove={handleHomeMusicVolumePointerMove}
+            onToggleMute={handleToggleHomeMusicMute}
             onProgressPointerDown={handleHomeMusicProgressPointerDown} onProgressPointerMove={handleHomeMusicProgressPointerMove}
             onProgressPointerUp={handleHomeMusicProgressPointerUp}
             onSetIsShuffleEnabled={setIsShuffleEnabled}
@@ -2931,6 +2964,7 @@ function App() {
             onOpenFullPlaylist={() => setIsFullPlaylistModalOpen(true)}
             onChangeCover={handleChangePlaylistCover} playlistCoverTheme={activeTheme} onSetIsShuffleEnabled={setIsShuffleEnabled}
             onVolumePointerDown={handleHomeMusicVolumePointerDown} onVolumePointerMove={handleHomeMusicVolumePointerMove}
+            onToggleMute={handleToggleHomeMusicMute}
             onProgressPointerDown={handleHomeMusicProgressPointerDown} onProgressPointerMove={handleHomeMusicProgressPointerMove}
             onProgressPointerUp={handleHomeMusicProgressPointerUp}
             formatHomeMusicTime={formatHomeMusicTime} getThemeIcon={getThemeIcon} getMusicControlIcon={getMusicControlIcon}
@@ -3259,6 +3293,47 @@ function App() {
           wallpaper={isCustomWallpaperMode ? settings.customWallpaper : null}
           wallpaperName={isCustomWallpaperMode ? settings.customWallpaperName : null}
           onExit={() => setIsIdleScreenActive(false)}
+        />
+      )}
+
+      {isMinimalModeActive && (
+        <MinimalMode
+          theme={activeTheme}
+          now={currentDate}
+          wallpaper={isCustomWallpaperMode ? settings.customWallpaper : null}
+          accentColor={settings.accentColor}
+          selectedPreset={selectedPreset}
+          onSelectPreset={setSelectedPreset}
+          onLaunchPreset={handleLaunchPrograms}
+          audioDevice={selectedAudioDevice}
+          monitorOrientation={selectedMonitorOrientation}
+          onSelectAudioDevice={handleSelectAudioDevice}
+          onSelectMonitorOrientation={handleSelectMonitorOrientation}
+          schedules={calendarSchedules[todayDateKey] ?? []}
+          playlists={homeMusicPlaylistsWithLiked}
+          selectedPlaylistId={selectedHomeMusicPlaylistId}
+          onSelectPlaylist={setSelectedHomeMusicPlaylistId}
+          onPlayPlaylist={handlePlaylistPlay}
+          currentTrack={currentTrack}
+          isPlaying={isHomeMusicPlaying}
+          progress={homeMusicProgress}
+          volume={homeMusicVolume}
+          onTogglePlay={togglePlayPause}
+          onPrevious={playPrevTrack}
+          onNext={playNextTrack}
+          onVolumePointerDown={handleHomeMusicVolumePointerDown}
+          onVolumePointerMove={handleHomeMusicVolumePointerMove}
+          onToggleMute={handleToggleHomeMusicMute}
+          isShuffleEnabled={isShuffleEnabled}
+          onToggleShuffle={() => setIsShuffleEnabled((enabled) => !enabled)}
+          isLiked={isTrackLiked(currentTrack?.id)}
+          onToggleLike={() => handleToggleTrackLike(currentTrack?.id)}
+          onProgressPointerDown={handleHomeMusicProgressPointerDown}
+          onProgressPointerMove={handleHomeMusicProgressPointerMove}
+          onProgressPointerUp={handleHomeMusicProgressPointerUp}
+          shortcuts={getHomeShortcuts().slice(0, homeShortcutSlotCount)}
+          onLaunchShortcut={handleLaunchHomeShortcut}
+          onExit={closeMinimalMode}
         />
       )}
 

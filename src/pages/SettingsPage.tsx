@@ -181,11 +181,15 @@ export function SettingsPage({
         <div className="setting-row">
           <div>
             <strong>Auto idle screen</strong>
-            <p>Show the idle screen automatically when there is no activity in MN WORKSPACE.</p>
+            <p>Show the idle screen automatically when inactive. Always disabled in Minimal Mode.</p>
           </div>
           <button
-            className={`toggle ${settings.idleScreenEnabled ? 'on' : ''}`}
-            onClick={() => onUpdateSettings({ idleScreenEnabled: !settings.idleScreenEnabled })}
+            type="button"
+            role="switch"
+            aria-label="Auto idle screen"
+            aria-checked={settings.idleScreenEnabled !== false}
+            className={`toggle ${settings.idleScreenEnabled !== false ? 'on' : ''}`}
+            onClick={() => onUpdateSettings({ idleScreenEnabled: settings.idleScreenEnabled === false })}
           >
             <span></span>
           </button>
@@ -199,7 +203,7 @@ export function SettingsPage({
           <select
             className="setting-select"
             value={settings.idleScreenTimeoutMinutes ?? 10}
-            disabled={!settings.idleScreenEnabled}
+            disabled={settings.idleScreenEnabled === false}
             onChange={(e) => onUpdateSettings({ idleScreenTimeoutMinutes: Number(e.target.value) })}
           >
             <option value={1}>1 minute</option>

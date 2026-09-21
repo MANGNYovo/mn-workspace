@@ -15,125 +15,15 @@ type YoutubeMusicTrack = {
   thumbnail: string
 }
 
-type YoutubeMusicAccount = {
-  signedIn: boolean
-  email?: string | null
-  name?: string | null
-  picture?: string | null
-  channelTitle?: string | null
-}
+type YoutubeMusicAccount = import('./types').YoutubeMusicAccount
 
-type PlaylistCoverTheme = 'light' | 'dark'
-type PlaylistCoverOverride = Partial<Record<PlaylistCoverTheme, string>>
-type PlaylistCoverChangeResult = {
-  theme: PlaylistCoverTheme
-  coverUrl: string
-}
+type PlaylistCoverTheme = import('./types').PlaylistCoverTheme
+type PlaylistCoverOverride = import('./types').PlaylistCoverOverride
+type PlaylistCoverChangeResult = import('./types').PlaylistCoverChangeResult
 
 
-type TodoPriority = 'high' | 'medium' | 'low'
-type AICommandTargetHint = 'latest' | 'matched' | 'selected' | 'today'
-type AICommand =
-  | {
-      type: 'calendar.create'
-      payload: {
-        title: string
-        date: string | null
-        time?: string | null
-        color?: 'red' | 'blue' | 'green' | 'orange' | 'purple' | 'gray' | null
-      }
-    }
-  | {
-      type: 'calendar.update'
-      payload: {
-        id?: string | null
-        targetId?: string | null
-        targetTitle?: string | null
-        targetDate?: string | null
-        targetHint?: AICommandTargetHint | null
-        title?: string | null
-        date?: string | null
-        time?: string | null
-        newTitle?: string | null
-        newDate?: string | null
-        newTime?: string | null
-      }
-    }
-  | {
-      type: 'calendar.delete'
-      payload: {
-        id?: string | null
-        targetId?: string | null
-        targetTitle?: string | null
-        targetDate?: string | null
-        targetHint?: AICommandTargetHint | null
-        title?: string | null
-        date?: string | null
-      }
-    }
-  | {
-      type: 'todo.create'
-      payload: {
-        title: string
-        description?: string | null
-        dueDate?: string | null
-        priority?: TodoPriority | null
-        reminderEnabled?: boolean | null
-      }
-    }
-  | {
-      type: 'todo.update'
-      payload: {
-        id?: string | null
-        targetId?: string | null
-        targetTitle?: string | null
-        targetDueDate?: string | null
-        targetHint?: AICommandTargetHint | null
-        title?: string | null
-        newTitle?: string | null
-        description?: string | null
-        dueDate?: string | null
-        priority?: TodoPriority | null
-        reminderEnabled?: boolean | null
-        completed?: boolean | null
-      }
-    }
-  | {
-      type: 'todo.delete'
-      payload: {
-        id?: string | null
-        targetId?: string | null
-        targetTitle?: string | null
-        targetDueDate?: string | null
-        targetHint?: AICommandTargetHint | null
-        title?: string | null
-        dueDate?: string | null
-      }
-    }
-
-type AIChatContext = {
-  currentDate: string
-  currentDateTime: string
-  selectedScheduleDate?: string
-  schedules: Array<{
-    id: string
-    title: string
-    date: string
-    time?: string
-    createdAt: string
-    updatedAt: string
-  }>
-  todos: Array<{
-    id: string
-    title: string
-    description?: string
-    dueDate?: string
-    priority: TodoPriority
-    completed: boolean
-    createdAt: string
-    updatedAt: string
-  }>
-}
+type AICommand = import('./types').AICommand
+type AIChatContext = import('./types').AIChatContext
 
 interface Window {
   mnAPI: {
@@ -248,6 +138,7 @@ interface Window {
 
     minimizeWindow: () => Promise<void>
     closeWindow: () => Promise<void>
+    setMinimalWindowMode: (enabled: boolean) => Promise<boolean>
 
     checkForUpdates: () => Promise<boolean>
     downloadUpdate: () => Promise<boolean>
