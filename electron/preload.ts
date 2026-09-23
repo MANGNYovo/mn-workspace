@@ -65,6 +65,13 @@ contextBridge.exposeInMainWorld('mnAPI', {
     ipcRenderer.invoke('settings:set-start-with-windows', enabled),
 
   getAudioDevice: () => ipcRenderer.invoke('device:get-audio'),
+  getMicrophoneState: () => ipcRenderer.invoke('device:get-microphone'),
+  toggleMicrophoneMute: () => ipcRenderer.invoke('device:toggle-microphone'),
+  onMicrophoneChanged: (callback: (state: { available: boolean; muted: boolean | null; error?: string }) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, state: { available: boolean; muted: boolean | null; error?: string }) => callback(state)
+    ipcRenderer.on('device:microphone-changed', listener)
+    return () => ipcRenderer.removeListener('device:microphone-changed', listener)
+  },
   setAudioDevice: (device: 'speaker' | 'headphone') =>
     ipcRenderer.invoke('device:set-audio', device),
   onAudioDeviceChanged: (callback: (device: 'speaker' | 'headphone') => void) => {

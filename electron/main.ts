@@ -8,6 +8,7 @@ import dotenv from 'dotenv'
 import OpenAI from 'openai'
 import { google } from 'googleapis'
 import electronUpdater from 'electron-updater'
+import { MicrophoneController } from './microphone'
 import type {
   AIChatAPIResult,
   AIChatHistoryPayload,
@@ -82,8 +83,14 @@ let minimizeToTray = false
 let isQuitting = false
 let startedAtLogin = app.getLoginItemSettings().wasOpenedAtLogin
 
-const AUDIO_OVERLAY_WIDTH = 88
+const AUDIO_OVERLAY_WIDTH = 122
 const AUDIO_OVERLAY_HEIGHT = 42
+
+const microphone = new MicrophoneController((state) => {
+  if (audioOverlayWindow && !audioOverlayWindow.isDestroyed()) {
+    audioOverlayWindow.webContents.send('device:microphone-changed', state)
+  }
+})
 
 type AudioDevice = 'speaker' | 'headphone'
 type AudioOverlayPosition = {
@@ -1613,6 +1620,10 @@ function getAudioOverlayHtml() {
       pointer-events: none;
     }
 
+    #microphone.unavailable { opacity: 0.35; }
+    #microphone .mute-slash { display: none; }
+    #microphone.active .mute-slash { display: block; }
+
     svg {
       width: 20px;
       height: 20px;
@@ -1652,12 +1663,54 @@ function getAudioOverlayHtml() {
         <path d="M20 13.2h-2.8v6h1.3a1.5 1.5 0 0 0 1.5-1.5v-4.5Z" />
       </svg>
     </button>
+    <button id="microphone" type="button" class="unavailable" aria-label="Analog 1/2 microphone" title="Analog 1/2 · Checking microphone">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="9" y="4.5" width="6" height="9" rx="3" />
+        <path d="M5 10v1a7 6 0 0 0 14 0v-1M12 17v2.5M8.5 19.5h7" />
+        <path class="mute-slash" d="M5 5l14 14" />
+      </svg>
+    </button>
   </main>
 
   <script>
     const api = window.mnAPI
     const switcher = document.getElementById('switcher')
     const buttons = Array.from(document.querySelectorAll('button[data-device]'))
+    const micButton = document.getElementById('microphone')
+    let micBusy = false
+    let micRefresh = null
+    function renderMicrophone(state) {
+      const available = state && state.available && typeof state.muted === 'boolean'
+      micButton.classList.toggle('unavailable', !available)
+      micButton.classList.toggle('active', available && state.muted)
+      if (available) micButton.setAttribute('aria-pressed', String(state.muted))
+      else micButton.removeAttribute('aria-pressed')
+      const label = !available ? 'Analog 1/2 · Unavailable (click to retry)' :
+        state.muted ? 'Analog 1/2 · Muted (click to unmute)' : 'Analog 1/2 · On (click to mute)'
+      micButton.title = label
+      micButton.setAttribute('aria-label', label)
+    }
+    function refreshMicrophone() {
+      if (micBusy || micRefresh) return micRefresh
+      micRefresh = api.getMicrophoneState().then(renderMicrophone).catch(() => renderMicrophone(null))
+        .finally(() => { micRefresh = null })
+      return micRefresh
+    }
+    micButton.addEventListener('mouseenter', refreshMicrophone)
+    micButton.addEventListener('click', async () => {
+      if (micBusy) return
+      micBusy = true
+      micButton.classList.add('busy')
+      try {
+        await micRefresh
+        const state = await api.toggleMicrophoneMute()
+        renderMicrophone(state)
+        if (!state.available) showError()
+      } catch { renderMicrophone(null); showError() }
+      finally { micBusy = false; micButton.classList.remove('busy') }
+    })
+    const removeMicrophoneListener = api.onMicrophoneChanged(renderMicrophone)
+    refreshMicrophone()
     const accentColors = {
       purple: '#9b7cff',
       blue: '#6f9cff',
@@ -1759,6 +1812,7 @@ function getAudioOverlayHtml() {
       window.clearInterval(refreshTimer)
       removeAudioListener()
       removeSettingsListener()
+      removeMicrophoneListener()
     })
   </script>
 </body>
@@ -1990,6 +2044,7 @@ async function syncAudioOverlayVisibility(settings?: unknown) {
   audioOverlayHideInFullscreen = getAudioOverlayHideInFullscreenFromSettings(resolvedSettings)
 
   if (!audioOverlayEnabled) {
+    microphone.stop()
     stopAudioOverlayFullscreenMonitor()
     audioOverlaySuppressedByFullscreen = false
 
@@ -2136,6 +2191,7 @@ async function createAudioOverlayWindow() {
   })
 
   audioOverlayWindow.on('show', () => {
+    void microphone.request('get')
     startAudioOverlayTopmostGuard()
     setTimeout(() => {
       keepAudioOverlayOnTop()
@@ -2165,6 +2221,7 @@ async function createAudioOverlayWindow() {
   })
 
   audioOverlayWindow.on('closed', () => {
+    microphone.stop()
     stopAudioOverlayTopmostGuard()
     audioOverlayWindow = null
 
@@ -3029,6 +3086,15 @@ ipcMain.handle('device:get-audio', async () => {
   return await getCurrentAudioDevice()
 })
 
+ipcMain.handle('device:get-microphone', (event) => {
+  if (!audioOverlayEnabled || event.sender !== audioOverlayWindow?.webContents) return { available: false, muted: null }
+  return microphone.request('get')
+})
+ipcMain.handle('device:toggle-microphone', (event) => {
+  if (!audioOverlayEnabled || event.sender !== audioOverlayWindow?.webContents) return { available: false, muted: null }
+  return microphone.request('toggle')
+})
+
 ipcMain.handle('device:set-audio', async (_event, device: AudioDevice) => {
   try {
     const command =
@@ -3249,6 +3315,7 @@ autoUpdater.on('update-downloaded', (info) => {
 
 app.on('before-quit', () => {
   isQuitting = true
+  microphone.stop()
   stopAudioOverlayTopmostGuard()
   stopAudioOverlayFullscreenMonitor()
   rendererStaticServer?.close()
