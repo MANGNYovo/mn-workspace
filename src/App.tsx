@@ -1,4 +1,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { loadYoutubeIframeApi, type YoutubePlayer } from './utils/youtubePlayer'
+import { KaraokePage } from './pages/KaraokePage'
+import './styles/karaoke.css'
 import { DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 
@@ -183,51 +186,11 @@ const isNotificationDueNow = (targetDate: Date, now: Date) => {
   return diff >= 0 && diff < 120_000
 }
 
-type YoutubePlayer = {
-  playVideo?: () => void
-  pauseVideo?: () => void
-  stopVideo?: () => void
-  seekTo?: (seconds: number, allowSeekAhead?: boolean) => void
-  setVolume?: (volume: number) => void
-  unMute?: () => void
-  mute?: () => void
-  getCurrentTime?: () => number
-  getDuration?: () => number
-  loadVideoById?: (videoId: string | { videoId: string; startSeconds?: number }) => void
-  destroy?: () => void
-}
-
-type YoutubeApi = {
-  Player: new (element: HTMLElement | string, options: {
-    width: number
-    height: number
-    videoId?: string
-    playerVars?: Record<string, string | number>
-    events?: {
-      onReady?: (event: { target: YoutubePlayer }) => void
-      onStateChange?: (event: { data: number; target: YoutubePlayer }) => void
-      onError?: (event: { data: number; target: YoutubePlayer }) => void
-    }
-  }) => YoutubePlayer
-  PlayerState: {
-    ENDED: number
-    PLAYING: number
-    PAUSED: number
-    BUFFERING: number
-    CUED: number
-  }
-}
-
-declare global {
-  interface Window {
-    YT?: YoutubeApi
-    onYouTubeIframeAPIReady?: () => void
-  }
-}
-
 function App() {
   // ─── State ────────────────────────────────────────────────────────────────
   const [activePage, setActivePage] = useState<Page>('home')
+  const karaokeActiveRef = useRef(false)
+  karaokeActiveRef.current = activePage === 'karaoke'
   const [isAIChatModalOpen, setIsAIChatModalOpen] = useState(false)
   const [isAIChatModalMinimized, setIsAIChatModalMinimized] = useState(false)
   const [isIdleScreenActive, setIsIdleScreenActive] = useState(false)
@@ -253,7 +216,6 @@ function App() {
   const [currentTrack, setCurrentTrack] = useState<PlaylistTrack | null>(null)
   const ytPlayerHostRef = useRef<HTMLDivElement | null>(null)
   const ytPlayerRef = useRef<YoutubePlayer | null>(null)
-  const ytApiPromiseRef = useRef<Promise<YoutubeApi> | null>(null)
   const youtubePlayerElementRef = useRef<HTMLElement | null>(null)
   const [playingFullPlaylistTrackId, setPlayingFullPlaylistTrackId] = useState<string | null>(null)
   const [selectedPlaylistTrackId, setSelectedPlaylistTrackId] = useState<string | null>(null)
@@ -534,6 +496,7 @@ function App() {
     Boolean(currentVideoId && currentTrack) &&
     activePage !== 'home' &&
     activePage !== 'playlist' &&
+    activePage !== 'karaoke' &&
     activePage !== 'vocabularyTest'
   // ─── Helper functions ─────────────────────────────────────────────────────
   const getPlaybackTracks = (playlistId?: string | null) => {
@@ -710,43 +673,6 @@ function App() {
     )
   }
 
-  const loadYoutubeIframeApi = () => {
-    if (window.YT?.Player) return Promise.resolve(window.YT)
-    if (ytApiPromiseRef.current) return ytApiPromiseRef.current
-
-    ytApiPromiseRef.current = new Promise<YoutubeApi>((resolve, reject) => {
-      const previousReady = window.onYouTubeIframeAPIReady
-      const timeout = window.setTimeout(() => {
-        reject(new Error('YouTube IFrame API initialization timed out.'))
-      }, 15000)
-
-      window.onYouTubeIframeAPIReady = () => {
-        previousReady?.()
-        window.clearTimeout(timeout)
-
-        if (window.YT?.Player) {
-          resolve(window.YT)
-          return
-        }
-
-        reject(new Error('YouTube IFrame API failed to initialize.'))
-      }
-
-      if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
-        const script = document.createElement('script')
-        script.src = 'https://www.youtube.com/iframe_api'
-        script.async = true
-        script.onerror = () => {
-          window.clearTimeout(timeout)
-          reject(new Error('Failed to load YouTube IFrame API.'))
-        }
-        document.head.appendChild(script)
-      }
-    })
-
-    return ytApiPromiseRef.current
-  }
-
   const createYoutubeHostElement = () => {
     const host = ytPlayerHostRef.current
     if (!host) return null
@@ -762,6 +688,7 @@ function App() {
   const runYtCommandNow = (func: string, args: unknown[] = []) => {
     const player = ytPlayerRef.current
     if (!player || !isYoutubePlayerUsable()) return false
+    if (karaokeActiveRef.current && (func === 'playVideo' || func === 'seekTo')) return false
 
     try {
       if (func === 'playVideo' && typeof player.playVideo === 'function') { player.playVideo(); return true }
@@ -824,6 +751,7 @@ function App() {
   }
 
   const loadCurrentVideoIntoYoutubePlayer = (videoId: string) => {
+    if (karaokeActiveRef.current) return
     const player = ytPlayerRef.current
     if (!player || !isYoutubePlayerUsable() || typeof player.loadVideoById !== 'function') return
 
@@ -852,6 +780,7 @@ function App() {
 
   const createYoutubePlayer = async (videoId: string) => {
     const YT = await loadYoutubeIframeApi()
+    if (karaokeActiveRef.current) return
     if (currentVideoIdRef.current !== videoId) return
 
     if (ytPlayerRef.current && isYoutubePlayerUsable()) {
@@ -901,6 +830,7 @@ function App() {
           const playerState = window.YT?.PlayerState
           if (!playerState) return
 
+          if (karaokeActiveRef.current) { event.target.pauseVideo?.(); return }
           if (event.data === playerState.PLAYING) {
             isPreparingNextVideoRef.current = false
             isWaitingForFreshVideoTimeRef.current = false
@@ -916,6 +846,7 @@ function App() {
           }
         },
         onError: (event) => {
+          if (karaokeActiveRef.current) return
           lastYoutubeErrorRef.current = event.data
           console.warn('YouTube player error:', event.data)
           if (currentVideoIdRef.current === pendingYoutubeVideoIdRef.current) {
@@ -928,6 +859,7 @@ function App() {
 
   // ─── YouTube Player ───────────────────────────────────────────────────────
   const playVideo = (videoId: string, fromPlaylistId?: string, trackInfo?: PlaylistTrack) => {
+    if (karaokeActiveRef.current) return
     const track = trackInfo ?? allTracksRef.current.find((t) => t.id === videoId) ?? allTracks.find((t) => t.id === videoId) ?? null
     const isSameVideo = currentVideoIdRef.current === videoId
     const initialDuration = track?.duration ? parseDurationToSeconds(track.duration) : 0
@@ -1053,6 +985,7 @@ function App() {
   }
 
   const playNextTrack = () => {
+    if (karaokeActiveRef.current) return
     const playlistId = playingPlaylistIdRef.current ?? playingPlaylistId ?? selectedHomeMusicPlaylistId
     if (!isYtAuthenticated && playlistId !== LIKED_PLAYLIST_ID) { setIsYoutubeLoginModalOpen(true); return }
     const tracks = getPlaybackTracks(playlistId)
@@ -2670,6 +2603,16 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    if (activePage !== 'karaoke') return
+    if (youtubeSwitchTimerRef.current) window.clearTimeout(youtubeSwitchTimerRef.current)
+    if (youtubeDeferredTimerRef.current) window.clearTimeout(youtubeDeferredTimerRef.current)
+    youtubeSwitchTokenRef.current += 1
+    youtubeCommandQueueRef.current = []
+    ytPlayerRef.current?.pauseVideo?.()
+    setIsHomeMusicPlaying(false)
+  }, [activePage])
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div
@@ -2789,6 +2732,9 @@ function App() {
             />
             <span className="menu-label">Playlist</span>
           </button>
+          <button className={`menu-item ${activePage === 'karaoke' ? 'active' : ''}`} aria-label="Karaoke" title="Karaoke" onMouseEnter={() => setHoveredCollapsedSidebarPage('karaoke')} onMouseLeave={() => setHoveredCollapsedSidebarPage(null)} onClick={() => setActivePage('karaoke')}>
+            <img className="menu-icon" src={getCollapsedSidebarMusicIcon('karaoke', activePage === 'karaoke', hoveredCollapsedSidebarPage === 'karaoke')} alt="" /><span className="menu-label">Karaoke</span>
+          </button>
           <button
             className={`menu-item ${activePage === 'settings' ? 'active' : ''}`}
             aria-label="Settings"
@@ -2894,6 +2840,7 @@ function App() {
 
       {/* 메인 콘텐츠 */}
       <main className="content" onClick={() => setOpenMenuId(null)}>
+        <KaraokePage active={activePage === 'karaoke'} volume={homeMusicVolume} onVolumeChange={setHomeMusicVolume} iconSrc={musicControlIconMap.karaoke[settings.accentColor]} />
         {activePage === 'home' && (
           <HomePage
             selectedPreset={selectedPreset} isLaunching={isLaunching} enabledProgramCount={enabledProgramCount}

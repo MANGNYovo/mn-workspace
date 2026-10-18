@@ -1,3 +1,10 @@
+import karaokePurple from '../assets/karaoke-purple.png'
+import karaokeBlue from '../assets/karaoke-blue.png'
+import karaokeGreen from '../assets/karaoke-green.png'
+import karaokeOrange from '../assets/karaoke-orange.png'
+import karaokeRed from '../assets/karaoke-red.png'
+import karaokeGray from '../assets/karaoke-gray.png'
+import karaokeWhite from '../assets/karaoke-white.png'
 import type {
   AccentColor, ProgramItem, ProgramType, HomeMusicPlaylist, PlaylistTrack, DiaryEntry, AppSettings,
   PlaylistCoverOverrideMap, ResolvedTheme, CalendarSchedule, TodoTask, VocabularyWord,
@@ -288,6 +295,7 @@ export const iconMap = {
 } as const
 
 export const musicControlIconMap = {
+  karaoke: { purple: karaokePurple, blue: karaokeBlue, green: karaokeGreen, orange: karaokeOrange, red: karaokeRed, gray: karaokeGray, white: karaokeWhite },
   search:   { purple: searchPurple,   blue: searchBlue,   green: searchGreen,   orange: searchOrange,   red: searchRed,   gray: searchGray,   white: searchWhite   },
   list:     { purple: listPurple,     blue: listBlue,     green: listGreen,     orange: listOrange,     red: listRed,     gray: listGray,     white: listWhite     },
   grid:     { purple: gridPurple,     blue: gridBlue,     green: gridGreen,     orange: gridOrange,     red: gridRed,     gray: gridGray,     white: gridWhite     },

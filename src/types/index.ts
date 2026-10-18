@@ -1,4 +1,4 @@
-export type Page = 'home' | 'dashboard' | 'programs' | 'diary' | 'writeDiary' | 'todo' | 'vocabulary' | 'vocabularyTest' | 'playlist' | 'settings'
+export type Page = 'home' | 'dashboard' | 'programs' | 'diary' | 'writeDiary' | 'todo' | 'vocabulary' | 'vocabularyTest' | 'playlist' | 'karaoke' | 'settings'
 export type ProgramType = 'Program' | 'Folder' | 'URL'
 export type LaunchDelay = '1 second' | '2 seconds' | '3 seconds' | '5 seconds'
 export type LaunchBehavior = 'Launch in order' | 'Launch all at once'

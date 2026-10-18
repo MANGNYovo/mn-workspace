@@ -28,6 +28,8 @@ contextBridge.exposeInMainWorld('mnAPI', {
     ipcRenderer.invoke('vocabulary:check-meaning', payload),
   showSystemNotification: (options: { title: string; body?: string }) =>
     ipcRenderer.invoke('notifications:show', options),
+  loadKaraoke: () => ipcRenderer.invoke('karaoke:load'),
+  saveKaraoke: (library: unknown) => ipcRenderer.invoke('karaoke:save', library),
   loadLikedTracks: () => ipcRenderer.invoke('liked-tracks:load'),
   saveLikedTracks: (trackIds: string[]) => ipcRenderer.invoke('liked-tracks:save', trackIds),
 

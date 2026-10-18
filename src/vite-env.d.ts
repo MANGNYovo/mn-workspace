@@ -67,6 +67,8 @@ interface Window {
       error: string
     }>
     showSystemNotification: (options: { title: string; body?: string }) => Promise<boolean>
+    loadKaraoke: () => Promise<import('./utils/karaoke').KaraokeLibrary | null>
+    saveKaraoke: (library: import('./utils/karaoke').KaraokeLibrary) => Promise<boolean>
     loadLikedTracks: () => Promise<string[] | null>
     saveLikedTracks: (trackIds: string[]) => Promise<boolean>
 

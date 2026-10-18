@@ -1,3 +1,4 @@
+import { isKaraokeLibrary } from '../src/utils/karaoke'
 import { app, BrowserWindow, dialog, ipcMain, shell, Tray, Menu, protocol, Notification, screen, nativeImage } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
@@ -2634,6 +2635,27 @@ ipcMain.handle('notifications:show', async (_event, options: { title?: unknown; 
     console.error('Failed to show notification:', error)
     return false
   }
+})
+
+ipcMain.handle('karaoke:load', async () => {
+  const file = path.join(app.getPath('userData'), 'karaoke.json')
+  try { await fs.access(file) } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw error
+  }
+  const data = await readJsonFile(file)
+  if (!isKaraokeLibrary(data)) throw new Error('Invalid karaoke library')
+  return data
+})
+
+ipcMain.handle('karaoke:save', async (_event, library: unknown) => {
+  if (!isKaraokeLibrary(library)) return false
+  try {
+    const file = path.join(app.getPath('userData'), 'karaoke.json')
+    await writeJsonFile(file + '.tmp', library)
+    await fs.rename(file + '.tmp', file)
+    return true
+  } catch (error) { console.error('Failed to save karaoke library:', error); return false }
 })
 
 ipcMain.handle('liked-tracks:load', async () => {
